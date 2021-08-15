@@ -1,0 +1,29 @@
+name:                events
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/events#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2021 Author name here
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable events
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  other-modules:       Types.Visitor
+                     , Types.Event
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , postgresql-simple >= 0.6 && < 0.7
+                     , servant >= 0.18 && < 0.19
+                     , servant-server >= 0.18 && < 0.19
+                     , aeson >= 1.5 && < 1.6
+                     , time >= 1.9 && < 1.10
+                     , wai
+                     , warp
