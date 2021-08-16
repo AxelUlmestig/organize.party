@@ -20,6 +20,7 @@ import qualified Types.Visitor              as V
 localPG :: ConnectInfo
 localPG = defaultConnectInfo
         { connectHost = "localhost"
+        , connectPort = 5433
         , connectDatabase = "events"
         , connectUser = "postgres"
         , connectPassword = "postgres"

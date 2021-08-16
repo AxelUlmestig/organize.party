@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:12.5-alpine
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: events
       POSTGRES_PASSWORD: postgres
