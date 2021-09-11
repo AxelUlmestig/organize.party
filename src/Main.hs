@@ -6,11 +6,12 @@ module Main where
 
 import           Control.Monad.IO.Class     (liftIO)
 import           Database.PostgreSQL.Simple (ConnectInfo (..), connect,
-                                             defaultConnectInfo, query_)
+                                             defaultConnectInfo, query, query_)
 import           Network.Wai.Handler.Warp   (run)
-import           Servant                    (Application, Proxy (Proxy), Server,
-                                             serve)
-import           Servant.API                (Get, JSON, (:>))
+import           Servant
+import           Servant.API
+
+
 
 import           Types.Event                (Event)
 import qualified Types.Event                as E
@@ -26,26 +27,35 @@ localPG = defaultConnectInfo
         , connectPassword = "postgres"
         }
 
+type API = EventAPI :<|> VisitorAPI
 type EventAPI = "api" :> "v1" :> "events" :> Get '[JSON] [Event]
+type VisitorAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" String :> Get '[JSON] Visitor
 
-eventAPI :: Proxy EventAPI
-eventAPI = Proxy
+api :: Proxy API
+api = Proxy
 
 app :: Application
-app = serve eventAPI server
+app = serve api server
 
 main :: IO ()
 main = do
   putStrLn "listening on port 8081..."
   run 8081 app
 
--- main :: IO ()
--- main = do
---   conn <- connect localPG
---   mapM_ print =<< (query_ conn "select id, email::text, first_name, last_name from visitors" :: IO [Visitor])
---   mapM_ print =<< (query_ conn "select * from events" :: IO [Event])
+server :: Server API
+server = events
+    :<|> visitors
 
-server :: Server EventAPI
-server = do
-  conn <- liftIO $ connect localPG
-  liftIO $ query_ conn "select * from events"
+  where
+    events = do
+      conn <- liftIO $ connect localPG
+      liftIO $ query_ conn "select * from events"
+
+    visitors :: Maybe String -> Handler Visitor
+    visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
+    visitors (Just email) = do
+      conn <- liftIO $ connect localPG
+      rows <- liftIO $ query conn "select id, email::text, first_name, last_name from visitors where email = ?" [email]
+      case rows of
+        (visitor:_) -> return visitor
+        _           -> throwError $ err404 { errBody = "visitor not found" }
