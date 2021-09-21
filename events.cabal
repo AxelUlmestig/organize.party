@@ -29,4 +29,3 @@ executable events
                      , time >= 1.9 && < 1.10
                      , wai
                      , warp
-                     , casing

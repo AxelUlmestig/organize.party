@@ -8,7 +8,6 @@ import           Data.Time                            (UTCTime)
 import           Database.PostgreSQL.Simple.FromField (FromField (..))
 import           Database.PostgreSQL.Simple.FromRow   (FromRow (..), field)
 import           GHC.Generics                         (Generic)
-import           Text.Casing                          (fromSnake, toPascal)
 
 import           Types.Visit                          (VisitStatus (..))
 
