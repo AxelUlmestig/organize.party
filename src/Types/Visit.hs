@@ -25,16 +25,15 @@ instance ToField VisitStatus where
 
 
 data Visit = Visit
-           { eventId      :: Int
-           , visitorId    :: Int
-           , status       :: VisitStatus
-           , plusOne      :: Bool
-           , rsvpAt       :: UTCTime
-           , supersededAt :: Maybe UTCTime
+           { eventId   :: Int
+           , visitorId :: Int
+           , status    :: VisitStatus
+           , plusOne   :: Bool
+           , rsvpAt    :: UTCTime
            }
            deriving (Generic, Show)
 
 instance ToJSON Visit
 
 instance FromRow Visit where
-  fromRow = Visit <$> field <*> field <*> (read . toPascal . fromSnake <$> field) <*> field <*> field <*> field
+  fromRow = Visit <$> field <*> field <*> (read . toPascal . fromSnake <$> field) <*> field <*> field

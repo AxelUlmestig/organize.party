@@ -76,7 +76,7 @@ server = events
               return newVisit
         )
 
-visitExistsQuery = "select event_id, visitor_id, status::text, plus_one, rsvp_at, superseded_at \
+visitExistsQuery = "select event_id, visitor_id, status::text, plus_one, rsvp_at \
                    \from visits \
                    \where \
                    \  event_id = ? \
@@ -95,5 +95,5 @@ markVisitsAsSupersededQuery = "update visits \
 
 insertVisitQuery = "insert into visits (event_id, visitor_id, status, plus_one) \
                    \values (?, ?, ?, ?) \
-                   \returning event_id, visitor_id, status::text, plus_one, rsvp_at, superseded_at"
+                   \returning event_id, visitor_id, status::text, plus_one, rsvp_at"
 
