@@ -28,4 +28,5 @@ executable events
                      , aeson >= 1.5 && < 1.6
                      , time >= 1.9 && < 1.10
                      , wai
+                     , wai-cors
                      , warp

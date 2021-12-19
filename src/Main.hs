@@ -4,20 +4,21 @@
 
 module Main where
 
-import           Control.Monad.IO.Class     (liftIO)
-import           Database.PostgreSQL.Simple (ConnectInfo (..), Only (..),
-                                             connect, defaultConnectInfo,
-                                             execute, query, query_,
-                                             withTransaction)
-import           Network.Wai.Handler.Warp   (run)
+import           Control.Monad.IO.Class      (liftIO)
+import           Database.PostgreSQL.Simple  (ConnectInfo (..), Only (..),
+                                              connect, defaultConnectInfo,
+                                              execute, query, query_,
+                                              withTransaction)
+import           Network.Wai.Handler.Warp    (run)
+import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 import           Servant.API
 
-import           Types.Event                (Event)
-import qualified Types.Event                as E
-import           Types.Visit                (Visit)
-import qualified Types.VisitPut             as VP
-import           Types.Visitor              (Visitor)
+import           Types.Event                 (Event)
+import qualified Types.Event                 as E
+import           Types.Visit                 (Visit)
+import qualified Types.VisitPut              as VP
+import           Types.Visitor               (Visitor)
 
 localPG :: ConnectInfo
 localPG = defaultConnectInfo
@@ -37,7 +38,7 @@ api :: Proxy API
 api = Proxy
 
 app :: Application
-app = serve api server
+app = simpleCors $ serve api server
 
 main :: IO ()
 main = do
