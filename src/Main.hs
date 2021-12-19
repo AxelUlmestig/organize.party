@@ -30,7 +30,7 @@ localPG = defaultConnectInfo
         }
 
 type API = EventsAPI :<|> VisitorsAPI :<|> VisitsAPI
-type EventsAPI = "api" :> "v1" :> "events" :> Get '[JSON] [Event]
+type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" String :> Get '[JSON] Event
 type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" String :> Get '[JSON] Visitor
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VP.VisitPut :> Put '[JSON] Visit
 
@@ -46,14 +46,17 @@ main = do
   run 8081 app
 
 server :: Server API
-server = events
+server = event
     :<|> visitors
     :<|> addVisit
 
   where
-    events = do
+    event eventId = do
       conn <- liftIO $ connect localPG
-      liftIO $ query_ conn "select * from events"
+      rows <- liftIO $ query conn "select * from events where id = ?" [eventId]
+      case rows of
+        (row:_) -> return row
+        _       -> undefined -- TODO
 
     visitors :: Maybe String -> Handler Visitor
     visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
