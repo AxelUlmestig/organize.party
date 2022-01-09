@@ -1,25 +1,28 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Types.Event (Event(Event)) where
+module Types.Event (Event(Event), fromTuple) where
 
-import           Data.Aeson                         (ToJSON)
-import           Data.Time.Clock                    (UTCTime)
-import           Database.PostgreSQL.Simple.FromRow (FromRow (..), field)
-import           GHC.Generics                       (Generic)
+import           Data.Aeson      (ToJSON)
+import           Data.Text
+import           Data.Time.Clock (UTCTime)
+import           GHC.Generics    (Generic)
 
 data Event = Event
            { id             :: Int
-           , title          :: String
-           , description    :: String
+           , title          :: Text
+           , description    :: Text
            , startTime      :: UTCTime
            , endTime        :: UTCTime
-           , location       :: String
-           , googleMapsLink :: Maybe String
+           , location       :: Text
+           , googleMapsLink :: Maybe Text
            }
-           deriving (Show, Generic)
+           deriving (Generic)
 
 instance ToJSON Event
 
-instance FromRow Event where
-  fromRow = Event <$> field <*> field <*> field <*> field <*> field <*> field <*> field
+-- instance FromRow Event where
+--   fromRow = Event <$> field <*> field <*> field <*> field <*> field <*> field <*> field
+
+fromTuple :: Integral a => (a, Text, Text, UTCTime, UTCTime, Text, Maybe Text) -> Event
+fromTuple (id, title, description, startTime, endTime, location, googleMapsLink) = Event (fromIntegral id) title description startTime endTime location googleMapsLink

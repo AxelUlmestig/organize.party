@@ -1,103 +1,153 @@
+{-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TypeOperators     #-}
+
 
 module Main where
 
 import           Control.Monad.IO.Class      (liftIO)
-import           Database.PostgreSQL.Simple  (ConnectInfo (..), Only (..),
-                                              connect, defaultConnectInfo,
-                                              execute, query, query_,
-                                              withTransaction)
+
+import           Data.Int                    (Int64)
+import           Data.Text                   (Text, pack)
+import           Hasql.Connection            (Connection, Settings, acquire,
+                                              settings)
+import qualified Hasql.Session               as Hasql
+import           Hasql.Statement             (Statement)
+import           Hasql.TH                    (maybeStatement,
+                                              resultlessStatement,
+                                              singletonStatement)
+import           Text.Read                   (readMaybe)
+
+
+
 import           Network.Wai.Handler.Warp    (run)
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 import           Servant.API
 
-import           Types.Event                 (Event)
+import           Types.Event                 (Event (Event))
 import qualified Types.Event                 as E
 import           Types.Visit                 (Visit)
+import qualified Types.Visit                 as Visit
+import           Types.VisitPut              (VisitPut (..))
 import qualified Types.VisitPut              as VP
 import           Types.Visitor               (Visitor)
+import qualified Types.Visitor               as Visitor
 
-localPG :: ConnectInfo
-localPG = defaultConnectInfo
-        { connectHost = "localhost"
-        , connectPort = 5433
-        , connectDatabase = "events"
-        , connectUser = "postgres"
-        , connectPassword = "postgres"
-        }
+localPG :: Settings
+localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
 type API = EventsAPI :<|> VisitorsAPI :<|> VisitsAPI
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" String :> Get '[JSON] Event
-type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" String :> Get '[JSON] Visitor
+type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" Text :> Get '[JSON] Visitor
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VP.VisitPut :> Put '[JSON] Visit
 
 api :: Proxy API
 api = Proxy
 
-app :: Application
-app = simpleCors $ serve api server
+app :: Connection -> Application
+app = simpleCors . serve api . server
 
 main :: IO ()
 main = do
-  putStrLn "listening on port 8081..."
-  run 8081 app
+  eConnection <- acquire localPG
+  case eConnection of
+    Left err -> print err
+    Right connection -> do
+      putStrLn "listening on port 8081..."
+      run 8081 $ app connection
 
-server :: Server API
-server = event
+server :: Connection -> Server API
+server connection = event
     :<|> visitors
     :<|> addVisit
 
   where
-    event eventId = do
-      conn <- liftIO $ connect localPG
-      rows <- liftIO $ query conn "select * from events where id = ?" [eventId]
-      case rows of
-        (row:_) -> return row
-        _       -> undefined -- TODO
+    eventStatement :: Statement Int64 Event
+    eventStatement = E.fromTuple <$> [singletonStatement|
+        select
+           id::bigint,
+           title::text,
+           description::text,
+           time_start::timestamptz,
+           time_end::timestamptz,
+           location::text,
+           location_google_maps_link::text?
+        from events
+        where id = $1::bigint
+      |]
 
-    visitors :: Maybe String -> Handler Visitor
+    event eventIdStr = do
+      case readMaybe eventIdStr of
+        Nothing -> undefined -- TODO
+        Just eventId -> do
+          eEvent <- liftIO $ Hasql.run (Hasql.statement eventId eventStatement) connection
+          case eEvent of
+            Left err    -> do
+              liftIO $ print err
+              undefined -- TODO
+            Right event -> pure event
+
+    visitors :: Maybe Text -> Handler Visitor
     visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
     visitors (Just email) = do
-      conn <- liftIO $ connect localPG
-      rows <- liftIO $ query conn "select id, email::text, first_name, last_name from visitors where email = ?" [email]
-      case rows of
-        (visitor:_) -> return visitor
-        _           -> throwError $ err404 { errBody = "visitor not found" }
+      emVisitor <- liftIO  . flip Hasql.run connection . fmap (fmap Visitor.fromTuple) $ Hasql.statement email [maybeStatement|
+          select id::bigint, email::text, first_name::text, last_name::text from visitors where email = $1::text::email
+        |]
+
+      case emVisitor of
+        Left err -> do
+          liftIO $ print err
+          undefined -- TODO
+        Right (Just visitor) -> pure visitor
+        Right Nothing      -> throwError $ err404 { errBody = "visitor not found" }
 
     addVisit :: VP.VisitPut -> Handler Visit
-    addVisit v = do
-      conn <- liftIO $ connect localPG
-      liftIO $ withTransaction conn (do
-          mVisit <- query conn visitExistsQuery (VP.eventId v, VP.visitorId v, VP.status v, VP.plusOne v)
-          case mVisit of
-            (visit:_) -> return visit
-            _ -> do
-              execute conn markVisitsAsSupersededQuery (VP.eventId v, VP.visitorId v)
-              [newVisit] <- query conn insertVisitQuery (VP.eventId v, VP.visitorId v, VP.status v, VP.plusOne v)
-              return newVisit
-        )
+    addVisit VisitPut{eventId, visitorId, status, plusOne} = do
+      let session = do
+                    let visitTuple = (fromIntegral eventId, fromIntegral visitorId, pack (show status), plusOne)
 
-visitExistsQuery = "select event_id, visitor_id, status, plus_one, rsvp_at \
-                   \from visits \
-                   \where \
-                   \  event_id = ? \
-                   \  and visitor_id = ? \
-                   \  and status = ? \
-                   \  and plus_one = ? \
-                   \  and superseded_at is null"
+                    mExistingVisit <- Hasql.statement visitTuple [maybeStatement|
+                        select
+                          event_id::bigint,
+                          visitor_id::bigint,
+                          status::text,
+                          plus_one::bool,
+                          rsvp_at::timestamptz
+                        from visits
+                        where
+                          event_id = $1::bigint
+                          and visitor_id = $2::bigint
+                          and status = lower($3::text)::visit_status
+                          and plus_one = $4::bool
+                          and superseded_at is null
+                      |]
 
-markVisitsAsSupersededQuery = "update visits \
-                              \set superseded_at = now() \
-                              \where \
-                              \  superseded_at is null \
-                              \    and \
-                              \    event_id = ? \
-                              \    and visitor_id = ?"
+                    case mExistingVisit of
+                      Just existingVisit -> pure $ Visit.fromTuple existingVisit
+                      Nothing -> do
+                        Hasql.statement (fromIntegral eventId, fromIntegral visitorId) [resultlessStatement|
+                            update visits
+                            set superseded_at = now()
+                            where
+                              superseded_at is null
+                              and event_id = $1::bigint
+                              and visitor_id = $2::bigint
+                          |]
 
-insertVisitQuery = "insert into visits (event_id, visitor_id, status, plus_one) \
-                   \values (?, ?, ?, ?) \
-                   \returning event_id, visitor_id, status, plus_one, rsvp_at"
+                        Visit.fromTuple <$> Hasql.statement visitTuple [singletonStatement|
+                            insert into visits (event_id, visitor_id, status, plus_one)
+                            values ($1::bigint, $2::bigint, lower($3::text)::visit_status, $4::bool)
+                            returning event_id::bigint, visitor_id::bigint, status::text, plus_one::bool, rsvp_at::timestamptz
+                          |]
+
+      eVisit <- liftIO $ Hasql.run session connection
+      case eVisit of
+        Right visit -> pure visit
+        Left err -> do
+          liftIO $ print err
+          undefined -- TODO
 

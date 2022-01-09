@@ -1,21 +1,25 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Types.Visitor (Visitor(Visitor)) where
+module Types.Visitor (Visitor(Visitor), fromTuple) where
 
-import           Data.Aeson                         (ToJSON)
-import           Database.PostgreSQL.Simple.FromRow (FromRow (..), field)
-import           GHC.Generics                       (Generic)
+import           Data.Aeson   (ToJSON)
+-- import           Database.PostgreSQL.Simple.FromRow (FromRow (..), field)
+import           Data.Text    (Text)
+import           GHC.Generics (Generic)
 
 data Visitor = Visitor
              { id        :: Int
-             , email     :: String
-             , firstName :: String
-             , lastName  :: String
+             , email     :: Text
+             , firstName :: Text
+             , lastName  :: Text
              }
              deriving (Generic, Show)
 
 instance ToJSON Visitor
 
-instance FromRow Visitor where
-  fromRow = Visitor <$> field <*> field <*> field <*> field
+fromTuple :: Integral a => (a, Text, Text, Text) -> Visitor
+fromTuple (id, email, firstName, lastName) = Visitor (fromIntegral id) email firstName lastName
+
+-- instance FromRow Visitor where
+--   fromRow = Visitor <$> field <*> field <*> field <*> field

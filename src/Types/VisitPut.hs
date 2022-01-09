@@ -3,13 +3,13 @@
 
 module Types.VisitPut (VisitPut(..)) where
 
-import           Data.Aeson                           (FromJSON)
-import           Data.Time                            (UTCTime)
-import           Database.PostgreSQL.Simple.FromField (FromField (..))
-import           Database.PostgreSQL.Simple.FromRow   (FromRow (..), field)
-import           GHC.Generics                         (Generic)
+import           Data.Aeson   (FromJSON)
+import           Data.Time    (UTCTime)
+-- import           Database.PostgreSQL.Simple.FromField (FromField (..))
+-- import           Database.PostgreSQL.Simple.FromRow   (FromRow (..), field)
+import           GHC.Generics (Generic)
 
-import           Types.Visit                          (VisitStatus (..))
+import           Types.Visit  (VisitStatus (..))
 
 data VisitPut = VisitPut
               { eventId   :: Int

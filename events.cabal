@@ -22,7 +22,10 @@ executable events
                      , Types.VisitPut
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                     , postgresql-simple >= 0.6 && < 0.7
+                     , hasql
+                     , hasql-pool
+                     , hasql-th
+                     , hasql-transaction >=1.0.0.1
                      , servant >= 0.18 && < 0.19
                      , servant-server >= 0.18 && < 0.19
                      , aeson >= 1.5 && < 1.6
@@ -30,3 +33,4 @@ executable events
                      , wai
                      , wai-cors
                      , warp
+                     , text
