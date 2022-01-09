@@ -8,7 +8,7 @@ NUKE_DB=$(cat <<-SQL
 SQL
 )
 
-psql postgres://postgres@localhost:5432/events -c "$NUKE_DB"
+psql postgres://postgres@localhost:5433/events -c "$NUKE_DB"
 
-psql postgres://postgres@localhost:5432/events \
+psql postgres://postgres@localhost:5433/events \
   -f db/tables.sql
