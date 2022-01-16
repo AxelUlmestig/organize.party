@@ -17,9 +17,11 @@ executable events
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Types.Event
+                     , Types.CreateEventInput
                      , Types.Visitor
                      , Types.Visit
                      , Types.VisitPut
+                     , Endpoints.CreateEvent
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , hasql
@@ -34,3 +36,8 @@ executable events
                      , wai-cors
                      , warp
                      , text
+                     , profunctors
+  default-extensions: OverloadedStrings
+                    , QuasiQuotes
+                    , NamedFieldPuns
+                    , DeriveGeneric

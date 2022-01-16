@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Types.Event (Event(Event), fromTuple) where
@@ -20,9 +19,6 @@ data Event = Event
            deriving (Generic)
 
 instance ToJSON Event
-
--- instance FromRow Event where
---   fromRow = Event <$> field <*> field <*> field <*> field <*> field <*> field <*> field
 
 fromTuple :: Integral a => (a, Text, Text, UTCTime, UTCTime, Text, Maybe Text) -> Event
 fromTuple (id, title, description, startTime, endTime, location, googleMapsLink) = Event (fromIntegral id) title description startTime endTime location googleMapsLink

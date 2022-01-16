@@ -1,15 +1,11 @@
-{-# LANGUAGE BlockArguments    #-}
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds      #-}
+{-# LANGUAGE TypeOperators  #-}
 
 
 module Main where
 
 import           Control.Monad.IO.Class      (liftIO)
-
 import           Data.Int                    (Int64)
 import           Data.Text                   (Text, pack)
 import           Hasql.Connection            (Connection, Settings, acquire,
@@ -19,15 +15,15 @@ import           Hasql.Statement             (Statement)
 import           Hasql.TH                    (maybeStatement,
                                               resultlessStatement,
                                               singletonStatement)
-import           Text.Read                   (readMaybe)
-
-
-
 import           Network.Wai.Handler.Warp    (run)
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 import           Servant.API
+import           Text.Read                   (readMaybe)
 
+import qualified Endpoints.CreateEvent
+import           Types.CreateEventInput      (CreateEventInput)
+import qualified Types.CreateEventInput      as CE
 import           Types.Event                 (Event (Event))
 import qualified Types.Event                 as E
 import           Types.Visit                 (Visit)
@@ -40,7 +36,8 @@ import qualified Types.Visitor               as Visitor
 localPG :: Settings
 localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> VisitorsAPI :<|> VisitsAPI
+type API = EventsAPI :<|> CreateEventAPI :<|> VisitorsAPI :<|> VisitsAPI
+type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" String :> Get '[JSON] Event
 type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" Text :> Get '[JSON] Visitor
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VP.VisitPut :> Put '[JSON] Visit
@@ -62,6 +59,7 @@ main = do
 
 server :: Connection -> Server API
 server connection = event
+    :<|> createEvent
     :<|> visitors
     :<|> addVisit
 
@@ -90,6 +88,8 @@ server connection = event
               liftIO $ print err
               undefined -- TODO
             Right event -> pure event
+
+    createEvent = Endpoints.CreateEvent.createEvent connection
 
     visitors :: Maybe Text -> Handler Visitor
     visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
@@ -150,4 +150,3 @@ server connection = event
         Left err -> do
           liftIO $ print err
           undefined -- TODO
-
