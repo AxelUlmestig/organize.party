@@ -13,7 +13,9 @@ import           Types.Visit  (VisitStatus (..), writeStatus)
 
 data VisitPut = VisitPut
               { eventId   :: UUID
-              , visitorId :: Int
+              , email     :: Text
+              , firstName :: Text
+              , lastName  :: Text
               , status    :: VisitStatus
               , plusOne   :: Bool
               }
@@ -21,5 +23,5 @@ data VisitPut = VisitPut
 
 instance FromJSON VisitPut
 
-toTuple :: VisitPut -> (UUID, Int64, Text, Bool)
-toTuple VisitPut{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, writeStatus status, plusOne)
+toTuple :: VisitPut -> (UUID, Text, Text, Text, Text, Bool)
+toTuple VisitPut{eventId, email, firstName, lastName, status, plusOne} = (eventId, email, firstName, lastName, writeStatus status, plusOne)

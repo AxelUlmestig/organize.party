@@ -18,7 +18,6 @@ executable events
   main-is:             Main.hs
   other-modules:       Types.Event
                      , Types.CreateEventInput
-                     , Types.Visitor
                      , Types.Visit
                      , Types.VisitPut
                      , Endpoints.CreateEvent

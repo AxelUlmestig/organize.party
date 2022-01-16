@@ -12,13 +12,6 @@ create table events (
   location_google_maps_link text
 );
 
-create table visitors (
-  id serial primary key,
-  email email not null unique,
-  first_name text not null,
-  last_name text not null
-);
-
 create type visit_status as enum (
   'coming',
   'maybe_coming',
@@ -27,7 +20,9 @@ create type visit_status as enum (
 
 create table visits (
   event_id uuid not null references events (id),
-  visitor_id int not null references visitors (id),
+  email email not null,
+  first_name text not null,
+  last_name text not null,
   status visit_status not null,
   plus_one bool not null,
   rsvp_at timestamp with time zone not null default now(),
@@ -35,5 +30,5 @@ create table visits (
 );
 
 create unique index unique_visit_idx
-  on visits (event_id, visitor_id)
+  on visits (event_id, email)
   where superseded_at is null;
