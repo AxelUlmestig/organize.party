@@ -23,6 +23,7 @@ import           Servant.API
 import           Text.Read                   (readMaybe)
 
 import qualified Endpoints.CreateEvent
+import qualified Endpoints.GetEvent
 import           Types.CreateEventInput      (CreateEventInput)
 import qualified Types.CreateEventInput      as CE
 import           Types.Event                 (Event (Event))
@@ -39,7 +40,7 @@ localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
 type API = EventsAPI :<|> CreateEventAPI :<|> VisitorsAPI :<|> VisitsAPI
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
-type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" String :> Get '[JSON] Event
+type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
 type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" Text :> Get '[JSON] Visitor
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VP.VisitPut :> Put '[JSON] Visit
 
@@ -59,39 +60,12 @@ main = do
       run 8081 $ app connection
 
 server :: Connection -> Server API
-server connection = event
-    :<|> createEvent
+server connection = Endpoints.GetEvent.getEvent connection
+    :<|> Endpoints.CreateEvent.createEvent connection
     :<|> visitors
     :<|> addVisit
 
   where
-    eventStatement :: Statement UUID Event
-    eventStatement = E.fromTuple <$> [singletonStatement|
-        select
-           id::uuid,
-           title::text,
-           description::text,
-           time_start::timestamptz,
-           time_end::timestamptz,
-           location::text,
-           location_google_maps_link::text?
-        from events
-        where id = $1::uuid
-      |]
-
-    event eventIdStr = do
-      case readMaybe eventIdStr of
-        Nothing -> undefined -- TODO
-        Just eventId -> do
-          eEvent <- liftIO $ Hasql.run (Hasql.statement eventId eventStatement) connection
-          case eEvent of
-            Left err    -> do
-              liftIO $ print err
-              undefined -- TODO
-            Right event -> pure event
-
-    createEvent = Endpoints.CreateEvent.createEvent connection
-
     visitors :: Maybe Text -> Handler Visitor
     visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
     visitors (Just email) = do
