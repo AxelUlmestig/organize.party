@@ -16,11 +16,24 @@ import qualified Types.VisitPut         as VP
 
 
 addVisit :: MonadIO m => Connection -> VisitPut -> m Visit
-addVisit connection VisitPut{eventId, visitorId, status, plusOne} = do
+addVisit connection visit = do
   let session = do
-                let visitTuple = (eventId, fromIntegral visitorId, pack (show status), plusOne)
+                mExistingVisit <- Hasql.statement visit findExistingStatement
+                case mExistingVisit of
+                  Just existingVisit -> pure existingVisit
+                  Nothing -> do
+                    Hasql.statement visit obsoleteOldVisitStatement
+                    Hasql.statement visit insertVisitStatement
 
-                mExistingVisit <- Hasql.statement visitTuple [maybeStatement|
+  eVisit <- liftIO $ Hasql.run session connection
+  case eVisit of
+    Right visit -> pure visit
+    Left err -> do
+      liftIO $ print err
+      undefined -- TODO
+
+findExistingStatement :: Statement VisitPut (Maybe Visit)
+findExistingStatement = dimap VP.toTuple (fmap Visit.fromTuple) [maybeStatement|
                     select
                       event_id::uuid,
                       visitor_id::bigint,
@@ -36,10 +49,8 @@ addVisit connection VisitPut{eventId, visitorId, status, plusOne} = do
                       and superseded_at is null
                   |]
 
-                case mExistingVisit of
-                  Just existingVisit -> pure $ Visit.fromTuple existingVisit
-                  Nothing -> do
-                    Hasql.statement (eventId, fromIntegral visitorId) [resultlessStatement|
+obsoleteOldVisitStatement :: Statement VisitPut ()
+obsoleteOldVisitStatement = dimap toTuple id [resultlessStatement|
                         update visits
                         set superseded_at = now()
                         where
@@ -47,16 +58,12 @@ addVisit connection VisitPut{eventId, visitorId, status, plusOne} = do
                           and event_id = $1::uuid
                           and visitor_id = $2::bigint
                       |]
+  where
+    toTuple VP.VisitPut{eventId, visitorId} = (eventId, fromIntegral visitorId)
 
-                    Visit.fromTuple <$> Hasql.statement visitTuple [singletonStatement|
+insertVisitStatement :: Statement VisitPut Visit
+insertVisitStatement = dimap VP.toTuple Visit.fromTuple [singletonStatement|
                         insert into visits (event_id, visitor_id, status, plus_one)
                         values ($1::uuid, $2::bigint, lower($3::text)::visit_status, $4::bool)
                         returning event_id::uuid, visitor_id::bigint, status::text, plus_one::bool, rsvp_at::timestamptz
                       |]
-
-  eVisit <- liftIO $ Hasql.run session connection
-  case eVisit of
-    Right visit -> pure visit
-    Left err -> do
-      liftIO $ print err
-      undefined -- TODO

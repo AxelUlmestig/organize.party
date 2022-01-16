@@ -1,13 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Types.VisitPut (VisitPut(..)) where
+module Types.VisitPut (VisitPut(..), toTuple) where
 
 import           Data.Aeson   (FromJSON)
 import           Data.Time    (UTCTime)
--- import           Database.PostgreSQL.Simple.FromField (FromField (..))
--- import           Database.PostgreSQL.Simple.FromRow   (FromRow (..), field)
 import           GHC.Generics (Generic)
 
+import           Data.Int     (Int64)
+import           Data.Text    (Text, pack)
 import           Data.UUID    (UUID)
 import           Types.Visit  (VisitStatus (..))
 
@@ -20,3 +20,6 @@ data VisitPut = VisitPut
               deriving (Generic, Show)
 
 instance FromJSON VisitPut
+
+toTuple :: VisitPut -> (UUID, Int64, Text, Bool)
+toTuple VisitPut{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, pack (show status), plusOne)
