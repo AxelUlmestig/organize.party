@@ -40,6 +40,8 @@ executable events
                      , profunctors
                      , uuid
                      , string-interpolate
+                     , bytestring
+                     , http-media
   default-extensions: OverloadedStrings
                     , QuasiQuotes
                     , NamedFieldPuns

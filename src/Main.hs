@@ -1,10 +1,13 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE TypeOperators  #-}
+{-# LANGUAGE BlockArguments        #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module Main where
 
 import           Control.Monad.IO.Class      (liftIO)
+import qualified Data.ByteString             as BS
+import qualified Data.ByteString.Lazy        as LBS
 import           Data.Int                    (Int64)
 import           Data.Text                   (Text, pack)
 import           Data.UUID                   (UUID)
@@ -15,6 +18,7 @@ import           Hasql.Statement             (Statement)
 import           Hasql.TH                    (maybeStatement,
                                               resultlessStatement,
                                               singletonStatement)
+import           Network.HTTP.Media          ((//), (/:))
 import           Network.Wai.Handler.Warp    (run)
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
@@ -32,10 +36,11 @@ import           Types.VisitPut              (VisitPut)
 localPG :: Settings
 localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> CreateEventAPI :<|> VisitsAPI
+type API = EventsAPI :<|> CreateEventAPI :<|> VisitsAPI :<|> CreateEventHtml
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VisitPut :> Put '[JSON] Visit
+type CreateEventHtml = Get '[HTML] RawHtml
 
 api :: Proxy API
 api = Proxy
@@ -56,3 +61,18 @@ server :: Connection -> Server API
 server connection = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.CreateEvent.createEvent connection
     :<|> Endpoints.AddVisit.addVisit connection
+    :<|> frontPage
+  where
+    frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
+
+-- type shenanigans to enable serving raw html
+
+data HTML
+
+newtype RawHtml = RawHtml { unRaw :: LBS.ByteString }
+
+instance Accept HTML where
+  contentTypes _ = pure $ "text" // "html" /: ("charset", "utf-8")
+
+instance MimeRender HTML RawHtml where
+  mimeRender _ = unRaw
