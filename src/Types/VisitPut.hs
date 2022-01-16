@@ -9,7 +9,7 @@ import           GHC.Generics (Generic)
 import           Data.Int     (Int64)
 import           Data.Text    (Text, pack)
 import           Data.UUID    (UUID)
-import           Types.Visit  (VisitStatus (..))
+import           Types.Visit  (VisitStatus (..), writeStatus)
 
 data VisitPut = VisitPut
               { eventId   :: UUID
@@ -22,4 +22,4 @@ data VisitPut = VisitPut
 instance FromJSON VisitPut
 
 toTuple :: VisitPut -> (UUID, Int64, Text, Bool)
-toTuple VisitPut{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, pack (show status), plusOne)
+toTuple VisitPut{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, writeStatus status, plusOne)

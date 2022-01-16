@@ -44,7 +44,7 @@ findExistingStatement = dimap VP.toTuple (fmap Visit.fromTuple) [maybeStatement|
                     where
                       event_id = $1::uuid
                       and visitor_id = $2::bigint
-                      and status = lower($3::text)::visit_status
+                      and status = $3::text::visit_status
                       and plus_one = $4::bool
                       and superseded_at is null
                   |]

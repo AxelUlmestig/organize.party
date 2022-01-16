@@ -1,13 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Types.Visit (Visit(..), VisitStatus(..), fromTuple, toTuple) where
+module Types.Visit (Visit(..), VisitStatus(..), fromTuple, toTuple, readStatus, writeStatus) where
 
-import           Data.Aeson   (FromJSON, ToJSON)
-import           Data.Int     (Int64)
-import           Data.Text    (Text, pack, toTitle, unpack)
-import           Data.Time    (UTCTime)
-import           Data.UUID    (UUID)
-import           GHC.Generics (Generic)
+import           Data.Aeson              (FromJSON, ToJSON)
+import           Data.Int                (Int64)
+import           Data.String.Interpolate (iii)
+import           Data.Text               (Text, pack, toTitle, unpack)
+import           Data.Time               (UTCTime)
+import           Data.UUID               (UUID)
+import           GHC.Generics            (Generic)
 
 data VisitStatus = Coming
                  | MaybeComing
@@ -28,8 +29,19 @@ data Visit = Visit
 
 instance ToJSON Visit
 
+writeStatus :: VisitStatus -> Text
+writeStatus Coming      = "coming"
+writeStatus MaybeComing = "maybe_coming"
+writeStatus NotComing   = "not_coming"
+
+readStatus :: Text -> VisitStatus
+readStatus "coming"       = Coming
+readStatus "maybe_coming" = MaybeComing
+readStatus "not_coming"   = NotComing
+readStatus other          = error [iii|unknown VisitStatus: #{other}|]
+
 fromTuple :: Integral a => (UUID, a, Text, Bool, UTCTime) -> Visit
-fromTuple (eventId, visitorId, status, plusOne, rsvpAt) = Visit eventId (fromIntegral visitorId) (read . unpack . toTitle $ status) plusOne rsvpAt
+fromTuple (eventId, visitorId, status, plusOne, rsvpAt) = Visit eventId (fromIntegral visitorId) (readStatus status) plusOne rsvpAt
 
 toTuple :: Visit -> (UUID, Int64, Text, Bool)
-toTuple Visit{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, pack (show status), plusOne)
+toTuple Visit{eventId, visitorId, status, plusOne} = (eventId, fromIntegral visitorId, writeStatus status, plusOne)

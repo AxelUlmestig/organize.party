@@ -40,6 +40,7 @@ executable events
                      , text
                      , profunctors
                      , uuid
+                     , string-interpolate
   default-extensions: OverloadedStrings
                     , QuasiQuotes
                     , NamedFieldPuns
