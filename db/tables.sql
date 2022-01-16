@@ -3,7 +3,7 @@ create domain email as citext
   check ( value ~ '^[a-zA-Z0-9.!#$%&''*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$' );
 
 create table events (
-  id                        serial primary key,
+  id                        uuid primary key default md5(random()::text || clock_timestamp()::text)::uuid,
   title                     text not null,
   description               text not null,
   time_start                timestamp with time zone not null,
@@ -26,7 +26,7 @@ create type visit_status as enum (
 );
 
 create table visits (
-  event_id int not null references events (id),
+  event_id uuid not null references events (id),
   visitor_id int not null references visitors (id),
   status visit_status not null,
   plus_one bool not null,

@@ -8,6 +8,7 @@ module Main where
 import           Control.Monad.IO.Class      (liftIO)
 import           Data.Int                    (Int64)
 import           Data.Text                   (Text, pack)
+import           Data.UUID                   (UUID)
 import           Hasql.Connection            (Connection, Settings, acquire,
                                               settings)
 import qualified Hasql.Session               as Hasql
@@ -64,10 +65,10 @@ server connection = event
     :<|> addVisit
 
   where
-    eventStatement :: Statement Int64 Event
+    eventStatement :: Statement UUID Event
     eventStatement = E.fromTuple <$> [singletonStatement|
         select
-           id::bigint,
+           id::uuid,
            title::text,
            description::text,
            time_start::timestamptz,
@@ -75,7 +76,7 @@ server connection = event
            location::text,
            location_google_maps_link::text?
         from events
-        where id = $1::bigint
+        where id = $1::uuid
       |]
 
     event eventIdStr = do

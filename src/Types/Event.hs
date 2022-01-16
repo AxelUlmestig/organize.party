@@ -5,10 +5,11 @@ module Types.Event (Event(Event), fromTuple) where
 import           Data.Aeson      (ToJSON)
 import           Data.Text
 import           Data.Time.Clock (UTCTime)
+import           Data.UUID       (UUID)
 import           GHC.Generics    (Generic)
 
 data Event = Event
-           { id             :: Int
+           { id             :: UUID
            , title          :: Text
            , description    :: Text
            , startTime      :: UTCTime
@@ -20,5 +21,5 @@ data Event = Event
 
 instance ToJSON Event
 
-fromTuple :: Integral a => (a, Text, Text, UTCTime, UTCTime, Text, Maybe Text) -> Event
-fromTuple (id, title, description, startTime, endTime, location, googleMapsLink) = Event (fromIntegral id) title description startTime endTime location googleMapsLink
+fromTuple :: (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) -> Event
+fromTuple (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink

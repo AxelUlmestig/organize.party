@@ -26,7 +26,7 @@ statement = dimap CE.toTuple E.fromTuple [singletonStatement|
     insert into events (title, description, time_start, time_end, location, location_google_maps_link)
     values ($1::text, $2::text, $3::timestamptz, $4::timestamptz, $5::text, $6::text?)
     returning
-      id::bigint,
+      id::uuid,
       title::text,
       description::text,
       time_start::timestamptz,

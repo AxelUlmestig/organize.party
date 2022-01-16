@@ -37,6 +37,7 @@ executable events
                      , warp
                      , text
                      , profunctors
+                     , uuid
   default-extensions: OverloadedStrings
                     , QuasiQuotes
                     , NamedFieldPuns
