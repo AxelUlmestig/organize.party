@@ -38,10 +38,9 @@ import qualified Types.Visitor               as Visitor
 localPG :: Settings
 localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> CreateEventAPI :<|> VisitorsAPI :<|> VisitsAPI
+type API = EventsAPI :<|> CreateEventAPI :<|> VisitsAPI
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
-type VisitorsAPI = "api" :> "v1" :> "visitors" :> QueryParam "email" Text :> Get '[JSON] Visitor
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VP.VisitPut :> Put '[JSON] Visit
 
 api :: Proxy API
@@ -62,24 +61,9 @@ main = do
 server :: Connection -> Server API
 server connection = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.CreateEvent.createEvent connection
-    :<|> visitors
     :<|> addVisit
 
   where
-    visitors :: Maybe Text -> Handler Visitor
-    visitors Nothing = throwError $ err400 { errBody = "supply an 'email' query param" }
-    visitors (Just email) = do
-      emVisitor <- liftIO  . flip Hasql.run connection . fmap (fmap Visitor.fromTuple) $ Hasql.statement email [maybeStatement|
-          select id::bigint, email::text, first_name::text, last_name::text from visitors where email = $1::text::email
-        |]
-
-      case emVisitor of
-        Left err -> do
-          liftIO $ print err
-          undefined -- TODO
-        Right (Just visitor) -> pure visitor
-        Right Nothing      -> throwError $ err404 { errBody = "visitor not found" }
-
     addVisit :: VP.VisitPut -> Handler Visit
     addVisit VisitPut{eventId, visitorId, status, plusOne} = do
       let session = do
