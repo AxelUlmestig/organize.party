@@ -5,6 +5,7 @@ module Types.Visit (Visit(..), VisitStatus(..), fromTuple) where
 import           Data.Aeson   (FromJSON, ToJSON)
 import           Data.Text    (Text, toTitle, unpack)
 import           Data.Time    (UTCTime)
+import           Data.UUID    (UUID)
 import           GHC.Generics (Generic)
 
 data VisitStatus = Coming
@@ -16,7 +17,7 @@ instance ToJSON VisitStatus
 instance FromJSON VisitStatus
 
 data Visit = Visit
-           { eventId   :: Int
+           { eventId   :: UUID
            , visitorId :: Int
            , status    :: VisitStatus
            , plusOne   :: Bool
@@ -26,5 +27,5 @@ data Visit = Visit
 
 instance ToJSON Visit
 
-fromTuple :: Integral a => (a, a, Text, Bool, UTCTime) -> Visit
-fromTuple (eventId, visitorId, status, plusOne, rsvpAt) = Visit (fromIntegral eventId) (fromIntegral visitorId) (read . unpack . toTitle $ status) plusOne rsvpAt
+fromTuple :: Integral a => (UUID, a, Text, Bool, UTCTime) -> Visit
+fromTuple (eventId, visitorId, status, plusOne, rsvpAt) = Visit eventId (fromIntegral visitorId) (read . unpack . toTitle $ status) plusOne rsvpAt
