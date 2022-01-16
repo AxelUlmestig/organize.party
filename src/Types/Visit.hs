@@ -3,13 +3,8 @@
 module Types.Visit (Visit(..), VisitStatus(..), fromTuple) where
 
 import           Data.Aeson   (FromJSON, ToJSON)
-import           Data.Time    (UTCTime)
--- import           Database.PostgreSQL.Simple.FromField
--- import           Database.PostgreSQL.Simple.FromRow         (FromRow (..),
---                                                              field)
--- import           Database.PostgreSQL.Simple.ToField
--- import qualified Database.PostgreSQL.Simple.TypeInfo.Static as TI
 import           Data.Text    (Text, toTitle, unpack)
+import           Data.Time    (UTCTime)
 import           GHC.Generics (Generic)
 
 data VisitStatus = Coming
@@ -19,19 +14,6 @@ data VisitStatus = Coming
 
 instance ToJSON VisitStatus
 instance FromJSON VisitStatus
--- instance ToField VisitStatus where
---   toField Coming      = Plain "'coming'::visit_status"
---   toField MaybeComing = Plain "'maybe_coming'::visit_status"
---   toField NotComing   = Plain "'not_coming'::visit_status"
---
--- instance FromField VisitStatus where
---     fromField f bs =
---       case bs of
---         Nothing             -> returnError UnexpectedNull f ""
---         Just "coming"       -> pure Coming
---         Just "maybe_coming" -> pure MaybeComing
---         Just "not_coming"   -> pure NotComing
---         Just x              -> returnError ConversionFailed f (show x)
 
 data Visit = Visit
            { eventId   :: Int
@@ -46,6 +28,3 @@ instance ToJSON Visit
 
 fromTuple :: Integral a => (a, a, Text, Bool, UTCTime) -> Visit
 fromTuple (eventId, visitorId, status, plusOne, rsvpAt) = Visit (fromIntegral eventId) (fromIntegral visitorId) (read . unpack . toTitle $ status) plusOne rsvpAt
-
--- instance FromRow Visit where
---   fromRow = Visit <$> field <*> field <*> field <*> field <*> field
