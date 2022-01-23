@@ -36,11 +36,12 @@ import           Types.VisitPut              (VisitPut)
 localPG :: Settings
 localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> CreateEventAPI :<|> VisitsAPI :<|> CreateEventHtml
+type API = EventsAPI :<|> CreateEventAPI :<|> VisitsAPI :<|> CreateEventHtml :<|> ViewEventHtml
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
 type VisitsAPI = "api" :> "v1" :> "visits" :> ReqBody '[JSON] VisitPut :> Put '[JSON] Visit
 type CreateEventHtml = Get '[HTML] RawHtml
+type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 
 api :: Proxy API
 api = Proxy
@@ -62,8 +63,10 @@ server connection = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.CreateEvent.createEvent connection
     :<|> Endpoints.AddVisit.addVisit connection
     :<|> frontPage
+    :<|> eventPage
   where
     frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
+    eventPage _ = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
 
 -- type shenanigans to enable serving raw html
 
