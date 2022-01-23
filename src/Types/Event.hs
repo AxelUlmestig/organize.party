@@ -1,12 +1,11 @@
-{-# LANGUAGE FlexibleInstances #-}
+module Types.Event (Event(Event)) where
 
-module Types.Event (Event(Event), fromTuple) where
-
-import           Data.Aeson      (ToJSON)
+import           Data.Aeson            (ToJSON)
 import           Data.Text
-import           Data.Time.Clock (UTCTime)
-import           Data.UUID       (UUID)
-import           GHC.Generics    (Generic)
+import           Data.Time.Clock       (UTCTime)
+import           Data.Types.Isomorphic (Injective (to), Iso)
+import           Data.UUID             (UUID)
+import           GHC.Generics          (Generic)
 
 data Event = Event
            { id             :: UUID
@@ -21,5 +20,10 @@ data Event = Event
 
 instance ToJSON Event
 
-fromTuple :: (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) -> Event
-fromTuple (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink
+instance Injective (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) Event where
+  to (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink
+
+instance Injective Event (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) where
+  to Event{Types.Event.id, title, description, startTime, endTime, location, googleMapsLink} = (id, title, description, startTime, endTime, location, googleMapsLink)
+
+instance Iso Event (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text)

@@ -9,6 +9,7 @@ import           Hasql.TH               (maybeStatement, resultlessStatement,
                                          singletonStatement)
 
 import           Data.Text              (pack)
+import           Data.Types.Injective   (to)
 import           Types.Visit            (Visit, writeStatus)
 import qualified Types.Visit            as Visit
 import           Types.VisitPut         (VisitPut (..))
@@ -33,7 +34,7 @@ addVisit connection visit = do
       undefined -- TODO
 
 findExistingStatement :: Statement VisitPut (Maybe Visit)
-findExistingStatement = dimap toTuple (fmap Visit.fromTuple) [maybeStatement|
+findExistingStatement = dimap to (fmap to) [maybeStatement|
                     select
                       event_id::uuid,
                       email::text,
@@ -54,7 +55,7 @@ findExistingStatement = dimap toTuple (fmap Visit.fromTuple) [maybeStatement|
     toTuple VisitPut{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
 
 obsoleteOldVisitStatement :: Statement VisitPut ()
-obsoleteOldVisitStatement = lmap toTuple [resultlessStatement|
+obsoleteOldVisitStatement = lmap to [resultlessStatement|
                         update visits
                         set superseded_at = now()
                         where
@@ -62,11 +63,9 @@ obsoleteOldVisitStatement = lmap toTuple [resultlessStatement|
                           and event_id = $1::uuid
                           and email = $2::text
                       |]
-  where
-    toTuple VP.VisitPut{eventId, email} = (eventId, email)
 
 insertVisitStatement :: Statement VisitPut Visit
-insertVisitStatement = dimap VP.toTuple Visit.fromTuple [singletonStatement|
+insertVisitStatement = dimap to to [singletonStatement|
                         insert into visits (event_id, email, first_name, last_name, status, plus_one)
                         values ($1::uuid, $2::text, $3::text, $4::text, lower($5::text)::visit_status, $6::bool)
                         returning event_id::uuid, email::text, first_name::text, last_name::text, status::text, plus_one::bool, rsvp_at::timestamptz

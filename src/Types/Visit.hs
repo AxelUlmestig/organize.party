@@ -1,12 +1,11 @@
-{-# LANGUAGE FlexibleInstances #-}
-
-module Types.Visit (Visit(..), VisitStatus(..), fromTuple, toTuple, readStatus, writeStatus) where
+module Types.Visit (Visit(..), VisitStatus(..), readStatus, writeStatus) where
 
 import           Data.Aeson              (FromJSON, ToJSON)
 import           Data.Int                (Int64)
 import           Data.String.Interpolate (iii)
 import           Data.Text               (Text, pack, toTitle, unpack)
 import           Data.Time               (UTCTime)
+import           Data.Types.Isomorphic   (Injective (to), Iso)
 import           Data.UUID               (UUID)
 import           GHC.Generics            (Generic)
 
@@ -42,8 +41,8 @@ readStatus "maybe_coming" = MaybeComing
 readStatus "not_coming"   = NotComing
 readStatus other          = error [iii|unknown VisitStatus: #{other}|]
 
-fromTuple :: (UUID, Text, Text, Text, Text, Bool, UTCTime) -> Visit
-fromTuple (eventId, email, firstName, lastName, status, plusOne, rsvpAt) = Visit eventId email firstName lastName (readStatus status) plusOne rsvpAt
+instance Injective (UUID, Text, Text, Text, Text, Bool, UTCTime) Visit where
+  to (eventId, email, firstName, lastName, status, plusOne, rsvpAt) = Visit eventId email firstName lastName (readStatus status) plusOne rsvpAt
 
-toTuple :: Visit -> (UUID, Text, Text, Text, Text, Bool)
-toTuple Visit{eventId, email, firstName, lastName, status, plusOne} = (eventId, email, firstName, lastName, writeStatus status, plusOne)
+instance Injective Visit (UUID, Text, Text, Text, Text, Bool) where
+  to Visit{eventId, email, firstName, lastName, status, plusOne} = (eventId, email, firstName, lastName, writeStatus status, plusOne)

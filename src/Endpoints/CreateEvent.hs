@@ -2,6 +2,7 @@ module Endpoints.CreateEvent (createEvent) where
 
 import           Control.Monad.IO.Class
 import           Data.Profunctor        (dimap)
+import           Data.Types.Isomorphic  (to)
 import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
 import           Hasql.TH               (singletonStatement)
@@ -22,7 +23,7 @@ createEvent connection input = do
       Right event -> pure event
 
 statement :: Statement CreateEventInput Event
-statement = dimap CE.toTuple E.fromTuple [singletonStatement|
+statement = dimap to to [singletonStatement|
     insert into events (title, description, time_start, time_end, location, location_google_maps_link)
     values ($1::text, $2::text, $3::timestamptz, $4::timestamptz, $5::text, $6::text?)
     returning

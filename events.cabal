@@ -42,7 +42,10 @@ executable events
                      , string-interpolate
                      , bytestring
                      , http-media
+                     , type-iso
   default-extensions: OverloadedStrings
                     , QuasiQuotes
                     , NamedFieldPuns
                     , DeriveGeneric
+                    , MultiParamTypeClasses
+                    , FlexibleInstances

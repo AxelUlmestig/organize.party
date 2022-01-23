@@ -6,6 +6,7 @@ import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
 import           Hasql.TH               (singletonStatement)
 
+import           Data.Types.Isomorphic  (to)
 import           Hasql.Connection       (Connection)
 import           Types.Event            (Event)
 import qualified Types.Event            as E
@@ -20,7 +21,7 @@ getEvent connection eventId = do
       Right event -> pure event
 
 statement :: Statement UUID Event
-statement = E.fromTuple <$> [singletonStatement|
+statement = to <$> [singletonStatement|
     select
        id::uuid,
        title::text,

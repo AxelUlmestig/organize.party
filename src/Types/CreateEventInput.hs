@@ -1,11 +1,10 @@
-{-# LANGUAGE FlexibleInstances #-}
+module Types.CreateEventInput (CreateEventInput(..)) where
 
-module Types.CreateEventInput (CreateEventInput(..), toTuple) where
-
-import           Data.Aeson      (FromJSON, ToJSON)
+import           Data.Aeson            (FromJSON, ToJSON)
 import           Data.Text
-import           Data.Time.Clock (UTCTime)
-import           GHC.Generics    (Generic)
+import           Data.Time.Clock       (UTCTime)
+import           Data.Types.Isomorphic (Injective (to), Iso)
+import           GHC.Generics          (Generic)
 
 data CreateEventInput = CreateEventInput
                         { title          :: Text
@@ -20,5 +19,10 @@ data CreateEventInput = CreateEventInput
 instance ToJSON CreateEventInput
 instance FromJSON CreateEventInput
 
-toTuple :: CreateEventInput -> (Text, Text, UTCTime, UTCTime, Text, Maybe Text)
-toTuple CreateEventInput{title, description, startTime, endTime, location, googleMapsLink} = (title, description, startTime, endTime, location, googleMapsLink)
+instance Injective (Text, Text, UTCTime, UTCTime, Text, Maybe Text) CreateEventInput where
+  to (title, description, startTime, endTime, location, googleMapsLink) = CreateEventInput title description startTime endTime location googleMapsLink
+
+instance Injective CreateEventInput (Text, Text, UTCTime, UTCTime, Text, Maybe Text) where
+  to CreateEventInput{title, description, startTime, endTime, location, googleMapsLink} = (title, description, startTime, endTime, location, googleMapsLink)
+
+instance Iso (Text, Text, UTCTime, UTCTime, Text, Maybe Text) CreateEventInput
