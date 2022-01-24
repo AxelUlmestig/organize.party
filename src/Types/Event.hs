@@ -1,11 +1,12 @@
-module Types.Event (Event(Event)) where
+module Types.Event (Event(..), Attendee) where
 
 import           Data.Aeson            (ToJSON)
-import           Data.Text
+import           Data.Text             (Text)
 import           Data.Time.Clock       (UTCTime)
 import           Data.Types.Isomorphic (Injective (to), Iso)
 import           Data.UUID             (UUID)
 import           GHC.Generics          (Generic)
+import           Types.Visit           (VisitStatus (..), readStatus)
 
 data Event = Event
            { id             :: UUID
@@ -15,15 +16,23 @@ data Event = Event
            , endTime        :: UTCTime
            , location       :: Text
            , googleMapsLink :: Maybe Text
+           , attendees      :: [Attendee]
            }
            deriving (Generic)
 
+data Attendee = Attendee
+                { firstName :: Text
+                , lastName  :: Text
+                , status    :: VisitStatus
+                , plusOne   :: Bool
+                }
+                deriving (Generic)
+
+instance ToJSON Attendee
 instance ToJSON Event
 
 instance Injective (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) Event where
-  to (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink
+  to (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink []
 
-instance Injective Event (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) where
-  to Event{Types.Event.id, title, description, startTime, endTime, location, googleMapsLink} = (id, title, description, startTime, endTime, location, googleMapsLink)
-
-instance Iso Event (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text)
+instance Injective (Text, Text, Text, Bool) Attendee where
+  to (firstName, lastName, status, plusOne) = Attendee firstName lastName (readStatus status) plusOne

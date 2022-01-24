@@ -1,15 +1,16 @@
 module Endpoints.GetEvent (getEvent) where
 
 import           Control.Monad.IO.Class
-import           Data.UUID              (UUID)
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (singletonStatement)
+import           Data.UUID                (UUID)
+import qualified Hasql.Session            as Hasql
+import           Hasql.Statement          (Statement)
+import           Hasql.TH                 (singletonStatement)
 
-import           Data.Types.Isomorphic  (to)
-import           Hasql.Connection       (Connection)
-import           Types.Event            (Event)
-import qualified Types.Event            as E
+import           Data.Types.Isomorphic    (to)
+import           Functions.QueryAttendees (queryAttendees)
+import           Hasql.Connection         (Connection)
+import           Types.Event              (Event)
+import qualified Types.Event              as E
 
 getEvent :: MonadIO m => Connection -> UUID -> m Event
 getEvent connection eventId = do
@@ -18,7 +19,7 @@ getEvent connection eventId = do
       Left err    -> do
         liftIO $ print err
         undefined -- TODO
-      Right event -> pure event
+      Right event -> queryAttendees connection event
 
 statement :: Statement UUID Event
 statement = to <$> [singletonStatement|

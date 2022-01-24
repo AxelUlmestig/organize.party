@@ -1,6 +1,6 @@
 module Endpoints.AddVisit (addVisit) where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Profunctor        (dimap, lmap)
 import           Hasql.Connection       (Connection)
 import qualified Hasql.Session          as Hasql
