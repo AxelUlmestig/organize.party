@@ -1,4 +1,4 @@
-module Endpoints.AddVisit (addVisit) where
+module Endpoints.Attend (addAttendee) where
 
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Profunctor        (dimap, lmap)
@@ -10,30 +10,30 @@ import           Hasql.TH               (maybeStatement, resultlessStatement,
 
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
-import           Types.Visit            (Visit, writeStatus)
-import qualified Types.Visit            as Visit
-import           Types.VisitPut         (VisitPut (..))
-import qualified Types.VisitPut         as VP
+import           Types.Attendee         (Attendee, writeStatus)
+import qualified Types.Attendee         as Attendee
+import           Types.AttendeePut      (AttendeePut (..))
+import qualified Types.AttendeePut      as VP
 
 
-addVisit :: MonadIO m => Connection -> VisitPut -> m Visit
-addVisit connection visit = do
+addAttendee :: MonadIO m => Connection -> AttendeePut -> m Attendee
+addAttendee connection attendee = do
   let session = do
-                mExistingVisit <- Hasql.statement visit findExistingStatement
-                case mExistingVisit of
-                  Just existingVisit -> pure existingVisit
+                mExistingAttendee <- Hasql.statement attendee findExistingStatement
+                case mExistingAttendee of
+                  Just existingAttendee -> pure existingAttendee
                   Nothing -> do
-                    Hasql.statement visit obsoleteOldVisitStatement
-                    Hasql.statement visit insertVisitStatement
+                    Hasql.statement attendee obsoleteOldAttendeeStatement
+                    Hasql.statement attendee insertAttendeeStatement
 
-  eVisit <- liftIO $ Hasql.run session connection
-  case eVisit of
-    Right visit -> pure visit
+  eAttendee <- liftIO $ Hasql.run session connection
+  case eAttendee of
+    Right attendee -> pure attendee
     Left err -> do
       liftIO $ print err
       undefined -- TODO
 
-findExistingStatement :: Statement VisitPut (Maybe Visit)
+findExistingStatement :: Statement AttendeePut (Maybe Attendee)
 findExistingStatement = dimap to (fmap to) [maybeStatement|
                     select
                       event_id::uuid,
@@ -43,20 +43,20 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                       status::text,
                       plus_one::bool,
                       rsvp_at::timestamptz
-                    from visits
+                    from attendees
                     where
                       event_id = $1::uuid
                       and email = $2::text
-                      and status = $3::text::visit_status
+                      and status = $3::text::attendee_status
                       and plus_one = $4::bool
                       and superseded_at is null
                   |]
   where
-    toTuple VisitPut{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
+    toTuple AttendeePut{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
 
-obsoleteOldVisitStatement :: Statement VisitPut ()
-obsoleteOldVisitStatement = lmap to [resultlessStatement|
-                        update visits
+obsoleteOldAttendeeStatement :: Statement AttendeePut ()
+obsoleteOldAttendeeStatement = lmap to [resultlessStatement|
+                        update attendees
                         set superseded_at = now()
                         where
                           superseded_at is null
@@ -64,9 +64,9 @@ obsoleteOldVisitStatement = lmap to [resultlessStatement|
                           and email = $2::text
                       |]
 
-insertVisitStatement :: Statement VisitPut Visit
-insertVisitStatement = dimap to to [singletonStatement|
-                        insert into visits (event_id, email, first_name, last_name, status, plus_one)
-                        values ($1::uuid, $2::text, $3::text, $4::text, lower($5::text)::visit_status, $6::bool)
+insertAttendeeStatement :: Statement AttendeePut Attendee
+insertAttendeeStatement = dimap to to [singletonStatement|
+                        insert into attendees (event_id, email, first_name, last_name, status, plus_one)
+                        values ($1::uuid, $2::text, $3::text, $4::text, lower($5::text)::attendee_status, $6::bool)
                         returning event_id::uuid, email::text, first_name::text, last_name::text, status::text, plus_one::bool, rsvp_at::timestamptz
                       |]

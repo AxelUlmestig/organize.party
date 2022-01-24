@@ -25,7 +25,7 @@ getAttendeesStatement = fmap to . vectorToList <$> [vectorStatement|
                                                        last_name::text,
                                                        status::text,
                                                        plus_one::bool
-                                                     from visits
+                                                     from attendees
                                                      where
                                                       event_id = $1::uuid
                                                       and superseded_at is null

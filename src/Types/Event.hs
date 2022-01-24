@@ -6,7 +6,7 @@ import           Data.Time.Clock       (UTCTime)
 import           Data.Types.Isomorphic (Injective (to), Iso)
 import           Data.UUID             (UUID)
 import           GHC.Generics          (Generic)
-import           Types.Visit           (VisitStatus (..), readStatus)
+import           Types.Attendee        (AttendeeStatus (..), readStatus)
 
 data Event = Event
            { id             :: UUID
@@ -23,7 +23,7 @@ data Event = Event
 data Attendee = Attendee
                 { firstName :: Text
                 , lastName  :: Text
-                , status    :: VisitStatus
+                , status    :: AttendeeStatus
                 , plusOne   :: Bool
                 }
                 deriving (Generic)
