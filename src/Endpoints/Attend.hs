@@ -1,4 +1,4 @@
-module Endpoints.Attend (addAttendee) where
+module Endpoints.Attend (attend) where
 
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Profunctor        (dimap, lmap)
@@ -10,14 +10,18 @@ import           Hasql.TH               (maybeStatement, resultlessStatement,
 
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
+import           Data.UUID              (UUID)
+import           Functions.GetEvent     (getEvent)
+import           Types.AttendInput      (AttendInput (..))
+import qualified Types.AttendInput      as VP
 import           Types.Attendee         (Attendee, writeStatus)
 import qualified Types.Attendee         as Attendee
-import           Types.AttendeePut      (AttendeePut (..))
-import qualified Types.AttendeePut      as VP
+import           Types.Event            (Event)
 
 
-addAttendee :: MonadIO m => Connection -> AttendeePut -> m Attendee
-addAttendee connection attendee = do
+attend :: MonadIO m => Connection -> UUID -> AttendInput -> m Event
+attend connection eventId attendee' = do
+  let attendee = attendee' { eventId = eventId }
   let session = do
                 mExistingAttendee <- Hasql.statement attendee findExistingStatement
                 case mExistingAttendee of
@@ -28,12 +32,12 @@ addAttendee connection attendee = do
 
   eAttendee <- liftIO $ Hasql.run session connection
   case eAttendee of
-    Right attendee -> pure attendee
+    Right attendee -> getEvent connection eventId
     Left err -> do
       liftIO $ print err
       undefined -- TODO
 
-findExistingStatement :: Statement AttendeePut (Maybe Attendee)
+findExistingStatement :: Statement AttendInput (Maybe Attendee)
 findExistingStatement = dimap to (fmap to) [maybeStatement|
                     select
                       event_id::uuid,
@@ -52,9 +56,9 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                       and superseded_at is null
                   |]
   where
-    toTuple AttendeePut{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
+    toTuple AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
 
-obsoleteOldAttendeeStatement :: Statement AttendeePut ()
+obsoleteOldAttendeeStatement :: Statement AttendInput ()
 obsoleteOldAttendeeStatement = lmap to [resultlessStatement|
                         update attendees
                         set superseded_at = now()
@@ -64,7 +68,7 @@ obsoleteOldAttendeeStatement = lmap to [resultlessStatement|
                           and email = $2::text
                       |]
 
-insertAttendeeStatement :: Statement AttendeePut Attendee
+insertAttendeeStatement :: Statement AttendInput Attendee
 insertAttendeeStatement = dimap to to [singletonStatement|
                         insert into attendees (event_id, email, first_name, last_name, status, plus_one)
                         values ($1::uuid, $2::text, $3::text, $4::text, lower($5::text)::attendee_status, $6::bool)

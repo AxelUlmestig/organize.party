@@ -28,8 +28,8 @@ import           Text.Read                   (readMaybe)
 import qualified Endpoints.Attend
 import qualified Endpoints.CreateEvent
 import qualified Endpoints.GetEvent
+import           Types.AttendInput           (AttendInput)
 import           Types.Attendee              (Attendee)
-import           Types.AttendeePut           (AttendeePut)
 import           Types.CreateEventInput      (CreateEventInput)
 import           Types.Event                 (Event)
 
@@ -39,7 +39,7 @@ localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
-type AttendeesAPI = "api" :> "v1" :> "attendees" :> ReqBody '[JSON] AttendeePut :> Put '[JSON] Attendee
+type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "attend" :> ReqBody '[JSON] AttendInput :> Put '[JSON] Event
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 
@@ -61,7 +61,7 @@ main = do
 server :: Connection -> Server API
 server connection = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.CreateEvent.createEvent connection
-    :<|> Endpoints.Attend.addAttendee connection
+    :<|> Endpoints.Attend.attend connection
     :<|> frontPage
     :<|> eventPage
   where
