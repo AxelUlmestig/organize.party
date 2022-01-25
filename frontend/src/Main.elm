@@ -4,7 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html as H exposing (Html)
 import Html.Attributes as A
-import Html.Events exposing (on, onInput, onClick)
+import Html.Events exposing (on, onInput, onClick, onCheck)
 import Http
 import Json.Decode as D -- exposing (Decoder, field, string)
 import Json.Encode as Encode exposing (Value)
@@ -184,7 +184,7 @@ view state =
                   , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }) ] [] ]
                   , H.div [] [ H.text "first name: ", H.input [ A.value attendeeInput.firstName, onInput (\fn -> UpdateAttendeeInput { attendeeInput | firstName = fn }) ] [] ]
                   , H.div [] [ H.text "last name: ", H.input  [ A.value attendeeInput.lastName, onInput (\ln -> UpdateAttendeeInput { attendeeInput | lastName = ln }) ] [] ]
-                  , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox" ] [] ]
+                  , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
                   , H.div []
                       [ H.select []
                           [ H.option [] [ H.text "Coming" ]
