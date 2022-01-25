@@ -20,7 +20,7 @@ type State
     = WaitingForInput String
     | Loading
     | Failure
-    | Success Event
+    | ViewEventState Event
     | NewEventState { picker: DP.DatePicker, input: EventInput }
 
 type alias PageState = { key: Nav.Key
@@ -60,17 +60,56 @@ type alias Event =
   , startTime      : Time.Posix
   , endTime        : Time.Posix
   , location       : String
+  , attendees      : List Attendee
   -- , googleMapsLink : Maybe String
   }
 
+type alias Attendee =
+  { firstName : String
+  , lastName : String
+  , status : AttendeeStatus
+  , plusOne : Bool
+  }
+
+type AttendeeStatus
+  = Coming
+  | MaybeComing
+  | NotComing
+
+
 eventDecoder : D.Decoder Event
-eventDecoder = D.map6 Event
+eventDecoder = D.map7 Event
                  (D.field "id" D.string)
                  (D.field "title" D.string)
                  (D.field "description" D.string)
                  (D.field "startTime" Iso8601.decoder)
                  (D.field "endTime" Iso8601.decoder)
                  (D.field "location" D.string)
+                 (D.field "attendees" (D.list attendeeDecoder))
+
+attendeeDecoder : D.Decoder Attendee
+attendeeDecoder = D.map4 Attendee
+                    (D.field "firstName" D.string)
+                    (D.field "lastName" D.string)
+                    (D.field "status" attendeeStatusDecoder)
+                    (D.field "plusOne" D.bool)
+
+attendeeStatusDecoder : D.Decoder AttendeeStatus
+attendeeStatusDecoder =
+  D.string
+    |> D.andThen (\str ->
+        case str of
+          "Coming" -> D.succeed Coming
+          "MaybeComing" -> D.succeed MaybeComing
+          "NotComing" -> D.succeed NotComing
+          somethingElse -> D.fail ("Unknown status: " ++ somethingElse)
+      )
+
+attendeeStatusToString : AttendeeStatus -> String
+attendeeStatusToString status = case status of
+                                  Coming -> "Coming"
+                                  MaybeComing -> "Maybe Coming"
+                                  NotComing -> "Not Coming"
 
 -- view : State -> Html Msg
 view : PageState -> Browser.Document Msg
@@ -94,12 +133,19 @@ view state =
           Failure ->
               H.text "failed to fetch new cat image"
 
-          Success {title, description, startTime, endTime, location} ->
+          ViewEventState {title, description, startTime, endTime, location, attendees} ->
             H.div [] [ H.div [] [ H.h1 [] [ H.text title ] ]
                      , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
                      , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
                      , H.div [] [ H.text location ]
                      , H.div [] [ H.text description ]
+                     , H.table []
+                        ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
+                        :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
+                                                                                         , H.td [] [ H.text (attendeeStatusToString status) ]
+                                                                                         , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
+                                                                                         ]) attendees)
+                        )
                      ]
 
           NewEventState { picker, input } -> H.div [] [
@@ -115,8 +161,8 @@ view state =
     ]
 
 
-fetchCatImageUrl : String -> Cmd Msg
-fetchCatImageUrl id =
+fetchEvent : String -> Cmd Msg
+fetchEvent id =
     Http.get
         { url = "http://localhost:8081/api/v1/events/" ++ id
         , expect = Http.expectJson GotResult eventDecoder
@@ -135,7 +181,7 @@ init _ url key =
     (state, cmd) = case P.parse routeParser url of
                        Just NewEvent -> ( Loading, Task.perform CurrentTimeIs Time.now )
                        -- Just NewEvent -> ( NewEventState { picker = DP.init, input = emptyEventInput }, Cmd.none )
-                       Just (EventId id) -> ( Loading, fetchCatImageUrl id )
+                       Just (EventId id) -> ( Loading, fetchEvent id )
                        Nothing -> ( Failure, Cmd.none )
   in ( { key = key, state = state }, cmd )
 
@@ -159,11 +205,11 @@ update msg { key, state } =
         (nextState, cmd) =
             case msg of
                 SetId id -> ( WaitingForInput id, Cmd.none )
-                GetCat id -> ( Loading, (fetchCatImageUrl id) )
+                GetCat id -> ( Loading, (fetchEvent id) )
                 GotResult result ->
                     case result of
                         Ok event ->
-                            ( Success event, Nav.pushUrl key ("/e/" ++ event.id) )
+                            ( ViewEventState event, Nav.pushUrl key ("/e/" ++ event.id) )
 
                         Err _ ->
                             ( Failure, Cmd.none )
