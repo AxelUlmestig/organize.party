@@ -50,8 +50,11 @@ getAttendeesStatement = fmap to . vectorToList <$> [vectorStatement|
                                                        plus_one::bool
                                                      from attendees
                                                      where
-                                                      event_id = $1::uuid
-                                                      and superseded_at is null
+                                                       event_id = $1::uuid
+                                                       and superseded_at is null
+                                                     order by
+                                                       status,
+                                                       rsvp_at desc
                                                    |]
   where
     vectorToList = foldr (:) []
