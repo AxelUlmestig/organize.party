@@ -20,7 +20,7 @@ type State
     = WaitingForInput String
     | Loading
     | Failure
-    | ViewEventState Event
+    | ViewEventState Event AttendeeInput
     | NewEventState { picker: DP.DatePicker, input: EventInput }
 
 type alias PageState = { key: Nav.Key
@@ -52,6 +52,42 @@ encodeEventInput { title, description, location, startTime, endTime } = Encode.o
                                                       , ("startTime", Iso8601.encode startTime)
                                                       , ("endTime", Iso8601.encode endTime)
                                                       ]
+
+type alias AttendeeInput =
+  { eventId : String
+  , email : String
+  , firstName : String
+  , lastName : String
+  , status : AttendeeStatus
+  , plusOne : Bool
+  }
+
+emptyAttendeeInput : String -> AttendeeInput
+emptyAttendeeInput eventId =
+  { eventId = eventId
+  , email = ""
+  , firstName = ""
+  , lastName = ""
+  , status = Coming
+  , plusOne = False
+  }
+
+encodeAttendeeInput : AttendeeInput -> Value
+encodeAttendeeInput { eventId, email, firstName, lastName, status, plusOne } =
+  let
+    encodeAttendeeStatus ai = case ai of
+                                Coming -> Encode.string "Coming"
+                                MaybeComing -> Encode.string "MaybeComing"
+                                NotComing -> Encode.string "NotComing"
+  in
+    Encode.object
+      [ ("eventId", Encode.string eventId)
+      , ("email", Encode.string email)
+      , ("firstName", Encode.string firstName)
+      , ("lastName", Encode.string lastName)
+      , ("status", encodeAttendeeStatus status)
+      , ("plusOne", Encode.bool plusOne)
+      ]
 
 type alias Event =
   { id : String
@@ -120,7 +156,7 @@ view state =
                                                   Just timestamp -> UpdateEventInput picker { input | startTime = timestamp }
                                                   Nothing -> UpdateEventInput picker input
   in
-    Browser.Document "foo" [
+    Browser.Document "Events" [
       case state.state of
           WaitingForInput eventId ->
               H.div []
@@ -133,20 +169,41 @@ view state =
           Failure ->
               H.text "failed to fetch new cat image"
 
-          ViewEventState {title, description, startTime, endTime, location, attendees} ->
-            H.div [] [ H.div [] [ H.h1 [] [ H.text title ] ]
-                     , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
-                     , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
-                     , H.div [] [ H.text location ]
-                     , H.div [] [ H.text description ]
-                     , H.table []
-                        ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
-                        :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
-                                                                                         , H.td [] [ H.text (attendeeStatusToString status) ]
-                                                                                         , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
-                                                                                         ]) attendees)
-                        )
-                     ]
+          ViewEventState {title, description, startTime, endTime, location, attendees} attendeeInput ->
+            H.div []
+              [ H.div []
+                  [ H.div [] [ H.h1 [] [ H.text title ] ]
+                  , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
+                  , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
+                  , H.div [] [ H.text location ]
+                  , H.div [] [ H.text description ]
+                  ]
+              , H.br [] []
+              , H.div []
+                  [ H.b [] [ H.text "Are you coming?" ]
+                  , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }) ] [] ]
+                  , H.div [] [ H.text "first name: ", H.input [ A.value attendeeInput.firstName, onInput (\fn -> UpdateAttendeeInput { attendeeInput | firstName = fn }) ] [] ]
+                  , H.div [] [ H.text "last name: ", H.input  [ A.value attendeeInput.lastName, onInput (\ln -> UpdateAttendeeInput { attendeeInput | lastName = ln }) ] [] ]
+                  , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox" ] [] ]
+                  , H.div []
+                      [ H.select []
+                          [ H.option [] [ H.text "Coming" ]
+                          , H.option [] [ H.text "Maybe Coming" ]
+                          , H.option [] [ H.text "Not Coming" ]
+                          ]
+                      ]
+                  , H.button [ onClick (AttendMsg attendeeInput) ] [ H.text "Submit" ]
+                  ]
+              , H.br [] []
+              , H.h3 [] [ H.text "Attendees" ]
+              , H.table []
+                 ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
+                 :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
+                                                                                  , H.td [] [ H.text (attendeeStatusToString status) ]
+                                                                                  , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
+                                                                                  ]) attendees)
+                 )
+              ]
 
           NewEventState { picker, input } -> H.div [] [
               H.h3 [] [ H.text "Create A New Event" ]
@@ -165,14 +222,25 @@ fetchEvent : String -> Cmd Msg
 fetchEvent id =
     Http.get
         { url = "http://localhost:8081/api/v1/events/" ++ id
-        , expect = Http.expectJson GotResult eventDecoder
+        , expect = Http.expectJson CreatedEvent eventDecoder
         }
 
 createNewEvent : EventInput -> Cmd Msg
 createNewEvent input = Http.post
                       { url = "http://localhost:8081/api/v1/events"
-                      , expect = Http.expectJson GotResult eventDecoder
+                      , expect = Http.expectJson CreatedEvent eventDecoder
                       , body = Http.jsonBody (encodeEventInput input)
+                      }
+
+attendEvent : AttendeeInput -> Cmd Msg
+attendEvent input = Http.request
+                      { method = "PUT"
+                      , headers = []
+                      , url = "http://localhost:8081/api/v1/events/" ++ input.eventId ++ "/attend"
+                      , expect = Http.expectJson AttendedEvent eventDecoder
+                      , body = Http.jsonBody (encodeAttendeeInput input)
+                      , timeout = Nothing
+                      , tracker = Nothing
                       }
 
 init : () -> Url -> Nav.Key -> ( PageState, Cmd Msg )
@@ -186,13 +254,16 @@ init _ url key =
   in ( { key = key, state = state }, cmd )
 
 type Msg
-    = GotResult (Result Http.Error Event)
+    = CreatedEvent (Result Http.Error Event)
+    | AttendedEvent (Result Http.Error Event)
     | GetCat String
     | SetId String
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
     | UpdateEventInput DP.DatePicker EventInput
+    | UpdateAttendeeInput AttendeeInput
     | CreateEventMsg EventInput
+    | AttendMsg AttendeeInput
     -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
     | OpenPicker
     | CurrentTimeIs Time.Posix
@@ -206,17 +277,23 @@ update msg { key, state } =
             case msg of
                 SetId id -> ( WaitingForInput id, Cmd.none )
                 GetCat id -> ( Loading, (fetchEvent id) )
-                GotResult result ->
+                CreatedEvent result ->
                     case result of
                         Ok event ->
-                            ( ViewEventState event, Nav.pushUrl key ("/e/" ++ event.id) )
-
+                            ( ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
+                        Err _ ->
+                            ( Failure, Cmd.none )
+                AttendedEvent result ->
+                    case result of
+                        Ok event ->
+                            ( ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
                         Err _ ->
                             ( Failure, Cmd.none )
                 UrlRequest _ -> ( state, Cmd.none )
                 UrlChange _ -> ( state, Cmd.none )
                 UpdateEventInput picker input -> (NewEventState { picker = picker, input = input }, Cmd.none )
                 CreateEventMsg input -> ( Loading, createNewEvent input )
+                AttendMsg input -> ( Loading, attendEvent input )
                 CurrentTimeIs time -> case state of
                                           -- NewEventState { picker, input } -> ( Loading , createNewEvent { input | startTime = Just time, endTime = Just time } )
                                           Loading -> ( NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
@@ -224,6 +301,9 @@ update msg { key, state } =
                 OpenPicker -> case state of
                                 NewEventState x -> ( NewEventState { x | picker = x.picker }, Cmd.none )
                                 _ -> ( state, Cmd.none )
+                UpdateAttendeeInput input -> case state of
+                                               ViewEventState event _ -> ( ViewEventState event input, Cmd.none )
+                                               _ -> ( state, Cmd.none )
     in
       ( { key = key, state = nextState }, cmd )
 
