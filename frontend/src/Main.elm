@@ -155,6 +155,7 @@ view state =
     updatePicker input (picker, mTimestamp) = case mTimestamp of
                                                   Just timestamp -> UpdateEventInput picker { input | startTime = timestamp }
                                                   Nothing -> UpdateEventInput picker input
+
   in
     Browser.Document "Events" [
       case state.state of
@@ -170,40 +171,47 @@ view state =
               H.text "failed to fetch new cat image"
 
           ViewEventState {title, description, startTime, endTime, location, attendees} attendeeInput ->
-            H.div []
-              [ H.div []
-                  [ H.div [] [ H.h1 [] [ H.text title ] ]
-                  , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
-                  , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
-                  , H.div [] [ H.text location ]
-                  , H.div [] [ H.text description ]
-                  ]
-              , H.br [] []
-              , H.div []
-                  [ H.b [] [ H.text "Are you attending?" ]
-                  , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-                  , H.div [] [ H.text "first name: ", H.input [ A.value attendeeInput.firstName, onInput (\fn -> UpdateAttendeeInput { attendeeInput | firstName = fn }), A.placeholder "Your first name" ] [] ]
-                  , H.div [] [ H.text "last name: ", H.input  [ A.value attendeeInput.lastName, onInput (\ln -> UpdateAttendeeInput { attendeeInput | lastName = ln }), A.placeholder "Your last name" ] [] ]
-                  , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
-                  , H.div []
-                      [ H.select []
-                          [ H.option [] [ H.text "Coming" ]
-                          , H.option [] [ H.text "Maybe Coming" ]
-                          , H.option [] [ H.text "Not Coming" ]
-                          ]
-                      ]
-                  , H.button [ onClick (AttendMsg attendeeInput) ] [ H.text "Submit" ]
-                  ]
-              , H.br [] []
-              , H.h3 [] [ H.text "Attendees" ]
-              , H.table []
-                 ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
-                 :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
-                                                                                  , H.td [] [ H.text (attendeeStatusToString status) ]
-                                                                                  , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
-                                                                                  ]) attendees)
-                 )
-              ]
+            let
+              onStatusUpdate newStatus = case newStatus of
+                                          "Coming" -> UpdateAttendeeInput { attendeeInput | status = Coming }
+                                          "Maybe Coming" -> UpdateAttendeeInput { attendeeInput | status = MaybeComing }
+                                          "Not Coming" -> UpdateAttendeeInput { attendeeInput | status = NotComing }
+                                          _ -> UpdateAttendeeInput attendeeInput
+            in
+              H.div []
+                [ H.div []
+                    [ H.div [] [ H.h1 [] [ H.text title ] ]
+                    , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
+                    , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
+                    , H.div [] [ H.text location ]
+                    , H.div [] [ H.text description ]
+                    ]
+                , H.br [] []
+                , H.div []
+                    [ H.b [] [ H.text "Are you attending?" ]
+                    , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+                    , H.div [] [ H.text "first name: ", H.input [ A.value attendeeInput.firstName, onInput (\fn -> UpdateAttendeeInput { attendeeInput | firstName = fn }), A.placeholder "Your first name" ] [] ]
+                    , H.div [] [ H.text "last name: ", H.input  [ A.value attendeeInput.lastName, onInput (\ln -> UpdateAttendeeInput { attendeeInput | lastName = ln }), A.placeholder "Your last name" ] [] ]
+                    , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
+                    , H.div []
+                        [ H.select [ onInput onStatusUpdate ]
+                            [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
+                            , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
+                            , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
+                            ]
+                        ]
+                    , H.button [ onClick (AttendMsg attendeeInput) ] [ H.text "Submit" ]
+                    ]
+                , H.br [] []
+                , H.h3 [] [ H.text "Attendees" ]
+                , H.table []
+                   ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
+                   :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
+                                                                                    , H.td [] [ H.text (attendeeStatusToString status) ]
+                                                                                    , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
+                                                                                    ]) attendees)
+                   )
+                ]
 
           NewEventState { picker, input } -> H.div [] [
               H.h3 [] [ H.text "Create A New Event" ]
