@@ -15,6 +15,7 @@ import SingleDatePicker as DP
 import Time as Time
 import Task as Task
 import Iso8601 as Iso8601
+import Date as Date
 
 type State
     = WaitingForInput String
@@ -24,6 +25,7 @@ type State
     | NewEventState { picker: DP.DatePicker, input: EventInput }
 
 type alias PageState = { key: Nav.Key
+                       , timeZone : Time.Zone
                        , state: State
                        }
 
@@ -151,6 +153,20 @@ view state =
                                                   Just timestamp -> UpdateEventInput picker { input | startTime = timestamp }
                                                   Nothing -> UpdateEventInput picker input
 
+    viewEventDate : Time.Posix -> Time.Posix -> Html Msg
+    viewEventDate start end =
+        let
+            oneDayMillis = 24 * 60 * 60 * 1000
+            timeDiff = Time.posixToMillis end - Time.posixToMillis start
+
+            formatTime : Time.Posix -> String
+            formatTime time = String.fromInt (Time.toHour state.timeZone start) ++ ":" ++ String.fromInt (Time.toMinute state.timeZone start)
+
+            formatDate : Time.Posix -> String
+            formatDate time = Date.toIsoString (Date.fromPosix state.timeZone time)
+        in if timeDiff < oneDayMillis
+        then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
+        else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
   in
     Browser.Document "📅" [
       case state.state of
@@ -176,8 +192,7 @@ view state =
               H.div []
                 [ H.div []
                     [ H.div [] [ H.h1 [] [ H.text title ] ]
-                    , H.div [] [ H.text ("starts at: " ++ Iso8601.fromTime startTime) ]
-                    , H.div [] [ H.text ("ends at: " ++ Iso8601.fromTime endTime) ]
+                    , viewEventDate startTime endTime
                     , H.div [] [ H.text location ]
                     , H.div [] [ H.text description ]
                     ]
@@ -249,11 +264,12 @@ init : () -> Url -> Nav.Key -> ( PageState, Cmd Msg )
 init _ url key =
   let
     (state, cmd) = case P.parse routeParser url of
-                       Just NewEvent -> ( Loading, Task.perform CurrentTimeIs Time.now )
+                       -- Just NewEvent -> ( Loading, Task.perform CurrentTimeIs Time.now )
+                       Just NewEvent -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here))
                        -- Just NewEvent -> ( NewEventState { picker = DP.init, input = emptyEventInput }, Cmd.none )
                        Just (EventId id) -> ( Loading, fetchEvent id )
                        Nothing -> ( Failure, Cmd.none )
-  in ( { key = key, state = state }, cmd )
+  in ( { key = key, timeZone = Time.utc, state = state }, cmd )
 
 type Msg
     = CreatedEvent (Result Http.Error Event)
@@ -268,46 +284,46 @@ type Msg
     | AttendMsg AttendeeInput
     -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
     | OpenPicker
-    | CurrentTimeIs Time.Posix
+    | CurrentTimeIs Time.Zone Time.Posix
 
 
 
 update : Msg -> PageState -> ( PageState, Cmd Msg )
-update msg { key, state } =
+update msg { key, timeZone, state } =
     let
-        (nextState, cmd) =
+        (mZone, nextState, cmd) =
             case msg of
-                SetId id -> ( WaitingForInput id, Cmd.none )
-                GetCat id -> ( Loading, (fetchEvent id) )
+                SetId id -> ( Nothing, WaitingForInput id, Cmd.none )
+                GetCat id -> ( Nothing, Loading, (fetchEvent id) )
                 CreatedEvent result ->
                     case result of
                         Ok event ->
-                            ( ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
+                            ( Nothing, ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
                         Err _ ->
-                            ( Failure, Cmd.none )
+                            ( Nothing, Failure, Cmd.none )
                 AttendedEvent result ->
                     case result of
                         Ok event ->
-                            ( ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
+                            ( Nothing, ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
                         Err _ ->
-                            ( Failure, Cmd.none )
-                UrlRequest _ -> ( state, Cmd.none )
-                UrlChange _ -> ( state, Cmd.none )
-                UpdateEventInput picker input -> (NewEventState { picker = picker, input = input }, Cmd.none )
-                CreateEventMsg input -> ( Loading, createNewEvent input )
-                AttendMsg input -> ( Loading, attendEvent input )
-                CurrentTimeIs time -> case state of
+                            ( Nothing, Failure, Cmd.none )
+                UrlRequest _ -> ( Nothing, state, Cmd.none )
+                UrlChange _ -> ( Nothing, state, Cmd.none )
+                UpdateEventInput picker input -> (Nothing, NewEventState { picker = picker, input = input }, Cmd.none )
+                CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
+                AttendMsg input -> ( Nothing, Loading, attendEvent input )
+                CurrentTimeIs zone time -> case state of
                                           -- NewEventState { picker, input } -> ( Loading , createNewEvent { input | startTime = Just time, endTime = Just time } )
-                                          Loading -> ( NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
-                                          _ -> ( state, Cmd.none)
+                                          Loading -> ( Just zone, NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
+                                          _ -> ( Just zone, state, Cmd.none)
                 OpenPicker -> case state of
-                                NewEventState x -> ( NewEventState { x | picker = x.picker }, Cmd.none )
-                                _ -> ( state, Cmd.none )
+                                NewEventState x -> ( Nothing, NewEventState { x | picker = x.picker }, Cmd.none )
+                                _ -> ( Nothing, state, Cmd.none )
                 UpdateAttendeeInput input -> case state of
-                                               ViewEventState event _ -> ( ViewEventState event input, Cmd.none )
-                                               _ -> ( state, Cmd.none )
+                                               ViewEventState event _ -> ( Nothing, ViewEventState event input, Cmd.none )
+                                               _ -> ( Nothing, state, Cmd.none )
     in
-      ( { key = key, state = nextState }, cmd )
+      ( { key = key, timeZone = Maybe.withDefault timeZone mZone, state = nextState }, cmd )
 
 
 
