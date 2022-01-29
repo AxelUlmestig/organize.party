@@ -152,7 +152,7 @@ view state =
                                                   Nothing -> UpdateEventInput picker input
 
   in
-    Browser.Document "Events" [
+    Browser.Document "📅" [
       case state.state of
           WaitingForInput eventId ->
               H.div []
