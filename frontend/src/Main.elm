@@ -229,7 +229,7 @@ view state =
               , H.div [] [ H.button [ onClick OpenPicker ] [ H.text "click me" ], DP.view  (DP.defaultSettings Time.utc (updatePicker input)) picker ]
               -- , H.div [] [ H.text "Start Time: ", H.input [ A.type_ "datetime-local",  A.value input.startTime, onInput (\t -> UpdateEventInput { input | startTime = t })  ] [] ]
               -- , H.div [] [ H.text "End Time: ", H.input [ A.type_ "datetime-local" ] [] ]
-              , H.div [] [ H.text "Location: ", H.input [] [] ]
+              , H.div [] [ H.text "Location: ", H.input [ A.value input.location, onInput (\l -> UpdateEventInput picker { input | location = l }) ] [] ]
               , H.button [ onClick (CreateEventMsg input) ] [ H.text "Submit" ]
             ]
     ]
