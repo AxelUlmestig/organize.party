@@ -56,8 +56,7 @@ encodeEventInput { title, description, location, startTime, endTime } = Encode.o
 type alias AttendeeInput =
   { eventId : String
   , email : String
-  , firstName : String
-  , lastName : String
+  , name : String
   , status : AttendeeStatus
   , plusOne : Bool
   }
@@ -66,14 +65,13 @@ emptyAttendeeInput : String -> AttendeeInput
 emptyAttendeeInput eventId =
   { eventId = eventId
   , email = ""
-  , firstName = ""
-  , lastName = ""
+  , name = ""
   , status = Coming
   , plusOne = False
   }
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, firstName, lastName, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, status, plusOne } =
   let
     encodeAttendeeStatus ai = case ai of
                                 Coming -> Encode.string "Coming"
@@ -83,8 +81,7 @@ encodeAttendeeInput { eventId, email, firstName, lastName, status, plusOne } =
     Encode.object
       [ ("eventId", Encode.string eventId)
       , ("email", Encode.string email)
-      , ("firstName", Encode.string firstName)
-      , ("lastName", Encode.string lastName)
+      , ("name", Encode.string name)
       , ("status", encodeAttendeeStatus status)
       , ("plusOne", Encode.bool plusOne)
       ]
@@ -101,8 +98,7 @@ type alias Event =
   }
 
 type alias Attendee =
-  { firstName : String
-  , lastName : String
+  { name : String
   , status : AttendeeStatus
   , plusOne : Bool
   }
@@ -124,9 +120,8 @@ eventDecoder = D.map7 Event
                  (D.field "attendees" (D.list attendeeDecoder))
 
 attendeeDecoder : D.Decoder Attendee
-attendeeDecoder = D.map4 Attendee
-                    (D.field "firstName" D.string)
-                    (D.field "lastName" D.string)
+attendeeDecoder = D.map3 Attendee
+                    (D.field "name" D.string)
                     (D.field "status" attendeeStatusDecoder)
                     (D.field "plusOne" D.bool)
 
@@ -190,8 +185,7 @@ view state =
                 , H.div []
                     [ H.b [] [ H.text "Are you attending?" ]
                     , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-                    , H.div [] [ H.text "first name: ", H.input [ A.value attendeeInput.firstName, onInput (\fn -> UpdateAttendeeInput { attendeeInput | firstName = fn }), A.placeholder "Your first name" ] [] ]
-                    , H.div [] [ H.text "last name: ", H.input  [ A.value attendeeInput.lastName, onInput (\ln -> UpdateAttendeeInput { attendeeInput | lastName = ln }), A.placeholder "Your last name" ] [] ]
+                    , H.div [] [ H.text "name: ", H.input [ A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
                     , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
                     , H.div []
                         [ H.select [ onInput onStatusUpdate ]
@@ -206,7 +200,7 @@ view state =
                 , H.h3 [] [ H.text "Attendees" ]
                 , H.table []
                    ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
-                   :: (List.map (\{firstName, lastName, status, plusOne} -> H.tr [] [ H.td [] [ H.text (firstName ++ " " ++ lastName) ]
+                   :: (List.map (\{name, status, plusOne} -> H.tr [] [ H.td [] [ H.text name ]
                                                                                     , H.td [] [ H.text (attendeeStatusToString status) ]
                                                                                     , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
                                                                                     ]) attendees)

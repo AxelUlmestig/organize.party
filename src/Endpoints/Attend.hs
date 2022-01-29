@@ -42,8 +42,7 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                     select
                       event_id::uuid,
                       email::text,
-                      first_name::text,
-                      last_name::text,
+                      name::text,
                       status::text,
                       plus_one::bool,
                       rsvp_at::timestamptz
@@ -70,7 +69,7 @@ obsoleteOldAttendeeStatement = lmap to [resultlessStatement|
 
 insertAttendeeStatement :: Statement AttendInput Attendee
 insertAttendeeStatement = dimap to to [singletonStatement|
-                        insert into attendees (event_id, email, first_name, last_name, status, plus_one)
-                        values ($1::uuid, $2::text, $3::text, $4::text, lower($5::text)::attendee_status, $6::bool)
-                        returning event_id::uuid, email::text, first_name::text, last_name::text, status::text, plus_one::bool, rsvp_at::timestamptz
+                        insert into attendees (event_id, email, name, status, plus_one)
+                        values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool)
+                        returning event_id::uuid, email::text, name::text, status::text, plus_one::bool, rsvp_at::timestamptz
                       |]

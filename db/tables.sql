@@ -21,8 +21,7 @@ create type attendee_status as enum (
 create table attendees (
   event_id uuid not null references events (id),
   email email not null,
-  first_name text not null,
-  last_name text not null,
+  name text not null,
   status attendee_status not null,
   plus_one bool not null,
   rsvp_at timestamp with time zone not null default now(),

@@ -18,13 +18,12 @@ instance ToJSON AttendeeStatus
 instance FromJSON AttendeeStatus
 
 data Attendee = Attendee
-                { eventId   :: UUID
-                , email     :: Text
-                , firstName :: Text
-                , lastName  :: Text
-                , status    :: AttendeeStatus
-                , plusOne   :: Bool
-                , rsvpAt    :: UTCTime
+                { eventId :: UUID
+                , email   :: Text
+                , name    :: Text
+                , status  :: AttendeeStatus
+                , plusOne :: Bool
+                , rsvpAt  :: UTCTime
                 }
                 deriving (Generic, Show)
 
@@ -41,8 +40,8 @@ readStatus "maybe_coming" = MaybeComing
 readStatus "not_coming"   = NotComing
 readStatus other          = error [iii|unknown AttendeeStatus: #{other}|]
 
-instance Injective (UUID, Text, Text, Text, Text, Bool, UTCTime) Attendee where
-  to (eventId, email, firstName, lastName, status, plusOne, rsvpAt) = Attendee eventId email firstName lastName (readStatus status) plusOne rsvpAt
+instance Injective (UUID, Text, Text, Text, Bool, UTCTime) Attendee where
+  to (eventId, email, name, status, plusOne, rsvpAt) = Attendee eventId email name (readStatus status) plusOne rsvpAt
 
-instance Injective Attendee (UUID, Text, Text, Text, Text, Bool) where
-  to Attendee{eventId, email, firstName, lastName, status, plusOne} = (eventId, email, firstName, lastName, writeStatus status, plusOne)
+instance Injective Attendee (UUID, Text, Text, Text, Bool) where
+  to Attendee{eventId, email, name, status, plusOne} = (eventId, email, name, writeStatus status, plusOne)

@@ -44,8 +44,7 @@ getAttendees connection event@Event{Types.Event.id} = do
 getAttendeesStatement :: Statement UUID [Attendee]
 getAttendeesStatement = fmap to . vectorToList <$> [vectorStatement|
                                                      select
-                                                       first_name::text,
-                                                       last_name::text,
+                                                       name::text,
                                                        status::text,
                                                        plus_one::bool
                                                      from attendees
