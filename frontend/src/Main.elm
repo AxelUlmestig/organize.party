@@ -82,8 +82,8 @@ encodeAttendeeInput { eventId, email, name, status, plusOne } =
   in
     Encode.object
       [ ("eventId", Encode.string eventId)
-      , ("email", Encode.string email)
-      , ("name", Encode.string name)
+      , ("email", Encode.string (String.trim(email)))
+      , ("name", Encode.string (String.trim(name)))
       , ("status", encodeAttendeeStatus status)
       , ("plusOne", Encode.bool plusOne)
       ]
