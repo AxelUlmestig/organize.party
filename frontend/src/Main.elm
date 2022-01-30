@@ -238,13 +238,13 @@ view state =
 fetchEvent : String -> Cmd Msg
 fetchEvent id =
     Http.get
-        { url = "http://localhost:8081/api/v1/events/" ++ id
+        { url = "/api/v1/events/" ++ id
         , expect = Http.expectJson CreatedEvent eventDecoder
         }
 
 createNewEvent : EventInput -> Cmd Msg
 createNewEvent input = Http.post
-                      { url = "http://localhost:8081/api/v1/events"
+                      { url = "/api/v1/events"
                       , expect = Http.expectJson CreatedEvent eventDecoder
                       , body = Http.jsonBody (encodeEventInput input)
                       }
@@ -253,7 +253,7 @@ attendEvent : AttendeeInput -> Cmd Msg
 attendEvent input = Http.request
                       { method = "PUT"
                       , headers = []
-                      , url = "http://localhost:8081/api/v1/events/" ++ input.eventId ++ "/attend"
+                      , url = "/api/v1/events/" ++ input.eventId ++ "/attend"
                       , expect = Http.expectJson AttendedEvent eventDecoder
                       , body = Http.jsonBody (encodeAttendeeInput input)
                       , timeout = Nothing
