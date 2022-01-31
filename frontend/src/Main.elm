@@ -11,7 +11,7 @@ import Json.Encode as Encode exposing (Value)
 import Url exposing (Url)
 import Url.Parser as P exposing (Parser, (</>), int, map, oneOf, s, string)
 import Url.Parser.Query as Q
-import SingleDatePicker as DP
+import DurationDatePicker as DP
 import Time as Time
 import Task as Task
 import Iso8601 as Iso8601
@@ -148,9 +148,9 @@ attendeeStatusToString status = case status of
 view : PageState -> Browser.Document Msg
 view state =
   let
-    updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
+    updatePicker : EventInput -> ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
     updatePicker input (picker, mTimestamp) = case mTimestamp of
-                                                  Just timestamp -> UpdateEventInput picker { input | startTime = timestamp }
+                                                  Just (newStart, newEnd) -> UpdateEventInput picker { input | startTime = newStart, endTime = newEnd }
                                                   Nothing -> UpdateEventInput picker input
 
     viewEventDate : Time.Posix -> Time.Posix -> Html Msg
@@ -280,7 +280,7 @@ type Msg
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
     | UpdateEventInput DP.DatePicker EventInput
-    | UpdateEventStartTime (DP.DatePicker, Maybe Time.Posix)
+    | UpdateEventStartTime (DP.DatePicker, Maybe (Time.Posix, Time.Posix))
     | UpdateAttendeeInput AttendeeInput
     | CreateEventMsg EventInput
     | AttendMsg AttendeeInput
@@ -312,9 +312,12 @@ update msg { key, timeZone, state } =
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
                 UrlChange _ -> ( Nothing, state, Cmd.none )
                 UpdateEventInput picker input -> (Nothing, NewEventState { picker = picker, input = input }, Cmd.none )
-                UpdateEventStartTime (picker, mStartTime) ->
+                UpdateEventStartTime (picker, mTime) ->
                   case state of
-                    NewEventState { input } -> ( Nothing, NewEventState { picker = picker, input = { input | startTime = Maybe.withDefault input.startTime mStartTime } }, Cmd.none )
+                    NewEventState { input } ->
+                      let
+                        (newStartTime, newEndTime) = Maybe.withDefault (input.startTime, input.endTime) mTime
+                      in ( Nothing, NewEventState { picker = picker, input = { input | startTime = newStartTime, endTime = newEndTime } }, Cmd.none )
                     _ -> ( Nothing, state, Cmd.none )
                 CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
                 AttendMsg input -> ( Nothing, Loading, attendEvent input )
@@ -325,7 +328,7 @@ update msg { key, timeZone, state } =
                 OpenPicker -> case state of
                                 NewEventState x ->
                                   let
-                                    newPicker = DP.openPicker (pickerSettings timeZone x.picker x.input) x.input.startTime Nothing x.picker
+                                    newPicker = DP.openPicker (pickerSettings timeZone x.picker x.input) x.input.startTime (Just x.input.startTime) (Just x.input.endTime) x.picker
                                   in ( Nothing, NewEventState { x | picker = newPicker }, Cmd.none )
                                 _ -> ( Nothing, state, Cmd.none )
                 UpdateAttendeeInput input -> case state of
@@ -338,10 +341,10 @@ update msg { key, timeZone, state } =
 pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
   let
-    getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
+    getValueFromPicker : ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
     getValueFromPicker (dp, mTime) = case mTime of
                                              Nothing -> UpdateEventInput dp input
-                                             Just newTime -> UpdateEventInput dp { input | startTime = newTime }
+                                             Just (newStart, newEnd) -> UpdateEventInput dp { input | startTime = newStart, endTime = newEnd }
 
   in DP.defaultSettings timeZone getValueFromPicker
 
