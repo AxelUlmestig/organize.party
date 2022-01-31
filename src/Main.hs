@@ -36,10 +36,12 @@ import           Types.Event                 (Event)
 localPG :: Settings
 localPG = settings "localhost" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml
+type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml :<|> Raw
+
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
 type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "attend" :> ReqBody '[JSON] AttendInput :> Put '[JSON] Event
+
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 
@@ -64,6 +66,7 @@ server connection = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.Attend.attend connection
     :<|> frontPage
     :<|> eventPage
+    :<|> serveDirectoryWebApp "frontend/static"
   where
     frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
     eventPage _ = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")

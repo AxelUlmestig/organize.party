@@ -160,7 +160,7 @@ view state =
             timeDiff = Time.posixToMillis end - Time.posixToMillis start
 
             formatTime : Time.Posix -> String
-            formatTime time = String.fromInt (Time.toHour state.timeZone start) ++ ":" ++ String.fromInt (Time.toMinute state.timeZone start)
+            formatTime time = String.fromInt (Time.toHour state.timeZone time) ++ ":" ++ String.fromInt (Time.toMinute state.timeZone time)
 
             formatDate : Time.Posix -> String
             formatDate time = Date.toIsoString (Date.fromPosix state.timeZone time)
@@ -169,6 +169,7 @@ view state =
         else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
   in
     Browser.Document "📅" [
+      H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
       case state.state of
           WaitingForInput eventId ->
               H.div []
@@ -265,7 +266,7 @@ init _ url key =
   let
     (state, cmd) = case P.parse routeParser url of
                        -- Just NewEvent -> ( Loading, Task.perform CurrentTimeIs Time.now )
-                       Just NewEvent -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here))
+                       Just NewEvent -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here) )
                        -- Just NewEvent -> ( NewEventState { picker = DP.init, input = emptyEventInput }, Cmd.none )
                        Just (EventId id) -> ( Loading, fetchEvent id )
                        Nothing -> ( Failure, Cmd.none )
@@ -279,6 +280,7 @@ type Msg
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
     | UpdateEventInput DP.DatePicker EventInput
+    | UpdateEventStartTime (DP.DatePicker, Maybe Time.Posix)
     | UpdateAttendeeInput AttendeeInput
     | CreateEventMsg EventInput
     | AttendMsg AttendeeInput
@@ -310,6 +312,10 @@ update msg { key, timeZone, state } =
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
                 UrlChange _ -> ( Nothing, state, Cmd.none )
                 UpdateEventInput picker input -> (Nothing, NewEventState { picker = picker, input = input }, Cmd.none )
+                UpdateEventStartTime (picker, mStartTime) ->
+                  case state of
+                    NewEventState { input } -> ( Nothing, NewEventState { picker = picker, input = { input | startTime = Maybe.withDefault input.startTime mStartTime } }, Cmd.none )
+                    _ -> ( Nothing, state, Cmd.none )
                 CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
                 AttendMsg input -> ( Nothing, Loading, attendEvent input )
                 CurrentTimeIs zone time -> case state of
@@ -317,7 +323,10 @@ update msg { key, timeZone, state } =
                                           Loading -> ( Just zone, NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
                                           _ -> ( Just zone, state, Cmd.none)
                 OpenPicker -> case state of
-                                NewEventState x -> ( Nothing, NewEventState { x | picker = x.picker }, Cmd.none )
+                                NewEventState x ->
+                                  let
+                                    newPicker = DP.openPicker (pickerSettings timeZone x.picker x.input) x.input.startTime Nothing x.picker
+                                  in ( Nothing, NewEventState { x | picker = newPicker }, Cmd.none )
                                 _ -> ( Nothing, state, Cmd.none )
                 UpdateAttendeeInput input -> case state of
                                                ViewEventState event _ -> ( Nothing, ViewEventState event input, Cmd.none )
@@ -326,6 +335,15 @@ update msg { key, timeZone, state } =
       ( { key = key, timeZone = Maybe.withDefault timeZone mZone, state = nextState }, cmd )
 
 
+pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
+pickerSettings timeZone picker input =
+  let
+    getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
+    getValueFromPicker (dp, mTime) = case mTime of
+                                             Nothing -> UpdateEventInput dp input
+                                             Just newTime -> UpdateEventInput dp { input | startTime = newTime }
+
+  in DP.defaultSettings timeZone getValueFromPicker
 
 routeParser : Parser (Route -> a) a
 routeParser = oneOf
@@ -336,11 +354,16 @@ routeParser = oneOf
 type Route = NewEvent
            | EventId String
 
+subscriptions : PageState -> Sub Msg
+subscriptions model = case model.state of
+                        NewEventState { picker, input } -> DP.subscriptions (pickerSettings model.timeZone picker input) UpdateEventStartTime picker
+                        _ -> Sub.none
+
 main =
     Browser.application
         { init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         , view = view
         , onUrlRequest = UrlRequest
         , onUrlChange = UrlChange
