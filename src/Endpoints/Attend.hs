@@ -8,10 +8,16 @@ import           Hasql.Statement        (Statement)
 import           Hasql.TH               (maybeStatement, resultlessStatement,
                                          singletonStatement)
 
+import           Control.Monad.Except   (MonadError (throwError))
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
-import           Functions.GetEvent     (getEvent)
+import           Endpoints.GetEvent     (getEvent)
+import           Hasql.Session          (CommandError (ResultError),
+                                         QueryError (QueryError),
+                                         ResultError (ServerError))
+import           Servant                (ServerError (errBody), err400, err404,
+                                         err500)
 import           Types.AttendInput      (AttendInput (..))
 import qualified Types.AttendInput      as VP
 import           Types.Attendee         (Attendee, writeStatus)
@@ -19,23 +25,27 @@ import qualified Types.Attendee         as Attendee
 import           Types.Event            (Event)
 
 
-attend :: MonadIO m => Connection -> UUID -> AttendInput -> m Event
-attend connection eventId attendee' = do
-  let attendee = attendee' { eventId = eventId }
-  let session = do
-                mExistingAttendee <- Hasql.statement attendee findExistingStatement
-                case mExistingAttendee of
-                  Just existingAttendee -> pure existingAttendee
-                  Nothing -> do
-                    Hasql.statement attendee obsoleteOldAttendeeStatement
-                    Hasql.statement attendee insertAttendeeStatement
+attend :: (MonadError ServerError m, MonadIO m) => Connection -> UUID -> AttendInput -> m Event
+attend connection eventId attendee@AttendInput { eventId = bodyEventId } =
+  if eventId /= bodyEventId
+  then throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
+  else do
+    let session = do
+                  mExistingAttendee <- Hasql.statement attendee findExistingStatement
+                  case mExistingAttendee of
+                    Just existingAttendee -> pure existingAttendee
+                    Nothing -> do
+                      Hasql.statement attendee obsoleteOldAttendeeStatement
+                      Hasql.statement attendee insertAttendeeStatement
 
-  eAttendee <- liftIO $ Hasql.run session connection
-  case eAttendee of
-    Right attendee -> getEvent connection eventId
-    Left err -> do
-      liftIO $ print err
-      undefined -- TODO
+    eAttendee <- liftIO $ Hasql.run session connection
+    case eAttendee of
+      Right attendee -> getEvent connection eventId
+      Left err -> do
+        liftIO $ print err
+        case err of
+          QueryError _ _ (ResultError (ServerError "23503" _ _ _)) -> throwError err404 { errBody = "Event not found" }
+          _                                                        -> throwError err500 { errBody = "Something went wrong" }
 
 findExistingStatement :: Statement AttendInput (Maybe Attendee)
 findExistingStatement = dimap to (fmap to) [maybeStatement|

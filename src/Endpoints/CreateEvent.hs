@@ -1,11 +1,13 @@
 module Endpoints.CreateEvent (createEvent) where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.Except   (MonadError (..))
+import           Control.Monad.IO.Class (MonadIO (liftIO))
 import           Data.Profunctor        (dimap)
 import           Data.Types.Isomorphic  (to)
 import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
 import           Hasql.TH               (singletonStatement)
+import           Servant                (ServerError (..), err500)
 
 import           Hasql.Connection       (Connection)
 import           Types.CreateEventInput (CreateEventInput)
@@ -13,13 +15,13 @@ import qualified Types.CreateEventInput as CE
 import           Types.Event            (Event)
 import qualified Types.Event            as E
 
-createEvent :: MonadIO m => Connection -> CreateEventInput -> m Event
+createEvent :: (MonadError ServerError m, MonadIO m) => Connection -> CreateEventInput -> m Event
 createEvent connection input = do
     eEvent <- liftIO $ Hasql.run (Hasql.statement input statement) connection
     case eEvent of
       Left err    -> do
         liftIO $ print err
-        undefined -- TODO
+        throwError err500 { errBody = "Something went wrong" }
       Right event -> pure event
 
 statement :: Statement CreateEventInput Event
