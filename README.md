@@ -5,5 +5,5 @@
 you might need to install the following dependencies
 
 ```sh
-sudo apt install libpq-dev zlib1g-dev
+sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib libpq-dev
 ```
