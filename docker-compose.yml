@@ -1,3 +1,5 @@
+version: '3.4'
+
 services:
   db:
     image: postgres:12.5-alpine
@@ -14,16 +16,14 @@ services:
       - dbdata:/var/lib/postgresql/data
 
   server:
-    image: haskell:8.10.7
     ports:
       - "8081:8081"
-    command: cabal run
     build: .
-    working_dir: /events
-    volumes:
-      - .:/events
     depends_on:
       - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
 
 volumes:
   dbdata:

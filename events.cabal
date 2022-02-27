@@ -45,6 +45,7 @@ executable events
                      , http-media
                      , type-iso
                      , mtl
+                     , utf8-string
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
                      , NamedFieldPuns

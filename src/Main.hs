@@ -8,6 +8,7 @@ module Main where
 import           Control.Monad.IO.Class      (liftIO)
 import qualified Data.ByteString             as BS
 import qualified Data.ByteString.Lazy        as LBS
+import           Data.ByteString.UTF8        as BSU
 import           Data.Int                    (Int64)
 import           Data.Text                   (Text, pack)
 import           Data.UUID                   (UUID)
@@ -23,6 +24,8 @@ import           Network.Wai.Handler.Warp    (run)
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 import           Servant.API
+import           System.Environment          (lookupEnv)
+import           System.Exit                 (die)
 import           Text.Read                   (readMaybe)
 
 import qualified Endpoints.Attend
@@ -34,7 +37,7 @@ import           Types.CreateEventInput      (CreateEventInput)
 import           Types.Event                 (Event)
 
 localPG :: Settings
-localPG = settings "localhost" 5433 "postgres" "postgres" "events"
+localPG = settings "db" 5433 "postgres" "postgres" "events"
 
 type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml :<|> Raw
 
@@ -51,9 +54,23 @@ api = Proxy
 app :: Connection -> Application
 app = simpleCors . serve api . server
 
+getDbSettings :: IO (Either String Settings)
+getDbSettings = do
+    mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
+    mPort <- lookupEnv "DB_PORT"
+    pure do
+      host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
+      port <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
+
+      pure $ settings host port "postgres" "postgres" "events"
+  where
+    maybeToEither _ (Just a)  = Right a
+    maybeToEither err Nothing = Left err
+
 main :: IO ()
 main = do
-  eConnection <- acquire localPG
+  dbSettings <- getDbSettings >>= either die pure
+  eConnection <- acquire dbSettings
   case eConnection of
     Left err -> print err
     Right connection -> do
