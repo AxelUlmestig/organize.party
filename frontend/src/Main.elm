@@ -17,34 +17,8 @@ import Task as Task
 import Iso8601 as Iso8601
 import Date as Date
 
-type State
-    = WaitingForInput String
-    | Loading
-    | Failure
-    | ViewEventState Event AttendeeInput
-    | NewEventState { picker: DP.DatePicker, input: EventInput }
-
-type alias PageState = { key: Nav.Key
-                       , timeZone : Time.Zone
-                       , state: State
-                       }
-
-type alias EventInput =
-  { title          : String
-  , description    : String
-  , startTime      : Time.Posix
-  , endTime        : Time.Posix
-  , location       : String
-  -- , googleMapsLink : Maybe String
-  }
-
-emptyEventInput : Time.Posix -> Time.Posix -> EventInput
-emptyEventInput startTime endTime = { title = ""
-                  , description = ""
-                  , location = ""
-                  , startTime = startTime
-                  , endTime = endTime
-                  }
+import Types exposing (..)
+import NewEvent
 
 encodeEventInput : EventInput -> Value
 encodeEventInput { title, description, location, startTime, endTime } = Encode.object
@@ -54,14 +28,6 @@ encodeEventInput { title, description, location, startTime, endTime } = Encode.o
                                                       , ("startTime", Iso8601.encode startTime)
                                                       , ("endTime", Iso8601.encode endTime)
                                                       ]
-
-type alias AttendeeInput =
-  { eventId : String
-  , email : String
-  , name : String
-  , status : AttendeeStatus
-  , plusOne : Bool
-  }
 
 emptyAttendeeInput : String -> AttendeeInput
 emptyAttendeeInput eventId =
@@ -87,29 +53,6 @@ encodeAttendeeInput { eventId, email, name, status, plusOne } =
       , ("status", encodeAttendeeStatus status)
       , ("plusOne", Encode.bool plusOne)
       ]
-
-type alias Event =
-  { id : String
-  , title          : String
-  , description    : String
-  , startTime      : Time.Posix
-  , endTime        : Time.Posix
-  , location       : String
-  , attendees      : List Attendee
-  -- , googleMapsLink : Maybe String
-  }
-
-type alias Attendee =
-  { name : String
-  , status : AttendeeStatus
-  , plusOne : Bool
-  }
-
-type AttendeeStatus
-  = Coming
-  | MaybeComing
-  | NotComing
-
 
 eventDecoder : D.Decoder Event
 eventDecoder = D.map7 Event
@@ -144,14 +87,22 @@ attendeeStatusToString status = case status of
                                   MaybeComing -> "Maybe Coming"
                                   NotComing -> "Not Coming"
 
+emptyEventInput : Time.Posix -> Time.Posix -> EventInput
+emptyEventInput startTime endTime = { title = ""
+                  , description = ""
+                  , location = ""
+                  , startTime = startTime
+                  , endTime = endTime
+                  }
+
 -- view : State -> Html Msg
-view : PageState -> Browser.Document Msg
+view : PageState State -> Browser.Document Msg
 view state =
   let
     updatePicker : EventInput -> ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
     updatePicker input (picker, mTimestamp) = case mTimestamp of
-                                                  Just (newStart, newEnd) -> UpdateEventInput picker { input | startTime = newStart, endTime = newEnd }
-                                                  Nothing -> UpdateEventInput picker input
+                                                  Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput picker { input | startTime = newStart, endTime = newEnd })
+                                                  Nothing -> NewEventMsg (UpdateEventInput picker input)
 
     viewEventDate : Time.Posix -> Time.Posix -> Html Msg
     viewEventDate start end =
@@ -223,16 +174,7 @@ view state =
                    )
                 ]
 
-          NewEventState { picker, input } -> H.div [] [
-              H.h3 [] [ H.text "Create A New Event" ]
-              , H.div [] [ H.text "Title: ", H.input [ A.value input.title, onInput (\t -> UpdateEventInput picker { input | title = t }) ] [] ]
-              , H.div [] [ H.text "Description: ", H.input [ A.value input.description, onInput (\d -> UpdateEventInput picker { input | description = d }) ] [] ]
-              , H.div [] [ H.button [ onClick OpenPicker ] [ H.text "click me" ], DP.view  (DP.defaultSettings Time.utc (updatePicker input)) picker ]
-              -- , H.div [] [ H.text "Start Time: ", H.input [ A.type_ "datetime-local",  A.value input.startTime, onInput (\t -> UpdateEventInput { input | startTime = t })  ] [] ]
-              -- , H.div [] [ H.text "End Time: ", H.input [ A.type_ "datetime-local" ] [] ]
-              , H.div [] [ H.text "Location: ", H.input [ A.value input.location, onInput (\l -> UpdateEventInput picker { input | location = l }) ] [] ]
-              , H.button [ onClick (CreateEventMsg input) ] [ H.text "Submit" ]
-            ]
+          NewEventState x -> NewEvent.view x
     ]
 
 
@@ -261,36 +203,16 @@ attendEvent input = Http.request
                       , tracker = Nothing
                       }
 
-init : () -> Url -> Nav.Key -> ( PageState, Cmd Msg )
+init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
   let
     (state, cmd) = case P.parse routeParser url of
-                       -- Just NewEvent -> ( Loading, Task.perform CurrentTimeIs Time.now )
                        Just NewEvent -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here) )
-                       -- Just NewEvent -> ( NewEventState { picker = DP.init, input = emptyEventInput }, Cmd.none )
                        Just (EventId id) -> ( Loading, fetchEvent id )
                        Nothing -> ( Failure, Cmd.none )
   in ( { key = key, timeZone = Time.utc, state = state }, cmd )
 
-type Msg
-    = CreatedEvent (Result Http.Error Event)
-    | AttendedEvent (Result Http.Error Event)
-    | GetCat String
-    | SetId String
-    | UrlRequest Browser.UrlRequest
-    | UrlChange Url
-    | UpdateEventInput DP.DatePicker EventInput
-    | UpdateEventStartTime (DP.DatePicker, Maybe (Time.Posix, Time.Posix))
-    | UpdateAttendeeInput AttendeeInput
-    | CreateEventMsg EventInput
-    | AttendMsg AttendeeInput
-    -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
-    | OpenPicker
-    | CurrentTimeIs Time.Zone Time.Posix
-
-
-
-update : Msg -> PageState -> ( PageState, Cmd Msg )
+update : Msg -> PageState State -> ( PageState State, Cmd Msg )
 update msg { key, timeZone, state } =
     let
         (mZone, nextState, cmd) =
@@ -311,42 +233,29 @@ update msg { key, timeZone, state } =
                             ( Nothing, Failure, Cmd.none )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
                 UrlChange _ -> ( Nothing, state, Cmd.none )
-                UpdateEventInput picker input -> (Nothing, NewEventState { picker = picker, input = input }, Cmd.none )
-                UpdateEventStartTime (picker, mTime) ->
-                  case state of
-                    NewEventState { input } ->
-                      let
-                        (newStartTime, newEndTime) = Maybe.withDefault (input.startTime, input.endTime) mTime
-                      in ( Nothing, NewEventState { picker = picker, input = { input | startTime = newStartTime, endTime = newEndTime } }, Cmd.none )
-                    _ -> ( Nothing, state, Cmd.none )
+                NewEventMsg nem ->
+                    case state of
+                      NewEventState nes ->
+                        let
+                          newEventPageState =
+                            { state = nes
+                            , key = key
+                            , timeZone = timeZone
+                            }
+                          (newState, newCmd) = NewEvent.update nem newEventPageState
+                        in (Just newState.timeZone, newState.state, newCmd)
+                      _ -> ( Nothing, Loading, Cmd.none )
                 CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
                 AttendMsg input -> ( Nothing, Loading, attendEvent input )
                 CurrentTimeIs zone time -> case state of
-                                          -- NewEventState { picker, input } -> ( Loading , createNewEvent { input | startTime = Just time, endTime = Just time } )
                                           Loading -> ( Just zone, NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
                                           _ -> ( Just zone, state, Cmd.none)
-                OpenPicker -> case state of
-                                NewEventState x ->
-                                  let
-                                    newPicker = DP.openPicker (pickerSettings timeZone x.picker x.input) x.input.startTime (Just x.input.startTime) (Just x.input.endTime) x.picker
-                                  in ( Nothing, NewEventState { x | picker = newPicker }, Cmd.none )
-                                _ -> ( Nothing, state, Cmd.none )
                 UpdateAttendeeInput input -> case state of
                                                ViewEventState event _ -> ( Nothing, ViewEventState event input, Cmd.none )
                                                _ -> ( Nothing, state, Cmd.none )
     in
       ( { key = key, timeZone = Maybe.withDefault timeZone mZone, state = nextState }, cmd )
 
-
-pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
-pickerSettings timeZone picker input =
-  let
-    getValueFromPicker : ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
-    getValueFromPicker (dp, mTime) = case mTime of
-                                             Nothing -> UpdateEventInput dp input
-                                             Just (newStart, newEnd) -> UpdateEventInput dp { input | startTime = newStart, endTime = newEnd }
-
-  in DP.defaultSettings timeZone getValueFromPicker
 
 routeParser : Parser (Route -> a) a
 routeParser = oneOf
@@ -357,9 +266,19 @@ routeParser = oneOf
 type Route = NewEvent
            | EventId String
 
-subscriptions : PageState -> Sub Msg
+pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
+pickerSettings timeZone picker input =
+  let
+    getValueFromPicker : ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
+    getValueFromPicker (dp, mTime) = case mTime of
+                                             Nothing -> NewEventMsg (UpdateEventInput dp input)
+                                             Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart, endTime = newEnd })
+
+  in DP.defaultSettings timeZone getValueFromPicker
+
+subscriptions : PageState State -> Sub Msg
 subscriptions model = case model.state of
-                        NewEventState { picker, input } -> DP.subscriptions (pickerSettings model.timeZone picker input) UpdateEventStartTime picker
+                        NewEventState { picker, input } -> DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
                         _ -> Sub.none
 
 main =
