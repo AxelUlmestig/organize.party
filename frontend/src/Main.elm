@@ -19,6 +19,7 @@ import Date as Date
 
 import Types exposing (..)
 import NewEvent
+import ViewEvent
 
 encodeEventInput : EventInput -> Value
 encodeEventInput { title, description, location, startTime, endTime } = Encode.object
@@ -37,22 +38,6 @@ emptyAttendeeInput eventId =
   , status = Coming
   , plusOne = False
   }
-
-encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne } =
-  let
-    encodeAttendeeStatus ai = case ai of
-                                Coming -> Encode.string "Coming"
-                                MaybeComing -> Encode.string "MaybeComing"
-                                NotComing -> Encode.string "NotComing"
-  in
-    Encode.object
-      [ ("eventId", Encode.string eventId)
-      , ("email", Encode.string (String.trim(email)))
-      , ("name", Encode.string (String.trim(name)))
-      , ("status", encodeAttendeeStatus status)
-      , ("plusOne", Encode.bool plusOne)
-      ]
 
 eventDecoder : D.Decoder Event
 eventDecoder = D.map7 Event
@@ -133,46 +118,7 @@ view state =
           Failure ->
               H.text "failed to fetch new cat image"
 
-          ViewEventState {title, description, startTime, endTime, location, attendees} attendeeInput ->
-            let
-              onStatusUpdate newStatus = case newStatus of
-                                          "Coming" -> UpdateAttendeeInput { attendeeInput | status = Coming }
-                                          "Maybe Coming" -> UpdateAttendeeInput { attendeeInput | status = MaybeComing }
-                                          "Not Coming" -> UpdateAttendeeInput { attendeeInput | status = NotComing }
-                                          _ -> UpdateAttendeeInput attendeeInput
-            in
-              H.div []
-                [ H.div []
-                    [ H.div [] [ H.h1 [] [ H.text title ] ]
-                    , viewEventDate startTime endTime
-                    , H.div [] [ H.text location ]
-                    , H.div [] [ H.text description ]
-                    ]
-                , H.br [] []
-                , H.div []
-                    [ H.b [] [ H.text "Are you attending?" ]
-                    , H.div [] [ H.text "email: ", H.input [ A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-                    , H.div [] [ H.text "name: ", H.input [ A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
-                    , H.div [] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
-                    , H.div []
-                        [ H.select [ onInput onStatusUpdate ]
-                            [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
-                            , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
-                            , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
-                            ]
-                        ]
-                    , H.button [ onClick (AttendMsg attendeeInput) ] [ H.text "Submit" ]
-                    ]
-                , H.br [] []
-                , H.h3 [] [ H.text "Attendees" ]
-                , H.table []
-                   ( H.tr [] [ H.th [] [ H.text "Name" ], H.th [] [ H.text "Coming?" ], H.th [] [ H.text "Plus One?" ] ]
-                   :: (List.map (\{name, status, plusOne} -> H.tr [] [ H.td [] [ H.text name ]
-                                                                                    , H.td [] [ H.text (attendeeStatusToString status) ]
-                                                                                    , H.td [] [ H.text (if plusOne then "Yes" else "No") ]
-                                                                                    ]) attendees)
-                   )
-                ]
+          ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
 
           NewEventState x -> NewEvent.view x
     ]
@@ -192,17 +138,6 @@ createNewEvent input = Http.post
                       , body = Http.jsonBody (encodeEventInput input)
                       }
 
-attendEvent : AttendeeInput -> Cmd Msg
-attendEvent input = Http.request
-                      { method = "PUT"
-                      , headers = []
-                      , url = "/api/v1/events/" ++ input.eventId ++ "/attend"
-                      , expect = Http.expectJson AttendedEvent eventDecoder
-                      , body = Http.jsonBody (encodeAttendeeInput input)
-                      , timeout = Nothing
-                      , tracker = Nothing
-                      }
-
 init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
   let
@@ -213,8 +148,9 @@ init _ url key =
   in ( { key = key, timeZone = Time.utc, state = state }, cmd )
 
 update : Msg -> PageState State -> ( PageState State, Cmd Msg )
-update msg { key, timeZone, state } =
+update msg pageState =
     let
+        { key, timeZone, state } = pageState
         (mZone, nextState, cmd) =
             case msg of
                 SetId id -> ( Nothing, WaitingForInput id, Cmd.none )
@@ -222,13 +158,7 @@ update msg { key, timeZone, state } =
                 CreatedEvent result ->
                     case result of
                         Ok event ->
-                            ( Nothing, ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
-                        Err _ ->
-                            ( Nothing, Failure, Cmd.none )
-                AttendedEvent result ->
-                    case result of
-                        Ok event ->
-                            ( Nothing, ViewEventState event (emptyAttendeeInput event.id), Nav.pushUrl key ("/e/" ++ event.id) )
+                            ( Nothing, ViewEventState (ViewEvent event (emptyAttendeeInput event.id)), Nav.pushUrl key ("/e/" ++ event.id) )
                         Err _ ->
                             ( Nothing, Failure, Cmd.none )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
@@ -246,13 +176,18 @@ update msg { key, timeZone, state } =
                         in (Just newState.timeZone, newState.state, newCmd)
                       _ -> ( Nothing, Loading, Cmd.none )
                 CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
-                AttendMsg input -> ( Nothing, Loading, attendEvent input )
                 CurrentTimeIs zone time -> case state of
                                           Loading -> ( Just zone, NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
                                           _ -> ( Just zone, state, Cmd.none)
-                UpdateAttendeeInput input -> case state of
-                                               ViewEventState event _ -> ( Nothing, ViewEventState event input, Cmd.none )
-                                               _ -> ( Nothing, state, Cmd.none )
+                ViewEventMsg vem ->
+                  case state of
+                    ViewEventState viewEventState ->
+                      let
+                        viewEventPageState = mapPageState (always viewEventState) pageState
+                        (newState, newCmd) = ViewEvent.update vem viewEventPageState
+                      in (Just newState.timeZone, newState.state, newCmd)
+                    _ -> ( Nothing, Loading, Cmd.none )
+
     in
       ( { key = key, timeZone = Maybe.withDefault timeZone mZone, state = nextState }, cmd )
 

@@ -1,15 +1,19 @@
 module Types exposing (
-    State(..),
     PageState,
+    State(..),
+    ViewEventState(..),
 
     Msg(..),
     NewEventMsg(..),
+    ViewEventMsg(..),
 
     Event,
     EventInput,
     AttendeeInput,
     Attendee,
-    AttendeeStatus(..)
+    AttendeeStatus(..),
+
+    mapPageState
   )
 
 import Browser.Navigation as Nav
@@ -21,11 +25,15 @@ import Url exposing (Url)
 
 -- State
 type State
-    = WaitingForInput String
-    | Loading
-    | Failure
-    | ViewEventState Event AttendeeInput
-    | NewEventState { picker: DP.DatePicker, input: EventInput }
+  = WaitingForInput String
+  | Loading
+  | Failure
+  | ViewEventState ViewEventState
+  | NewEventState { picker: DP.DatePicker, input: EventInput }
+
+type ViewEventState
+  = ViewEvent Event AttendeeInput
+  | AttendEventLoading
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -35,22 +43,25 @@ type alias PageState a = { key: Nav.Key
 -- Msg
 type Msg
     = CreatedEvent (Result Http.Error Event)
-    | AttendedEvent (Result Http.Error Event)
     | GetCat String
     | SetId String
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
-    | UpdateAttendeeInput AttendeeInput
     | CreateEventMsg EventInput
-    | AttendMsg AttendeeInput
     -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
     | CurrentTimeIs Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
+    | ViewEventMsg ViewEventMsg
 
 type NewEventMsg
     = UpdateEventInput DP.DatePicker EventInput
     | UpdateEventStartTime (DP.DatePicker, Maybe (Time.Posix, Time.Posix))
     | OpenPicker
+
+type ViewEventMsg
+    = UpdateAttendeeInput AttendeeInput
+    | AttendedEvent (Result Http.Error Event)
+    | AttendMsg AttendeeInput
 
 
 -- Event
@@ -94,3 +105,9 @@ type AttendeeStatus
   | MaybeComing
   | NotComing
 
+mapPageState : (a -> b) -> PageState a -> PageState b
+mapPageState f ps =
+  { state = f ps.state
+  , timeZone = ps.timeZone
+  , key = ps.key
+  }
