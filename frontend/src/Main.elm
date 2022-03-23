@@ -107,16 +107,11 @@ view state =
     Browser.Document "📅" [
       H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
       case state.state of
-          WaitingForInput eventId ->
-              H.div []
-              [ H.input [ A.value eventId, onInput SetId ] []
-              , H.button [ onClick (GetCat eventId) ] [ H.text "Submit"] ]
-
           Loading ->
               H.text "loading..."
 
           Failure ->
-              H.text "failed to fetch new cat image"
+              H.text "Error"
 
           ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
 
@@ -153,8 +148,6 @@ update msg pageState =
         { key, timeZone, state } = pageState
         (mZone, nextState, cmd) =
             case msg of
-                SetId id -> ( Nothing, WaitingForInput id, Cmd.none )
-                GetCat id -> ( Nothing, Loading, (fetchEvent id) )
                 CreatedEvent result ->
                     case result of
                         Ok event ->

@@ -25,8 +25,7 @@ import Url exposing (Url)
 
 -- State
 type State
-  = WaitingForInput String
-  | Loading
+  = Loading
   | Failure
   | ViewEventState ViewEventState
   | NewEventState { picker: DP.DatePicker, input: EventInput }
@@ -43,8 +42,6 @@ type alias PageState a = { key: Nav.Key
 -- Msg
 type Msg
     = CreatedEvent (Result Http.Error Event)
-    | GetCat String
-    | SetId String
     | UrlRequest Browser.UrlRequest
     | UrlChange Url
     | CreateEventMsg EventInput
