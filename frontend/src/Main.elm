@@ -21,65 +21,6 @@ import Types exposing (..)
 import NewEvent
 import ViewEvent
 
-encodeEventInput : EventInput -> Value
-encodeEventInput { title, description, location, startTime, endTime } = Encode.object
-                                                      [ ("title", Encode.string title)
-                                                      , ("description", Encode.string description)
-                                                      , ("location", Encode.string location)
-                                                      , ("startTime", Iso8601.encode startTime)
-                                                      , ("endTime", Iso8601.encode endTime)
-                                                      ]
-
-emptyAttendeeInput : String -> AttendeeInput
-emptyAttendeeInput eventId =
-  { eventId = eventId
-  , email = ""
-  , name = ""
-  , status = Coming
-  , plusOne = False
-  }
-
-eventDecoder : D.Decoder Event
-eventDecoder = D.map7 Event
-                 (D.field "id" D.string)
-                 (D.field "title" D.string)
-                 (D.field "description" D.string)
-                 (D.field "startTime" Iso8601.decoder)
-                 (D.field "endTime" Iso8601.decoder)
-                 (D.field "location" D.string)
-                 (D.field "attendees" (D.list attendeeDecoder))
-
-attendeeDecoder : D.Decoder Attendee
-attendeeDecoder = D.map3 Attendee
-                    (D.field "name" D.string)
-                    (D.field "status" attendeeStatusDecoder)
-                    (D.field "plusOne" D.bool)
-
-attendeeStatusDecoder : D.Decoder AttendeeStatus
-attendeeStatusDecoder =
-  D.string
-    |> D.andThen (\str ->
-        case str of
-          "Coming" -> D.succeed Coming
-          "MaybeComing" -> D.succeed MaybeComing
-          "NotComing" -> D.succeed NotComing
-          somethingElse -> D.fail ("Unknown status: " ++ somethingElse)
-      )
-
-attendeeStatusToString : AttendeeStatus -> String
-attendeeStatusToString status = case status of
-                                  Coming -> "Coming"
-                                  MaybeComing -> "Maybe Coming"
-                                  NotComing -> "Not Coming"
-
-emptyEventInput : Time.Posix -> Time.Posix -> EventInput
-emptyEventInput startTime endTime = { title = ""
-                  , description = ""
-                  , location = ""
-                  , startTime = startTime
-                  , endTime = endTime
-                  }
-
 -- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg
 view state =
@@ -107,11 +48,9 @@ view state =
     Browser.Document "📅" [
       H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
       case state.state of
-          Loading ->
-              H.text "loading..."
+          Loading -> H.text "Loading"
 
-          Failure ->
-              H.text "Error"
+          Failure -> H.text "Error"
 
           ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
 
@@ -123,22 +62,15 @@ fetchEvent : String -> Cmd Msg
 fetchEvent id =
     Http.get
         { url = "/api/v1/events/" ++ id
-        , expect = Http.expectJson CreatedEvent eventDecoder
+        , expect = Http.expectJson (NewEventMsg << CreatedEvent) eventDecoder
         }
-
-createNewEvent : EventInput -> Cmd Msg
-createNewEvent input = Http.post
-                      { url = "/api/v1/events"
-                      , expect = Http.expectJson CreatedEvent eventDecoder
-                      , body = Http.jsonBody (encodeEventInput input)
-                      }
 
 init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
   let
     (state, cmd) = case P.parse routeParser url of
-                       Just NewEvent -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here) )
-                       Just (EventId id) -> ( Loading, fetchEvent id )
+                       Just NewEventR -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here) )
+                       Just (EventIdR id) -> ( NewEventState NewEventLoading, fetchEvent id )
                        Nothing -> ( Failure, Cmd.none )
   in ( { key = key, timeZone = Time.utc, state = state }, cmd )
 
@@ -148,12 +80,6 @@ update msg pageState =
         { key, timeZone, state } = pageState
         (mZone, nextState, cmd) =
             case msg of
-                CreatedEvent result ->
-                    case result of
-                        Ok event ->
-                            ( Nothing, ViewEventState (ViewEvent event (emptyAttendeeInput event.id)), Nav.pushUrl key ("/e/" ++ event.id) )
-                        Err _ ->
-                            ( Nothing, Failure, Cmd.none )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
                 UrlChange _ -> ( Nothing, state, Cmd.none )
                 NewEventMsg nem ->
@@ -168,9 +94,8 @@ update msg pageState =
                           (newState, newCmd) = NewEvent.update nem newEventPageState
                         in (Just newState.timeZone, newState.state, newCmd)
                       _ -> ( Nothing, Loading, Cmd.none )
-                CreateEventMsg input -> ( Nothing, Loading, createNewEvent input )
                 CurrentTimeIs zone time -> case state of
-                                          Loading -> ( Just zone, NewEventState { picker = DP.init, input = emptyEventInput time time }, Cmd.none )
+                                          Loading -> ( Just zone, NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time time }), Cmd.none )
                                           _ -> ( Just zone, state, Cmd.none)
                 ViewEventMsg vem ->
                   case state of
@@ -187,12 +112,12 @@ update msg pageState =
 
 routeParser : Parser (Route -> a) a
 routeParser = oneOf
-    [ P.map NewEvent P.top
-    , P.map EventId (s "e" </> string)
+    [ P.map NewEventR P.top
+    , P.map EventIdR (s "e" </> string)
     ]
 
-type Route = NewEvent
-           | EventId String
+type Route = NewEventR
+           | EventIdR String
 
 pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
@@ -206,7 +131,7 @@ pickerSettings timeZone picker input =
 
 subscriptions : PageState State -> Sub Msg
 subscriptions model = case model.state of
-                        NewEventState { picker, input } -> DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
+                        NewEventState (NewEvent { picker, input }) -> DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
                         _ -> Sub.none
 
 main =

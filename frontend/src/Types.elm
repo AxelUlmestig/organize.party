@@ -1,6 +1,7 @@
 module Types exposing (
     PageState,
     State(..),
+    NewEventState(..),
     ViewEventState(..),
 
     Msg(..),
@@ -13,26 +14,37 @@ module Types exposing (
     Attendee,
     AttendeeStatus(..),
 
-    mapPageState
+    mapPageState,
+    eventDecoder,
+    encodeEventInput,
+    emptyAttendeeInput,
+    emptyEventInput
   )
 
+import Json.Decode as D
 import Browser.Navigation as Nav
 import Time as Time
 import DurationDatePicker as DP
 import Http
 import Browser
 import Url exposing (Url)
+import Iso8601 as Iso8601
+import Json.Encode as Encode exposing (Value)
 
 -- State
 type State
   = Loading
   | Failure
   | ViewEventState ViewEventState
-  | NewEventState { picker: DP.DatePicker, input: EventInput }
+  | NewEventState NewEventState
 
 type ViewEventState
   = ViewEvent Event AttendeeInput
   | AttendEventLoading
+
+type NewEventState
+  = NewEvent { picker: DP.DatePicker, input: EventInput }
+  | NewEventLoading
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -41,10 +53,8 @@ type alias PageState a = { key: Nav.Key
 
 -- Msg
 type Msg
-    = CreatedEvent (Result Http.Error Event)
-    | UrlRequest Browser.UrlRequest
+    = UrlRequest Browser.UrlRequest
     | UrlChange Url
-    | CreateEventMsg EventInput
     -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
     | CurrentTimeIs Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
@@ -54,6 +64,8 @@ type NewEventMsg
     = UpdateEventInput DP.DatePicker EventInput
     | UpdateEventStartTime (DP.DatePicker, Maybe (Time.Posix, Time.Posix))
     | OpenPicker
+    | CreateEventMsg EventInput
+    | CreatedEvent (Result Http.Error Event)
 
 type ViewEventMsg
     = UpdateAttendeeInput AttendeeInput
@@ -108,3 +120,64 @@ mapPageState f ps =
   , timeZone = ps.timeZone
   , key = ps.key
   }
+
+-- encoders and decoders
+eventDecoder : D.Decoder Event
+eventDecoder = D.map7 Event
+                 (D.field "id" D.string)
+                 (D.field "title" D.string)
+                 (D.field "description" D.string)
+                 (D.field "startTime" Iso8601.decoder)
+                 (D.field "endTime" Iso8601.decoder)
+                 (D.field "location" D.string)
+                 (D.field "attendees" (D.list attendeeDecoder))
+
+attendeeDecoder : D.Decoder Attendee
+attendeeDecoder = D.map3 Attendee
+                    (D.field "name" D.string)
+                    (D.field "status" attendeeStatusDecoder)
+                    (D.field "plusOne" D.bool)
+
+attendeeStatusDecoder : D.Decoder AttendeeStatus
+attendeeStatusDecoder =
+  D.string
+    |> D.andThen (\str ->
+        case str of
+          "Coming" -> D.succeed Coming
+          "MaybeComing" -> D.succeed MaybeComing
+          "NotComing" -> D.succeed NotComing
+          somethingElse -> D.fail ("Unknown status: " ++ somethingElse)
+      )
+
+attendeeStatusToString : AttendeeStatus -> String
+attendeeStatusToString status = case status of
+                                  Coming -> "Coming"
+                                  MaybeComing -> "Maybe Coming"
+                                  NotComing -> "Not Coming"
+
+emptyEventInput : Time.Posix -> Time.Posix -> EventInput
+emptyEventInput startTime endTime = { title = ""
+                  , description = ""
+                  , location = ""
+                  , startTime = startTime
+                  , endTime = endTime
+                  }
+
+encodeEventInput : EventInput -> Value
+encodeEventInput { title, description, location, startTime, endTime } = Encode.object
+                                                      [ ("title", Encode.string title)
+                                                      , ("description", Encode.string description)
+                                                      , ("location", Encode.string location)
+                                                      , ("startTime", Iso8601.encode startTime)
+                                                      , ("endTime", Iso8601.encode endTime)
+                                                      ]
+
+emptyAttendeeInput : String -> AttendeeInput
+emptyAttendeeInput eventId =
+  { eventId = eventId
+  , email = ""
+  , name = ""
+  , status = Coming
+  , plusOne = False
+  }
+
