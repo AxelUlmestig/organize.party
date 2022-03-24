@@ -18,8 +18,8 @@ import Iso8601 as Iso8601
 import Date as Date
 
 import Types exposing (..)
-import NewEvent
-import ViewEvent
+import Page.NewEvent as NewEvent
+import Page.ViewEvent as ViewEvent
 
 -- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg

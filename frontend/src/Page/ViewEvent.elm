@@ -1,4 +1,4 @@
-module ViewEvent exposing (view, update)
+module Page.ViewEvent exposing (view, update)
 
 import Browser
 import Html as H exposing (Html)
