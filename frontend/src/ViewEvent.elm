@@ -80,12 +80,6 @@ view pageState =
           ]
 
 
-attendeeStatusToString : AttendeeStatus -> String
-attendeeStatusToString status = case status of
-                                  Coming -> "Coming"
-                                  MaybeComing -> "Maybe Coming"
-                                  NotComing -> "Not Coming"
-
 update : ViewEventMsg -> PageState ViewEventState -> ( PageState State, Cmd Msg )
 update msg pageState =
   let
@@ -107,15 +101,6 @@ update msg pageState =
 
     AttendMsg input -> ( format (ViewEventState AttendEventLoading), attendEvent input )
 
-emptyAttendeeInput : String -> AttendeeInput
-emptyAttendeeInput eventId =
-  { eventId = eventId
-  , email = ""
-  , name = ""
-  , status = Coming
-  , plusOne = False
-  }
-
 
 attendEvent : AttendeeInput -> Cmd Msg
 attendEvent input = Http.request
@@ -127,47 +112,4 @@ attendEvent input = Http.request
                       , timeout = Nothing
                       , tracker = Nothing
                       }
-
-encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne } =
-  let
-    encodeAttendeeStatus ai = case ai of
-                                Coming -> Encode.string "Coming"
-                                MaybeComing -> Encode.string "MaybeComing"
-                                NotComing -> Encode.string "NotComing"
-  in
-    Encode.object
-      [ ("eventId", Encode.string eventId)
-      , ("email", Encode.string (String.trim(email)))
-      , ("name", Encode.string (String.trim(name)))
-      , ("status", encodeAttendeeStatus status)
-      , ("plusOne", Encode.bool plusOne)
-      ]
-
-eventDecoder : D.Decoder Event
-eventDecoder = D.map7 Event
-                 (D.field "id" D.string)
-                 (D.field "title" D.string)
-                 (D.field "description" D.string)
-                 (D.field "startTime" Iso8601.decoder)
-                 (D.field "endTime" Iso8601.decoder)
-                 (D.field "location" D.string)
-                 (D.field "attendees" (D.list attendeeDecoder))
-
-attendeeDecoder : D.Decoder Attendee
-attendeeDecoder = D.map3 Attendee
-                    (D.field "name" D.string)
-                    (D.field "status" attendeeStatusDecoder)
-                    (D.field "plusOne" D.bool)
-
-attendeeStatusDecoder : D.Decoder AttendeeStatus
-attendeeStatusDecoder =
-  D.string
-    |> D.andThen (\str ->
-        case str of
-          "Coming" -> D.succeed Coming
-          "MaybeComing" -> D.succeed MaybeComing
-          "NotComing" -> D.succeed NotComing
-          somethingElse -> D.fail ("Unknown status: " ++ somethingElse)
-      )
 

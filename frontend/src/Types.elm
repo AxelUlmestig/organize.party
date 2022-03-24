@@ -17,8 +17,10 @@ module Types exposing (
     mapPageState,
     eventDecoder,
     encodeEventInput,
+    encodeAttendeeInput,
     emptyAttendeeInput,
-    emptyEventInput
+    emptyEventInput,
+    attendeeStatusToString
   )
 
 import Json.Decode as D
@@ -180,4 +182,21 @@ emptyAttendeeInput eventId =
   , status = Coming
   , plusOne = False
   }
+
+
+encodeAttendeeInput : AttendeeInput -> Value
+encodeAttendeeInput { eventId, email, name, status, plusOne } =
+  let
+    encodeAttendeeStatus ai = case ai of
+                                Coming -> Encode.string "Coming"
+                                MaybeComing -> Encode.string "MaybeComing"
+                                NotComing -> Encode.string "NotComing"
+  in
+    Encode.object
+      [ ("eventId", Encode.string eventId)
+      , ("email", Encode.string (String.trim(email)))
+      , ("name", Encode.string (String.trim(name)))
+      , ("status", encodeAttendeeStatus status)
+      , ("plusOne", Encode.bool plusOne)
+      ]
 
