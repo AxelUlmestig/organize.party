@@ -10,10 +10,11 @@ import Http
 import Browser.Navigation as Nav
 
 import Types exposing (..)
+import Util exposing (viewEventDate)
 
-view : NewEventState -> Html Msg
-view state =
-  case state of
+view : PageState NewEventState -> Html Msg
+view pageState =
+  case pageState.state of
     NewEventLoading -> H.text "Loading..."
     NewEvent { picker, input } ->
       let
@@ -21,12 +22,14 @@ view state =
         updatePicker input2 (picker2, mTimestamp) = case mTimestamp of
                                                       Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput picker2 { input2 | startTime = newStart, endTime = newEnd })
                                                       Nothing -> NewEventMsg (UpdateEventInput picker2 input2)
+
+        eventTimeString = viewEventDate pageState.timeZone input.startTime input.endTime
       in
         H.div [] [
             H.h3 [] [ H.text "Create A New Event" ]
             , H.div [] [ H.text "Title: ", H.input [ A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
             , H.div [] [ H.text "Description: ", H.input [ A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
-            , H.div [] [ H.button [ onClick (NewEventMsg OpenPicker) ] [ H.text "click me" ], DP.view (DP.defaultSettings Time.utc (updatePicker input)) picker ]
+            , H.div [] [ H.button [ onClick (NewEventMsg OpenPicker) ] [eventTimeString], DP.view (DP.defaultSettings Time.utc (updatePicker input)) picker ]
             , H.div [] [ H.text "Location: ", H.input [ A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] [] ]
             , H.button [ onClick (NewEventMsg (CreateEventMsg input)) ] [ H.text "Submit" ]
           ]

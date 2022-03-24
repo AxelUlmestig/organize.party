@@ -24,38 +24,17 @@ import Page.ViewEvent as ViewEvent
 -- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg
 view state =
-  let
-    updatePicker : EventInput -> ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
-    updatePicker input (picker, mTimestamp) = case mTimestamp of
-                                                  Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput picker { input | startTime = newStart, endTime = newEnd })
-                                                  Nothing -> NewEventMsg (UpdateEventInput picker input)
+  Browser.Document "📅" [
+    H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
+    case state.state of
+      Loading -> H.text "Loading"
 
-    viewEventDate : Time.Posix -> Time.Posix -> Html Msg
-    viewEventDate start end =
-        let
-            oneDayMillis = 24 * 60 * 60 * 1000
-            timeDiff = Time.posixToMillis end - Time.posixToMillis start
+      Failure -> H.text "Error"
 
-            formatTime : Time.Posix -> String
-            formatTime time = String.fromInt (Time.toHour state.timeZone time) ++ ":" ++ String.fromInt (Time.toMinute state.timeZone time)
+      ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
 
-            formatDate : Time.Posix -> String
-            formatDate time = Date.toIsoString (Date.fromPosix state.timeZone time)
-        in if timeDiff < oneDayMillis
-        then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
-        else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
-  in
-    Browser.Document "📅" [
-      H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
-      case state.state of
-          Loading -> H.text "Loading"
-
-          Failure -> H.text "Error"
-
-          ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
-
-          NewEventState x -> NewEvent.view x
-    ]
+      NewEventState x -> NewEvent.view (mapPageState (always x) state)
+  ]
 
 
 fetchEvent : String -> Cmd Msg

@@ -15,6 +15,7 @@ import Json.Decode as D
 import Iso8601 as Iso8601
 
 import Types exposing (..)
+import Util exposing (viewEventDate)
 
 view : PageState ViewEventState -> Html Msg
 view pageState =
@@ -30,26 +31,11 @@ view pageState =
                                     "Not Coming" -> UpdateAttendeeInput { attendeeInput | status = NotComing }
                                     _ -> UpdateAttendeeInput attendeeInput)
 
-
-        viewEventDate : Time.Posix -> Time.Posix -> Html Msg
-        viewEventDate start end =
-            let
-                oneDayMillis = 24 * 60 * 60 * 1000
-                timeDiff = Time.posixToMillis end - Time.posixToMillis start
-
-                formatTime : Time.Posix -> String
-                formatTime time = String.fromInt (Time.toHour pageState.timeZone time) ++ ":" ++ String.fromInt (Time.toMinute pageState.timeZone time)
-
-                formatDate : Time.Posix -> String
-                formatDate time = Date.toIsoString (Date.fromPosix pageState.timeZone time)
-            in if timeDiff < oneDayMillis
-            then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
-            else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
       in
         H.div []
           [ H.div []
               [ H.div [] [ H.h1 [] [ H.text title ] ]
-              , viewEventDate startTime endTime
+              , viewEventDate pageState.timeZone startTime endTime
               , H.div [] [ H.text location ]
               , H.div [] [ H.text description ]
               ]
