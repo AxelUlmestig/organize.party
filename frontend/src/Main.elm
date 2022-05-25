@@ -47,11 +47,9 @@ fetchEvent id =
 init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
   let
-    (state, cmd) = case P.parse routeParser url of
-                       Just NewEventR -> ( Loading, Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs zone) Time.now) Time.here) )
-                       Just (EventIdR id) -> ( NewEventState NewEventLoading, fetchEvent id )
-                       Nothing -> ( Failure, Cmd.none )
-  in ( { key = key, timeZone = Time.utc, state = state }, cmd )
+    getCurrentTimeCmd = Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs url zone) Time.now) Time.here)
+    pageState = { key = key, timeZone = Time.utc, state = Loading }
+  in ( pageState, getCurrentTimeCmd )
 
 update : Msg -> PageState State -> ( PageState State, Cmd Msg )
 update msg pageState =
@@ -59,6 +57,13 @@ update msg pageState =
         { key, timeZone, state } = pageState
         (mZone, nextState, cmd) =
             case msg of
+                CurrentTimeIs url zone time ->
+                  let
+                    (newState, newCmd) = case P.parse routeParser url of
+                                       Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time time }), Cmd.none )
+                                       Just (EventIdR id) -> ( NewEventState NewEventLoading, fetchEvent id )
+                                       Nothing -> ( Failure, Cmd.none )
+                  in ( Just zone, newState, newCmd )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
                 UrlChange _ -> ( Nothing, state, Cmd.none )
                 NewEventMsg nem ->
@@ -73,9 +78,6 @@ update msg pageState =
                           (newState, newCmd) = NewEvent.update nem newEventPageState
                         in (Just newState.timeZone, newState.state, newCmd)
                       _ -> ( Nothing, Loading, Cmd.none )
-                CurrentTimeIs zone time -> case state of
-                                          Loading -> ( Just zone, NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time time }), Cmd.none )
-                                          _ -> ( Just zone, state, Cmd.none)
                 ViewEventMsg vem ->
                   case state of
                     ViewEventState viewEventState ->

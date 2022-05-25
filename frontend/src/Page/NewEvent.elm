@@ -8,6 +8,7 @@ import Html.Events exposing (on, onInput, onClick, onCheck)
 import Time as Time
 import Http
 import Browser.Navigation as Nav
+import Iso8601 as Iso8601
 
 import Types exposing (..)
 import Util exposing (viewEventDate)
@@ -29,7 +30,10 @@ view pageState =
             H.h3 [] [ H.text "Create A New Event" ]
             , H.div [] [ H.text "Title: ", H.input [ A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
             , H.div [] [ H.text "Description: ", H.input [ A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
-            , H.div [] [ H.button [ onClick (NewEventMsg OpenPicker) ] [eventTimeString], DP.view (DP.defaultSettings Time.utc (updatePicker input)) picker ]
+            , H.div [] [
+                H.button [ onClick (NewEventMsg OpenPicker) ] [eventTimeString]
+                , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
+                ]
             , H.div [] [ H.text "Location: ", H.input [ A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] [] ]
             , H.button [ onClick (NewEventMsg (CreateEventMsg input)) ] [ H.text "Submit" ]
           ]
@@ -68,10 +72,15 @@ update msg pageState =
       case pageState.state of
         NewEvent oldState ->
           let
-            x = oldState
-            newPicker = DP.openPicker (pickerSettings pageState.timeZone x.picker x.input) x.input.startTime (Just x.input.startTime) (Just x.input.endTime) x.picker
+            newPicker = DP.openPicker
+                  (pickerSettings pageState.timeZone oldState.picker oldState.input)
+                  oldState.input.startTime
+                  (Just oldState.input.startTime)
+                  (Just oldState.input.endTime)
+                  oldState.picker
+
             newPageState =
-              { state = NewEventState (NewEvent { x | picker = newPicker })
+              { state = NewEventState (NewEvent { oldState | picker = newPicker })
               , timeZone = pageState.timeZone
               , key = pageState.key
               }

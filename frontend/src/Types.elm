@@ -58,7 +58,7 @@ type Msg
     = UrlRequest Browser.UrlRequest
     | UrlChange Url
     -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
-    | CurrentTimeIs Time.Zone Time.Posix
+    | CurrentTimeIs Url Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
 

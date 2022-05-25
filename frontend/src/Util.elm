@@ -1,7 +1,9 @@
 module Util exposing (viewEventDate)
-import Date as Date
 
-import Time as Time
+import Date
+import Iso8601
+import Time
+import Time.Extra exposing (toOffset, Interval(..), add)
 import Html as H exposing (Html)
 
 import Types exposing (..)
@@ -20,3 +22,4 @@ viewEventDate timeZone start end =
     in if timeDiff < oneDayMillis
     then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
     else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
+
