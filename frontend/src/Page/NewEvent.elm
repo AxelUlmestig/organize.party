@@ -13,6 +13,8 @@ import Iso8601 as Iso8601
 import Types exposing (..)
 import Util exposing (viewEventDate)
 
+borderRadius = A.style "border-radius" "5px"
+
 view : PageState NewEventState -> Html Msg
 view pageState =
   case pageState.state of
@@ -26,16 +28,44 @@ view pageState =
 
         eventTimeString = viewEventDate pageState.timeZone input.startTime input.endTime
       in
-        H.div [] [
-            H.h3 [] [ H.text "Create A New Event" ]
-            , H.div [] [ H.text "Title: ", H.input [ A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
-            , H.div [] [ H.text "Description: ", H.input [ A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
+        H.div []
+            [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
+            , H.div [ A.class "d-flex flex-row justify-content-start" ]
+              [ H.h5 [ A.class "mb-4" ] [ H.text "What" ]
+              , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
+              ]
+
+            , H.div [] [ H.text "Event name" ]
+            , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+
+            , H.div [] [ H.text "Description" ]
+            , H.div [] [ H.textarea [ A.style "width" "100%", borderRadius, A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
+
+            , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
+              [ H.h5 [ A.class "mb-4" ] [ H.text "When" ]
+              , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
+              ]
+
             , H.div [] [
                 H.button [ onClick (NewEventMsg OpenPicker) ] [eventTimeString]
                 , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
                 ]
-            , H.div [] [ H.text "Location: ", H.input [ A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] [] ]
-            , H.button [ onClick (NewEventMsg (CreateEventMsg input)) ] [ H.text "Submit" ]
+
+            , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
+              [ H.h5 [ A.class "mb-4" ] [ H.text "Where" ]
+              , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
+              ]
+
+
+            -- This icon is not showing up for some reason...
+            , H.node "svg" [ A.class "bi", A.width 32, A.height 32, A.attribute "fill" "currentColor" ] [ H.node "use" [ A.attribute "xlink:href" "bootstrap-icons.svg#heart-fill" ] [] ]
+
+            , H.div [] [ H.text "Location" ]
+            , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] [] ]
+
+            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ] [
+                H.button [ A.style "background-color" "#1c2c3b", onClick (NewEventMsg (CreateEventMsg input)), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                ]
           ]
 
 update : NewEventMsg -> PageState NewEventState -> ( PageState State, Cmd Msg )

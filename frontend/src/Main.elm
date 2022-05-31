@@ -24,16 +24,33 @@ import Page.ViewEvent as ViewEvent
 -- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg
 view state =
-  Browser.Document "📅" [
-    H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] [],
-    case state.state of
-      Loading -> H.text "Loading"
+  Browser.Document "📅"
+    [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
+    , H.node "link" [ A.rel "stylesheet", A.href "datepicker.css" ] []
+    , H.node "link"
+      [ A.rel "stylesheet"
+      , A.href "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
+      , A.attribute "integrity" "sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
+      , A.attribute "crossorigin" "anonymous"
+    ] []
 
-      Failure -> H.text "Error"
+    , H.node "link" [ A.rel "stylesheet", A.href "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css"] []
 
-      ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
+    , H.div [ A.style "background-color" "#fbfafa", A.style "color" "#1c2c3b"  ]
+      [ H.div
+        [ A.class "container"
+        , A.style "max-width" "700px"
+        ] [
+          case state.state of
+            Loading -> H.text "Loading"
 
-      NewEventState x -> NewEvent.view (mapPageState (always x) state)
+            Failure -> H.text "Error"
+
+            ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
+
+            NewEventState x -> NewEvent.view (mapPageState (always x) state)
+        ]
+      ]
   ]
 
 
