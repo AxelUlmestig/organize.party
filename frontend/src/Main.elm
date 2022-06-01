@@ -21,6 +21,8 @@ import Types exposing (..)
 import Page.NewEvent as NewEvent
 import Page.ViewEvent as ViewEvent
 
+import FontAwesome.Styles as Icon
+
 -- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg
 view state =
@@ -34,22 +36,30 @@ view state =
       , A.attribute "crossorigin" "anonymous"
     ] []
 
-    , H.node "link" [ A.rel "stylesheet", A.href "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css"] []
+    , Icon.css
 
-    , H.div [ A.style "background-color" "#fbfafa", A.style "color" "#1c2c3b"  ]
-      [ H.div
-        [ A.class "container"
-        , A.style "max-width" "700px"
-        ] [
-          case state.state of
-            Loading -> H.text "Loading"
+    , H.node "style" []
+      [ H.text
+          """
+          body {
+            background-color: #fbfafa;
+            color: #1c2c3b;
+          }
+          """
+      ]
 
-            Failure -> H.text "Error"
+    , H.div
+      [ A.class "container"
+      , A.style "max-width" "700px"
+      ] [
+        case state.state of
+          Loading -> H.text "Loading"
 
-            ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
+          Failure -> H.text "Error"
 
-            NewEventState x -> NewEvent.view (mapPageState (always x) state)
-        ]
+          ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
+
+          NewEventState x -> NewEvent.view (mapPageState (always x) state)
       ]
   ]
 

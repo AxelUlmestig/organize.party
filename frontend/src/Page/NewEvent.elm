@@ -13,6 +13,13 @@ import Iso8601 as Iso8601
 import Types exposing (..)
 import Util exposing (viewEventDate)
 
+import FontAwesome as Icon exposing (Icon)
+import FontAwesome.Attributes as Icon
+import FontAwesome.Brands as Icon
+import FontAwesome.Layering as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
+
 borderRadius = A.style "border-radius" "5px"
 
 view : PageState NewEventState -> Html Msg
@@ -56,12 +63,12 @@ view pageState =
               , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
               ]
 
-
-            -- This icon is not showing up for some reason...
-            , H.node "svg" [ A.class "bi", A.width 32, A.height 32, A.attribute "fill" "currentColor" ] [ H.node "use" [ A.attribute "xlink:href" "bootstrap-icons.svg#heart-fill" ] [] ]
-
             , H.div [] [ H.text "Location" ]
-            , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] [] ]
+            , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
+              [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
+              , H.input [ A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] []
+              ]
 
             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ] [
                 H.button [ A.style "background-color" "#1c2c3b", onClick (NewEventMsg (CreateEventMsg input)), A.class "btn btn-primary" ] [ H.text "Submit" ]
