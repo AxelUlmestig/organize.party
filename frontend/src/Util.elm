@@ -1,5 +1,4 @@
-module Util exposing (viewEventDate)
-
+module Util exposing (viewEventDate, viewEventDateNew, viewEventTime)
 import Date
 import Iso8601
 import Time
@@ -22,4 +21,10 @@ viewEventDate timeZone start end =
     in if timeDiff < oneDayMillis
     then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
     else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
+
+viewEventDateNew : Time.Zone -> Time.Posix -> String
+viewEventDateNew timeZone time = Date.toIsoString (Date.fromPosix timeZone time)
+
+viewEventTime : Time.Zone -> Time.Posix -> String
+viewEventTime timeZone time = String.padLeft 2 '0' (String.fromInt (Time.toHour timeZone time)) ++ ":" ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute timeZone time))
 
