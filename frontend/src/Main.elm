@@ -11,7 +11,7 @@ import Json.Encode as Encode exposing (Value)
 import Url exposing (Url)
 import Url.Parser as P exposing (Parser, (</>), int, map, oneOf, s, string)
 import Url.Parser.Query as Q
-import DurationDatePicker as DP
+import SingleDatePicker as DP
 import Time as Time
 import Task as Task
 import Iso8601 as Iso8601
@@ -87,7 +87,7 @@ update msg pageState =
                 CurrentTimeIs url zone time ->
                   let
                     (newState, newCmd) = case P.parse routeParser url of
-                                       Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time time }), Cmd.none )
+                                       Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
                                        Just (EventIdR id) -> ( NewEventState NewEventLoading, fetchEvent id )
                                        Nothing -> ( Failure, Cmd.none )
                   in ( Just zone, newState, newCmd )
@@ -130,10 +130,10 @@ type Route = NewEventR
 pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
   let
-    getValueFromPicker : ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
+    getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
     getValueFromPicker (dp, mTime) = case mTime of
                                              Nothing -> NewEventMsg (UpdateEventInput dp input)
-                                             Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart, endTime = newEnd })
+                                             Just newStart -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart })
 
   in DP.defaultSettings timeZone getValueFromPicker
 

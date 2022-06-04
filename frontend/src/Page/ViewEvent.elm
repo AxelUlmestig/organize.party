@@ -22,7 +22,7 @@ import FontAwesome.Styles as Icon
 import Regex
 
 import Types exposing (..)
-import Util exposing (viewEventDate, viewEventDateNew, viewEventTime)
+import Util exposing (viewEventDate, viewEventTime)
 
 borderRadius = A.style "border-radius" "5px"
 
@@ -62,7 +62,7 @@ view pageState =
                     , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
                       [ H.span [ A.style "flex" "1" ]
                         [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.calendar)
-                        , H.text (viewEventDateNew pageState.timeZone startTime)
+                        , H.text (viewEventDate pageState.timeZone startTime)
                         ]
                       , H.span [ A.style "flex" "1" ]
                         [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.clock)

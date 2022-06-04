@@ -2,7 +2,7 @@ module Page.NewEvent exposing (view, update)
 
 import Browser
 import Html as H exposing (Html)
-import DurationDatePicker as DP
+import SingleDatePicker as DP
 import Html.Attributes as A
 import Html.Events exposing (on, onInput, onClick, onCheck)
 import Time as Time
@@ -11,7 +11,7 @@ import Browser.Navigation as Nav
 import Iso8601 as Iso8601
 
 import Types exposing (..)
-import Util exposing (viewEventDate)
+import Util exposing (viewEventDate, viewEventTime)
 
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
@@ -28,12 +28,12 @@ view pageState =
     NewEventLoading -> H.text "Loading..."
     NewEvent { picker, input } ->
       let
-        updatePicker : EventInput -> ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
+        updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         updatePicker input2 (picker2, mTimestamp) = case mTimestamp of
-                                                      Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput picker2 { input2 | startTime = newStart, endTime = newEnd })
+                                                      Just newStart -> NewEventMsg (UpdateEventInput picker2 { input2 | startTime = newStart })
                                                       Nothing -> NewEventMsg (UpdateEventInput picker2 input2)
 
-        eventTimeString = viewEventDate pageState.timeZone input.startTime input.endTime
+        eventTimeString = H.text (viewEventDate pageState.timeZone input.startTime ++ " " ++ viewEventTime pageState.timeZone input.startTime)
       in
         H.div []
             [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
@@ -94,9 +94,9 @@ update msg pageState =
       case pageState.state of
         NewEvent oldState ->
           let
-            (newStartTime, newEndTime) = Maybe.withDefault (oldState.input.startTime, oldState.input.endTime) mTime
+            newStartTime = Maybe.withDefault oldState.input.startTime mTime
             oldInput = oldState.input
-            newEventState = NewEventState (NewEvent { picker = picker, input = { oldInput | startTime = newStartTime, endTime = newEndTime } })
+            newEventState = NewEventState (NewEvent { picker = picker, input = { oldInput | startTime = newStartTime } })
             newPageState =
               { state = newEventState
               , timeZone = pageState.timeZone
@@ -113,7 +113,6 @@ update msg pageState =
                   (pickerSettings pageState.timeZone oldState.picker oldState.input)
                   oldState.input.startTime
                   (Just oldState.input.startTime)
-                  (Just oldState.input.endTime)
                   oldState.picker
 
             newPageState =
@@ -138,10 +137,10 @@ update msg pageState =
 pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
   let
-    getValueFromPicker : ( DP.DatePicker, Maybe (Time.Posix, Time.Posix) ) -> Msg
+    getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
     getValueFromPicker (dp, mTime) = case mTime of
                                              Nothing -> NewEventMsg (UpdateEventInput dp input)
-                                             Just (newStart, newEnd) -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart, endTime = newEnd })
+                                             Just newStart -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart })
 
   in DP.defaultSettings timeZone getValueFromPicker
 

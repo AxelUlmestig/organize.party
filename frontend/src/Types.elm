@@ -26,7 +26,7 @@ module Types exposing (
 import Json.Decode as D
 import Browser.Navigation as Nav
 import Time as Time
-import DurationDatePicker as DP
+import SingleDatePicker as DP
 import Http
 import Browser
 import Url exposing (Url)
@@ -64,7 +64,7 @@ type Msg
 
 type NewEventMsg
     = UpdateEventInput DP.DatePicker EventInput
-    | UpdateEventStartTime (DP.DatePicker, Maybe (Time.Posix, Time.Posix))
+    | UpdateEventStartTime (DP.DatePicker, Maybe Time.Posix)
     | OpenPicker
     | CreateEventMsg EventInput
     | CreatedEvent (Result Http.Error Event)
@@ -91,7 +91,7 @@ type alias EventInput =
   { title          : String
   , description    : String
   , startTime      : Time.Posix
-  , endTime        : Time.Posix
+  , endTime        : Maybe Time.Posix
   , location       : String
   -- , googleMapsLink : Maybe String
   }
@@ -157,12 +157,12 @@ attendeeStatusToString status = case status of
                                   MaybeComing -> "Maybe Coming"
                                   NotComing -> "Not Coming"
 
-emptyEventInput : Time.Posix -> Time.Posix -> EventInput
-emptyEventInput startTime endTime = { title = ""
+emptyEventInput : Time.Posix -> EventInput
+emptyEventInput startTime = { title = ""
                   , description = ""
                   , location = ""
                   , startTime = startTime
-                  , endTime = endTime
+                  , endTime = Nothing
                   }
 
 encodeEventInput : EventInput -> Value
@@ -171,7 +171,7 @@ encodeEventInput { title, description, location, startTime, endTime } = Encode.o
                                                       , ("description", Encode.string description)
                                                       , ("location", Encode.string location)
                                                       , ("startTime", Iso8601.encode startTime)
-                                                      , ("endTime", Iso8601.encode endTime)
+                                                      , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
                                                       ]
 
 emptyAttendeeInput : String -> AttendeeInput
