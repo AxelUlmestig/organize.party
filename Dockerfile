@@ -13,7 +13,6 @@ COPY src /events/src
 
 RUN cabal build
 
-COPY reset-database.sh /events/
 COPY frontend/index.html /events/frontend/index.html
 COPY frontend/static/ /events/frontend/static/
 
