@@ -60,8 +60,9 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                     where
                       event_id = $1::uuid
                       and email = $2::text
-                      and status = $3::text::attendee_status
-                      and plus_one = $4::bool
+                      and name = $3::text
+                      and status = $4::text::attendee_status
+                      and plus_one = $5::bool
                       and superseded_at is null
                   |]
   where
