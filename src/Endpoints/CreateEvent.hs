@@ -33,7 +33,7 @@ statement = dimap to to [singletonStatement|
       title::text,
       description::text,
       time_start::timestamptz,
-      time_end::timestamptz,
+      time_end::timestamptz?,
       location::text,
       location_google_maps_link::text?
   |]

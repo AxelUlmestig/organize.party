@@ -13,7 +13,7 @@ data Event = Event
            , title          :: Text
            , description    :: Text
            , startTime      :: UTCTime
-           , endTime        :: UTCTime
+           , endTime        :: Maybe UTCTime
            , location       :: Text
            , googleMapsLink :: Maybe Text
            , attendees      :: [Attendee]
@@ -30,7 +30,7 @@ data Attendee = Attendee
 instance ToJSON Attendee
 instance ToJSON Event
 
-instance Injective (UUID, Text, Text, UTCTime, UTCTime, Text, Maybe Text) Event where
+instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) Event where
   to (id, title, description, startTime, endTime, location, googleMapsLink) = Event id title description startTime endTime location googleMapsLink []
 
 instance Injective (Text, Text, Bool) Attendee where
