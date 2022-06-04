@@ -32,8 +32,6 @@ view pageState =
         updatePicker input2 (picker2, mTimestamp) = case mTimestamp of
                                                       Just newStart -> NewEventMsg (UpdateEventInput picker2 { input2 | startTime = newStart })
                                                       Nothing -> NewEventMsg (UpdateEventInput picker2 input2)
-
-        eventTimeString = H.text (viewEventDate pageState.timeZone input.startTime ++ " " ++ viewEventTime pageState.timeZone input.startTime)
       in
         H.div []
             [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
@@ -53,10 +51,20 @@ view pageState =
               , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
               ]
 
-            , H.div [] [
-                H.button [ onClick (NewEventMsg OpenPicker) ] [eventTimeString]
-                , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
+
+            , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
+              [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
+                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                  [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
+                  , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate pageState.timeZone input.startTime) ] []
                 ]
+              , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
+                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                  [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
+                  , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
+                ]
+                , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
+              ]
 
             , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
               [ H.h5 [ A.class "mb-4" ] [ H.text "Where" ]
