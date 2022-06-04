@@ -2,7 +2,9 @@ version: '3.4'
 
 services:
   db:
-    image: postgres:12.5-alpine
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
     ports:
       - "5433:5432"
     environment:
@@ -14,6 +16,9 @@ services:
       PGTZ: Europe/Stockholm
     volumes:
       - dbdata:/var/lib/postgresql/data
+      - .:/repo
+      - ~/.sqitch:/root/.sqitch
+    working_dir: /repo
 
   server:
     ports:
