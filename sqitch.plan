@@ -1,0 +1,5 @@
+%syntax-version=1.0.0
+%project=events
+
+tables/events 2022-06-04T11:43:29Z Axel Ulmestig <axel.ulmestig@gmail.com> # add events able
+tables/attendees 2022-06-04T12:03:52Z Axel Ulmestig <axel.ulmestig@gmail.com> # add attendees table
