@@ -10,7 +10,7 @@ data CreateEventInput = CreateEventInput
                         { title          :: Text
                         , description    :: Text
                         , startTime      :: UTCTime
-                        , endTime        :: UTCTime
+                        , endTime        :: Maybe UTCTime
                         , location       :: Text
                         , googleMapsLink :: Maybe Text
                         }
@@ -19,10 +19,10 @@ data CreateEventInput = CreateEventInput
 instance ToJSON CreateEventInput
 instance FromJSON CreateEventInput
 
-instance Injective (Text, Text, UTCTime, UTCTime, Text, Maybe Text) CreateEventInput where
+instance Injective (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) CreateEventInput where
   to (title, description, startTime, endTime, location, googleMapsLink) = CreateEventInput title description startTime endTime location googleMapsLink
 
-instance Injective CreateEventInput (Text, Text, UTCTime, UTCTime, Text, Maybe Text) where
+instance Injective CreateEventInput (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) where
   to CreateEventInput{title, description, startTime, endTime, location, googleMapsLink} = (title, description, startTime, endTime, location, googleMapsLink)
 
-instance Iso (Text, Text, UTCTime, UTCTime, Text, Maybe Text) CreateEventInput
+instance Iso (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) CreateEventInput

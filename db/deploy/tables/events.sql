@@ -7,7 +7,7 @@ create table events (
   title                     text not null,
   description               text not null,
   time_start                timestamp with time zone not null,
-  time_end                  timestamp with time zone not null,
+  time_end                  timestamp with time zone,
   location                  text not null,
   location_google_maps_link text
 );

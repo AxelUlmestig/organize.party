@@ -27,7 +27,7 @@ createEvent connection input = do
 statement :: Statement CreateEventInput Event
 statement = dimap to to [singletonStatement|
     insert into events (title, description, time_start, time_end, location, location_google_maps_link)
-    values ($1::text, $2::text, $3::timestamptz, $4::timestamptz, $5::text, $6::text?)
+    values ($1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?)
     returning
       id::uuid,
       title::text,

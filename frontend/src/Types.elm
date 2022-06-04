@@ -81,7 +81,7 @@ type alias Event =
   , title          : String
   , description    : String
   , startTime      : Time.Posix
-  , endTime        : Time.Posix
+  , endTime        : Maybe Time.Posix
   , location       : String
   , attendees      : List Attendee
   -- , googleMapsLink : Maybe String
@@ -130,7 +130,7 @@ eventDecoder = D.map7 Event
                  (D.field "title" D.string)
                  (D.field "description" D.string)
                  (D.field "startTime" Iso8601.decoder)
-                 (D.field "endTime" Iso8601.decoder)
+                 (D.maybe (D.field "endTime" Iso8601.decoder))
                  (D.field "location" D.string)
                  (D.field "attendees" (D.list attendeeDecoder))
 
