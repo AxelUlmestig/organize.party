@@ -92,7 +92,22 @@ update msg pageState =
                                        Nothing -> ( Failure, Cmd.none )
                   in ( Just zone, newState, newCmd )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
-                UrlChange _ -> ( Nothing, state, Cmd.none )
+                UrlChange url ->
+                      case (P.parse routeParser url, state) of
+                        ( Just NewEventR, NewEventState nes ) -> ( Nothing, state, Cmd.none )
+                        ( Just NewEventR, _ ) ->
+                          let ( loading, currentTimeIs ) = init () url key
+                          in ( Nothing, loading.state, currentTimeIs )
+                        ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> ( Nothing, NewEventState NewEventLoading, fetchEvent id )
+                        ( Just (EventIdR id), ViewEventState (ViewEvent event _) ) ->
+                          if event.id == id
+                          then ( Nothing, state, Cmd.none )
+                          else ( Nothing, NewEventState NewEventLoading, fetchEvent id )
+                        ( Just (EventIdR id), _ ) -> ( Nothing, NewEventState NewEventLoading, fetchEvent id )
+                        ( Nothing, _ ) -> ( Nothing, Failure, Cmd.none )
+
+
+
                 NewEventMsg nem ->
                     case state of
                       NewEventState nes ->
