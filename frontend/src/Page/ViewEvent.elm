@@ -37,8 +37,9 @@ disableUnlessValidInput { email, name } =
 view : PageState ViewEventState -> Html Msg
 view pageState =
   case pageState.state of
-    AttendEventLoading -> H.text "Loading"
-    ViewEvent event attendeeInput ->
+    AttendEventLoading -> H.text "Loading event..."
+    LoadingEvent -> H.text "Loading event..."
+    ViewEvent maybeModal event attendeeInput ->
       let
         { title, description, startTime, endTime, location, attendees } = event
 
@@ -50,7 +51,34 @@ view pageState =
 
       in
         H.div []
-          [ H.div []
+          [ case maybeModal of
+              Nothing -> H.span [] []
+              Just modal ->
+                H.div [ A.class "modal" ]
+                  [ H.div [ A.class "modal_window" ]
+                    [ case modal of
+                        InviteGuestsInfoModal ->
+                          H.div []
+                          [ H.text "You have created a new event 🎉"
+                          , H.br [] []
+                          , H.text "Share this page with your friends to invite them."
+                          , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+                            [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                            ]
+                          ]
+                        AttendeeSuccessModal ->
+                          H.div []
+                          [ H.text "You have updated your status."
+                          , H.br [] []
+                          , H.text "Fill in the form again with the same email address to edit your status."
+                          , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+                            [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                            ]
+                          ]
+                    ]
+                  ]
+
+          , H.div []
               [ H.div [] [ H.h1 [] [ H.text title ] ]
               , H.div [] [ H.text description ]
               , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
@@ -72,6 +100,7 @@ view pageState =
                   ]
                 ]
               ]
+
           , H.br [] []
           , H.div []
               [ H.b [] [ H.text "Are you attending?" ]
@@ -124,16 +153,28 @@ update msg pageState =
     AttendedEvent result ->
       case result of
         Ok attendedEvent ->
-          ( format (ViewEventState (ViewEvent attendedEvent (emptyAttendeeInput attendedEvent.id))), Nav.pushUrl key ("/e/" ++ attendedEvent.id) )
+          ( format (ViewEventState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id))), Nav.pushUrl key ("/e/" ++ attendedEvent.id) )
         Err _ ->
           ( format Failure, Cmd.none )
 
     UpdateAttendeeInput input ->
       case pageState.state of
-        ViewEvent event _ -> ( format (ViewEventState (ViewEvent event input)), Cmd.none )
+        ViewEvent modal event _ -> ( format (ViewEventState (ViewEvent modal event input)), Cmd.none )
         _ -> ( format (ViewEventState pageState.state), Cmd.none )
 
     AttendMsg input -> ( format (ViewEventState AttendEventLoading), attendEvent input )
+
+    LoadedEvent result ->
+        case result of
+            Ok event ->
+                ( format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
+            Err _ ->
+                ( format Failure, Cmd.none )
+
+    CloseModal ->
+      case state of
+        ViewEvent _ event attendeeInput -> ( format (ViewEventState (ViewEvent Nothing event attendeeInput)), Cmd.none )
+        otherState -> ( format (ViewEventState otherState), Cmd.none )
 
 
 attendEvent : AttendeeInput -> Cmd Msg

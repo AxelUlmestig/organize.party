@@ -137,7 +137,7 @@ update msg pageState =
     CreatedEvent result ->
         case result of
             Ok event ->
-                ( format (ViewEventState (ViewEvent event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
+                ( format (ViewEventState (ViewEvent (Just InviteGuestsInfoModal) event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
             Err _ ->
                 ( format Failure, Cmd.none )
 

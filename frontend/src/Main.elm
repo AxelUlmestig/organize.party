@@ -45,6 +45,25 @@ view state =
             background-color: #fbfafa;
             color: #1c2c3b;
           }
+
+          .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background-color: rgba(0,0,0,.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .modal_window {
+            position: relative;
+            background-color: white;
+            padding: 4em 2em;
+            border-radius: 5px;
+          }
           """
       ]
 
@@ -68,7 +87,7 @@ fetchEvent : String -> Cmd Msg
 fetchEvent id =
     Http.get
         { url = "/api/v1/events/" ++ id
-        , expect = Http.expectJson (NewEventMsg << CreatedEvent) eventDecoder
+        , expect = Http.expectJson (ViewEventMsg << LoadedEvent) eventDecoder
         }
 
 init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
@@ -88,7 +107,7 @@ update msg pageState =
                   let
                     (newState, newCmd) = case P.parse routeParser url of
                                        Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
-                                       Just (EventIdR id) -> ( NewEventState NewEventLoading, fetchEvent id )
+                                       Just (EventIdR id) -> ( ViewEventState LoadingEvent, fetchEvent id )
                                        Nothing -> ( Failure, Cmd.none )
                   in ( Just zone, newState, newCmd )
                 UrlRequest _ -> ( Nothing, state, Cmd.none )
@@ -98,8 +117,8 @@ update msg pageState =
                         ( Just NewEventR, _ ) ->
                           let ( loading, currentTimeIs ) = init () url key
                           in ( Nothing, loading.state, currentTimeIs )
-                        ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> ( Nothing, NewEventState NewEventLoading, fetchEvent id )
-                        ( Just (EventIdR id), ViewEventState (ViewEvent event _) ) ->
+                        ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> ( Nothing, ViewEventState LoadingEvent, fetchEvent id )
+                        ( Just (EventIdR id), ViewEventState (ViewEvent _ event _) ) ->
                           if event.id == id
                           then ( Nothing, state, Cmd.none )
                           else ( Nothing, NewEventState NewEventLoading, fetchEvent id )
@@ -109,17 +128,18 @@ update msg pageState =
 
 
                 NewEventMsg nem ->
-                    case state of
-                      NewEventState nes ->
-                        let
-                          newEventPageState =
-                            { state = nes
-                            , key = key
-                            , timeZone = timeZone
-                            }
-                          (newState, newCmd) = NewEvent.update nem newEventPageState
-                        in (Just newState.timeZone, newState.state, newCmd)
-                      _ -> ( Nothing, Loading, Cmd.none )
+                  case state of
+                    NewEventState nes ->
+                      let
+                        newEventPageState =
+                          { state = nes
+                          , key = key
+                          , timeZone = timeZone
+                          }
+                        (newState, newCmd) = NewEvent.update nem newEventPageState
+                      in (Just newState.timeZone, newState.state, newCmd)
+                    _ -> ( Nothing, Loading, Cmd.none )
+
                 ViewEventMsg vem ->
                   case state of
                     ViewEventState viewEventState ->

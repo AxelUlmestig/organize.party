@@ -3,6 +3,7 @@ module Types exposing (
     State(..),
     NewEventState(..),
     ViewEventState(..),
+    ViewEventStateModal(..),
 
     Msg(..),
     NewEventMsg(..),
@@ -41,8 +42,13 @@ type State
   | NewEventState NewEventState
 
 type ViewEventState
-  = ViewEvent Event AttendeeInput
+  = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
   | AttendEventLoading
+  | LoadingEvent
+
+type ViewEventStateModal
+  = InviteGuestsInfoModal
+  | AttendeeSuccessModal
 
 type NewEventState
   = NewEvent { picker: DP.DatePicker, input: EventInput }
@@ -57,7 +63,6 @@ type alias PageState a = { key: Nav.Key
 type Msg
     = UrlRequest Browser.UrlRequest
     | UrlChange Url
-    -- | UpdatePicker ( DP.DatePicker, Maybe Time.Posix )
     | CurrentTimeIs Url Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
@@ -73,6 +78,8 @@ type ViewEventMsg
     = UpdateAttendeeInput AttendeeInput
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
+    | LoadedEvent (Result Http.Error Event)
+    | CloseModal
 
 
 -- Event
