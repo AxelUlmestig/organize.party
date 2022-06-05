@@ -94,63 +94,64 @@ init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
   let
     getCurrentTimeCmd = Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs url zone) Time.now) Time.here)
-    pageState = { key = key, timeZone = Time.utc, state = Loading }
+    pageState = { key = key, timeZone = Time.utc, pageUrl = url, state = Loading }
   in ( pageState, getCurrentTimeCmd )
 
 update : Msg -> PageState State -> ( PageState State, Cmd Msg )
 update msg pageState =
     let
-        { key, timeZone, state } = pageState
-        (mZone, nextState, cmd) =
-            case msg of
-                CurrentTimeIs url zone time ->
+        { key, timeZone, state, pageUrl } = pageState
+
+        packageStateAndCmd nextState cmd = ( { key = key, timeZone = timeZone, state = nextState, pageUrl = pageUrl }, cmd )
+        packageStateTimeZoneAndCmd nextState zone cmd = ( { key = key, timeZone = zone, state = nextState, pageUrl = pageUrl }, cmd )
+        packageStatePageUrlAndCmd nextState url cmd = ( { key = key, timeZone = timeZone, state = nextState, pageUrl = url }, cmd )
+    in  case msg of
+            CurrentTimeIs url zone time ->
+              let
+                (newState, newCmd) = case P.parse routeParser url of
+                                   Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
+                                   Just (EventIdR id) -> ( ViewEventState LoadingEvent, fetchEvent id )
+                                   Nothing -> ( Failure, Cmd.none )
+              in packageStateAndCmd newState newCmd
+
+            UrlRequest _ -> packageStateAndCmd state Cmd.none
+
+            UrlChange url ->
+                  case (P.parse routeParser url, state) of
+                    ( Just NewEventR, NewEventState nes ) -> packageStatePageUrlAndCmd state url Cmd.none
+                    ( Just NewEventR, _ ) ->
+                      let ( loading, currentTimeIs ) = init () url key
+                      in packageStatePageUrlAndCmd loading.state url currentTimeIs
+                    ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (fetchEvent id)
+                    ( Just (EventIdR id), ViewEventState (ViewEvent _ event _) ) ->
+                      if event.id == id
+                      then packageStatePageUrlAndCmd state url Cmd.none
+                      else packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (fetchEvent id)
+                    ( Just (EventIdR id), _ ) -> packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (fetchEvent id)
+                    ( Nothing, _ ) -> packageStatePageUrlAndCmd Failure url Cmd.none
+
+            NewEventMsg nem ->
+              case state of
+                NewEventState nes ->
                   let
-                    (newState, newCmd) = case P.parse routeParser url of
-                                       Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
-                                       Just (EventIdR id) -> ( ViewEventState LoadingEvent, fetchEvent id )
-                                       Nothing -> ( Failure, Cmd.none )
-                  in ( Just zone, newState, newCmd )
-                UrlRequest _ -> ( Nothing, state, Cmd.none )
-                UrlChange url ->
-                      case (P.parse routeParser url, state) of
-                        ( Just NewEventR, NewEventState nes ) -> ( Nothing, state, Cmd.none )
-                        ( Just NewEventR, _ ) ->
-                          let ( loading, currentTimeIs ) = init () url key
-                          in ( Nothing, loading.state, currentTimeIs )
-                        ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> ( Nothing, ViewEventState LoadingEvent, fetchEvent id )
-                        ( Just (EventIdR id), ViewEventState (ViewEvent _ event _) ) ->
-                          if event.id == id
-                          then ( Nothing, state, Cmd.none )
-                          else ( Nothing, NewEventState NewEventLoading, fetchEvent id )
-                        ( Just (EventIdR id), _ ) -> ( Nothing, NewEventState NewEventLoading, fetchEvent id )
-                        ( Nothing, _ ) -> ( Nothing, Failure, Cmd.none )
+                    newEventPageState =
+                      { state = nes
+                      , key = key
+                      , timeZone = timeZone
+                      , pageUrl = pageUrl
+                      }
+                    (newState, newCmd) = NewEvent.update nem newEventPageState
+                  in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+                _ -> packageStateAndCmd Loading Cmd.none
 
-
-
-                NewEventMsg nem ->
-                  case state of
-                    NewEventState nes ->
-                      let
-                        newEventPageState =
-                          { state = nes
-                          , key = key
-                          , timeZone = timeZone
-                          }
-                        (newState, newCmd) = NewEvent.update nem newEventPageState
-                      in (Just newState.timeZone, newState.state, newCmd)
-                    _ -> ( Nothing, Loading, Cmd.none )
-
-                ViewEventMsg vem ->
-                  case state of
-                    ViewEventState viewEventState ->
-                      let
-                        viewEventPageState = mapPageState (always viewEventState) pageState
-                        (newState, newCmd) = ViewEvent.update vem viewEventPageState
-                      in (Just newState.timeZone, newState.state, newCmd)
-                    _ -> ( Nothing, Loading, Cmd.none )
-
-    in
-      ( { key = key, timeZone = Maybe.withDefault timeZone mZone, state = nextState }, cmd )
+            ViewEventMsg vem ->
+              case state of
+                ViewEventState viewEventState ->
+                  let
+                    viewEventPageState = mapPageState (always viewEventState) pageState
+                    (newState, newCmd) = ViewEvent.update vem viewEventPageState
+                  in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+                _ -> packageStateAndCmd Loading Cmd.none
 
 
 routeParser : Parser (Route -> a) a

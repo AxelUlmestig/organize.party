@@ -57,6 +57,7 @@ type NewEventState
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
                          , state: a
+                         , pageUrl : Url
                          }
 
 -- Msg
@@ -128,6 +129,7 @@ mapPageState f ps =
   { state = f ps.state
   , timeZone = ps.timeZone
   , key = ps.key
+  , pageUrl = ps.pageUrl
   }
 
 -- encoders and decoders

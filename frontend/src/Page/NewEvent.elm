@@ -95,6 +95,7 @@ update msg pageState =
           { state = NewEventState (NewEvent { picker = picker, input = input })
           , timeZone = pageState.timeZone
           , key = pageState.key
+          , pageUrl = pageState.pageUrl
           }
       in (newPageState, Cmd.none )
 
@@ -109,6 +110,7 @@ update msg pageState =
               { state = newEventState
               , timeZone = pageState.timeZone
               , key = pageState.key
+              , pageUrl = pageState.pageUrl
               }
           in ( newPageState, Cmd.none )
         _ -> ( format (NewEventState pageState.state), Cmd.none )
@@ -127,6 +129,7 @@ update msg pageState =
               { state = NewEventState (NewEvent { oldState | picker = newPicker })
               , timeZone = pageState.timeZone
               , key = pageState.key
+              , pageUrl = pageState.pageUrl
               }
           in ( newPageState, Cmd.none )
         _ -> ( format (NewEventState pageState.state), Cmd.none )
