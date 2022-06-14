@@ -63,8 +63,8 @@ view pageState =
                   [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
                   , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
                 ]
-                , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
               ]
+              , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
 
             , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
               [ H.h5 [ A.class "mb-4" ] [ H.text "Where" ]
