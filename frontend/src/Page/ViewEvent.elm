@@ -28,7 +28,7 @@ borderRadius = A.style "border-radius" "5px"
 
 disableUnlessValidInput { email, name } =
   let
-      validEmailRegex = "^[a-zA-Z0-9.!#$%&''*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+      validEmailRegex = "^ *[a-zA-Z0-9.!#$%&''*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)* *$"
       mRegex = Regex.fromString validEmailRegex
 
       mContains = Maybe.map (\regex -> Regex.contains regex email) mRegex
