@@ -48,6 +48,7 @@ executable events
                      , mtl
                      , utf8-string
                      , smtp-mail
+                     , mime-mail
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
                      , NamedFieldPuns

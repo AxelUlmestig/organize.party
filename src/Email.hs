@@ -1,14 +1,18 @@
-module Email (eventToICalendarString) where
+module Email (eventToICalendarString, sendEmailInvitation) where
 
+import qualified Data.ByteString.Lazy     as LBS
 import           Data.String.Interpolate  (__i)
 import           Data.Text
+import           Data.Text.Lazy           (fromStrict)
 import           Data.Time.Format.ISO8601 (iso8601Show)
+import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
+
 import           Types.Attendee           (Attendee (..))
 import           Types.Event              (Event (..))
 import qualified Types.Event              as Event
 
-eventToICalendarString :: Event -> Text
+eventToICalendarString :: Event -> LBS.ByteString
 eventToICalendarString event@Event{Event.id = eid, startTime, endTime, title, description, location} =
   [__i|
     BEGIN:VCALENDAR
@@ -42,9 +46,10 @@ sendEmailInvitation event@Event{title} Attendee{email, name} = do
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = plainTextPart (formatDescription event)
-  let html       = htmlPart "<h1>HTML</h1>"
+  let body       = Mail.plainPart (fromStrict (formatDescription event))
+  let html       = Mail.htmlPart "<h1>You have been invited without port</h1>"
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString event
 
-  let mail = simpleMail from to cc bcc subject [body, html, attachment]
+  let mail = SMTP.simpleMail from to cc bcc subject [body, html, attachment]
 
-  SMTP.sendMail SMTP.host mail
+  SMTP.sendMailWithLogin "mail.mydomain.se" "axel@mydomain.se" "secretpassword" mail

@@ -12,6 +12,7 @@ import           Control.Monad.Except   (MonadError (throwError))
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
+import           Email                  (sendEmailInvitation)
 import           Endpoints.GetEvent     (getEvent)
 import           Hasql.Session          (CommandError (ResultError),
                                          QueryError (QueryError),
@@ -40,7 +41,10 @@ attend connection eventId attendee@AttendInput { eventId = bodyEventId } =
 
     eAttendee <- liftIO $ Hasql.run session connection
     case eAttendee of
-      Right attendee -> getEvent connection eventId
+      Right attendee -> do
+        event <- getEvent connection eventId
+        liftIO $ sendEmailInvitation event attendee
+        pure event
       Left err -> do
         liftIO $ print err
         case err of
