@@ -4,6 +4,9 @@ import qualified Data.ByteString.Lazy     as LBS
 import           Data.String.Interpolate  (__i)
 import           Data.Text
 import           Data.Text.Lazy           (fromStrict)
+import qualified Data.Text.Lazy           as LT
+import           Data.Time.Clock          (UTCTime)
+import           Data.Time.Format         (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601 (iso8601Show)
 import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
@@ -19,19 +22,19 @@ eventToICalendarString event@Event{Event.id = eid, startTime, endTime, title, de
     VERSION:2.0
     PRODID:-//hacksw/handcal//NONSGML v1.0//EN
     BEGIN:VEVENT
-    UID:${eid}
-    DTSTAMP:#{startTime}
+    UID:#{eid}
+    DTSTAMP:#{formatICalendarTimestamp startTime}
     ORGANIZER;CN=John Doe:MAILTO:john.doe@example.com
-    DTSTART:#{startTime}
-    #{maybe "" (("DTEND:" <>) . iso8601Show) endTime}
+    DTSTART:#{formatICalendarTimestamp startTime}
+    #{maybe "" (("DTEND:" <>) . formatICalendarTimestamp) endTime}
     SUMMARY:#{title}
-    DESCRIPTION:#{formatDescription event}
+    DESCRIPTION:#{LT.replace "\n" "\\n" (formatDescription event)}
     LOCATION:#{location}
     END:VEVENT
     END:VCALENDAR
   |]
 
-formatDescription :: Event -> Text
+formatDescription :: Event -> LT.Text
 formatDescription Event{description, Event.id = eid} =
   [__i|
     #{description}
@@ -46,10 +49,12 @@ sendEmailInvitation event@Event{title} Attendee{email, name} = do
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = Mail.plainPart (fromStrict (formatDescription event))
-  let html       = Mail.htmlPart "<h1>You have been invited without port</h1>"
+  let body       = Mail.plainPart (formatDescription event)
   let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString event
 
-  let mail = SMTP.simpleMail from to cc bcc subject [body, html, attachment]
+  let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
   SMTP.sendMailWithLogin "mail.mydomain.se" "axel@mydomain.se" "secretpassword" mail
+
+formatICalendarTimestamp :: UTCTime -> String
+formatICalendarTimestamp = formatTime defaultTimeLocale "%Y%m%dT%k%M%SZ"
