@@ -2,3 +2,4 @@
 frontend/elm-stuff/
 dist-newstyle/
 frontend/index.html
+.env

@@ -3,10 +3,10 @@ FROM haskell:8.10
 WORKDIR /events
 
 RUN apt-get update && apt-get install -y libgmp10 postgresql postgresql-contrib libpq-dev
-RUN cabal update
 
 COPY events.cabal /events/
 
+RUN cabal update
 RUN cabal build --only-dependencies
 
 COPY src /events/src
@@ -20,6 +20,4 @@ COPY frontend/static/ /events/frontend/static/
 # RUN cabal install --installdir=. --enable-executable-static
 
 ENTRYPOINT ["cabal", "run"]
-
-
 
