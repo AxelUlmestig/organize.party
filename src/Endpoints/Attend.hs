@@ -1,24 +1,26 @@
 module Endpoints.Attend (attend) where
 
+import           Control.Concurrent     (forkIO)
+import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Profunctor        (dimap, lmap)
-import           Hasql.Connection       (Connection)
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (maybeStatement, resultlessStatement,
-                                         singletonStatement)
-
-import           Control.Monad.Except   (MonadError (throwError))
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
 import           Email                  (sendEmailInvitation)
 import           Endpoints.GetEvent     (getEvent)
+import           Hasql.Connection       (Connection)
 import           Hasql.Session          (CommandError (ResultError),
                                          QueryError (QueryError),
                                          ResultError (ServerError))
+import qualified Hasql.Session          as Hasql
+import           Hasql.Statement        (Statement)
+import           Hasql.TH               (maybeStatement, resultlessStatement,
+                                         singletonStatement)
 import           Servant                (ServerError (errBody), err400, err404,
                                          err500)
+
+import qualified Email
 import           Types.AttendInput      (AttendInput (..))
 import qualified Types.AttendInput      as VP
 import           Types.Attendee         (Attendee, writeStatus)
@@ -26,8 +28,8 @@ import qualified Types.Attendee         as Attendee
 import           Types.Event            (Event)
 
 
-attend :: (MonadError ServerError m, MonadIO m) => Connection -> UUID -> AttendInput -> m Event
-attend connection eventId attendee@AttendInput { eventId = bodyEventId } =
+attend :: (MonadError ServerError m, MonadIO m) => Connection -> Email.SmtpConfig -> UUID -> AttendInput -> m Event
+attend connection smtpConfig eventId attendee@AttendInput { eventId = bodyEventId } =
   if eventId /= bodyEventId
   then throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
   else do
@@ -43,12 +45,12 @@ attend connection eventId attendee@AttendInput { eventId = bodyEventId } =
     case eAttendee of
       Right attendee -> do
         event <- getEvent connection eventId
-        liftIO $ sendEmailInvitation event attendee
+        liftIO . forkIO $ sendEmailInvitation smtpConfig event attendee
         pure event
       Left err -> do
         liftIO $ print err
         case err of
-          QueryError _ _ (ResultError (ServerError "23503" _ _ _)) -> throwError err404 { errBody = "Event not found" }
+          QueryError _ _ (ResultError (ServerError "23503" _ _ _ _)) -> throwError err404 { errBody = "Event not found" }
           _                                                        -> throwError err500 { errBody = "Something went wrong" }
 
 findExistingStatement :: Statement AttendInput (Maybe Attendee)

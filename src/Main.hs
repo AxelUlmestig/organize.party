@@ -28,6 +28,7 @@ import           System.Environment          (lookupEnv)
 import           System.Exit                 (die)
 import           Text.Read                   (readMaybe)
 
+import qualified Email
 import qualified Endpoints.Attend
 import qualified Endpoints.CreateEvent
 import qualified Endpoints.GetEvent
@@ -51,8 +52,8 @@ type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 api :: Proxy API
 api = Proxy
 
-app :: Connection -> Application
-app = simpleCors . serve api . server
+app :: Connection -> Email.SmtpConfig -> Application
+app connection = simpleCors . serve api . server connection
 
 getDbSettings :: IO (Either String Settings)
 getDbSettings = do
@@ -63,24 +64,35 @@ getDbSettings = do
       port <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       pure $ settings host port "postgres" "postgres" "events"
-  where
-    maybeToEither _ (Just a)  = Right a
-    maybeToEither err Nothing = Left err
+
+getSmtpConfig :: IO (Either String Email.SmtpConfig)
+getSmtpConfig = do
+  mServer <- lookupEnv "SMTP_SERVER"
+  mPort <- lookupEnv "SMTP_PORT"
+  mLogin <- lookupEnv "SMTP_LOGIN"
+  mPassword <- lookupEnv "SMTP_PASSWORD"
+  pure do
+    server <- maybeToEither "Error: Missing env variable SMTP_SERVER" mServer
+    port <- maybeToEither "Error: Missing env variable SMTP_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from SMTP_PORT" . readMaybe
+    login <- maybeToEither "Error: Missing env variable SMTP_LOGIN" mLogin
+    password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
+    pure Email.SmtpConfig {Email.server, Email.port, Email.login, Email.password}
 
 main :: IO ()
 main = do
   dbSettings <- getDbSettings >>= either die pure
+  smtpConfig <- getSmtpConfig >>= either die pure
   eConnection <- acquire dbSettings
   case eConnection of
     Left err -> print err
     Right connection -> do
       putStrLn "listening on port 8081..."
-      run 8081 $ app connection
+      run 8081 $ app connection smtpConfig
 
-server :: Connection -> Server API
-server connection = Endpoints.GetEvent.getEvent connection
+server :: Connection -> Email.SmtpConfig -> Server API
+server connection smtpConfig = Endpoints.GetEvent.getEvent connection
     :<|> Endpoints.CreateEvent.createEvent connection
-    :<|> Endpoints.Attend.attend connection
+    :<|> Endpoints.Attend.attend connection smtpConfig
     :<|> frontPage
     :<|> eventPage
     :<|> serveDirectoryWebApp "frontend/static"
@@ -99,3 +111,7 @@ instance Accept HTML where
 
 instance MimeRender HTML RawHtml where
   mimeRender _ = unRaw
+
+-- util
+maybeToEither _ (Just a)  = Right a
+maybeToEither err Nothing = Left err

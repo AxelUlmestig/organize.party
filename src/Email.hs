@@ -1,4 +1,4 @@
-module Email (eventToICalendarString, sendEmailInvitation) where
+module Email (eventToICalendarString, sendEmailInvitation, SmtpConfig(..)) where
 
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.String.Interpolate  (__i)
@@ -10,10 +10,18 @@ import           Data.Time.Format         (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601 (iso8601Show)
 import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
+import           Network.Socket           (PortNumber)
 
 import           Types.Attendee           (Attendee (..))
 import           Types.Event              (Event (..))
 import qualified Types.Event              as Event
+
+data SmtpConfig = SmtpConfig
+  { server   :: String
+  , port     :: PortNumber
+  , login    :: String
+  , password :: String
+  }
 
 eventToICalendarString :: Event -> LBS.ByteString
 eventToICalendarString event@Event{Event.id = eid, startTime, endTime, title, description, location} =
@@ -42,8 +50,8 @@ formatDescription Event{description, Event.id = eid} =
     https://organize.party/e/#{eid}
   |]
 
-sendEmailInvitation :: Event -> Attendee -> IO ()
-sendEmailInvitation event@Event{title} Attendee{email, name} = do
+sendEmailInvitation :: SmtpConfig -> Event -> Attendee -> IO ()
+sendEmailInvitation SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let to         = [SMTP.Address (Just name) email]
   let cc         = []
@@ -54,7 +62,7 @@ sendEmailInvitation event@Event{title} Attendee{email, name} = do
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
-  SMTP.sendMailWithLogin "mail.mydomain.se" "axel@mydomain.se" "secretpassword" mail
+  SMTP.sendMailWithLogin' server port login password mail
 
 formatICalendarTimestamp :: UTCTime -> String
 formatICalendarTimestamp = formatTime defaultTimeLocale "%Y%m%dT%k%M%SZ"
