@@ -102,7 +102,7 @@ update msg pageState =
     let
         { key, timeZone, state, pageUrl } = pageState
 
-        packageStateAndCmd nextState cmd = ( { key = key, timeZone = timeZone, state = nextState, pageUrl = pageUrl }, cmd )
+        packageStateAndCmd newZone nextState cmd = ( { key = key, timeZone = newZone, state = nextState, pageUrl = pageUrl }, cmd )
         packageStateTimeZoneAndCmd nextState zone cmd = ( { key = key, timeZone = zone, state = nextState, pageUrl = pageUrl }, cmd )
         packageStatePageUrlAndCmd nextState url cmd = ( { key = key, timeZone = timeZone, state = nextState, pageUrl = url }, cmd )
     in  case msg of
@@ -112,9 +112,9 @@ update msg pageState =
                                    Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
                                    Just (EventIdR id) -> ( ViewEventState LoadingEvent, fetchEvent id )
                                    Nothing -> ( Failure, Cmd.none )
-              in packageStateAndCmd newState newCmd
+              in packageStateAndCmd zone newState newCmd
 
-            UrlRequest _ -> packageStateAndCmd state Cmd.none
+            UrlRequest _ -> packageStateAndCmd timeZone state Cmd.none
 
             UrlChange url ->
                   case (P.parse routeParser url, state) of
@@ -142,7 +142,7 @@ update msg pageState =
                       }
                     (newState, newCmd) = NewEvent.update nem newEventPageState
                   in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-                _ -> packageStateAndCmd Loading Cmd.none
+                _ -> packageStateAndCmd timeZone Loading Cmd.none
 
             ViewEventMsg vem ->
               case state of
@@ -151,7 +151,7 @@ update msg pageState =
                     viewEventPageState = mapPageState (always viewEventState) pageState
                     (newState, newCmd) = ViewEvent.update vem viewEventPageState
                   in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-                _ -> packageStateAndCmd Loading Cmd.none
+                _ -> packageStateAndCmd timeZone Loading Cmd.none
 
 
 routeParser : Parser (Route -> a) a
