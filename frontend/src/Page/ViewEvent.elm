@@ -20,6 +20,9 @@ import FontAwesome.Layering as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Regex
+import List.Extra
+import Dict exposing (Dict)
+import Tuple
 
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
@@ -49,6 +52,7 @@ view pageState =
                                     "Not Coming" -> UpdateAttendeeInput { attendeeInput | status = NotComing }
                                     _ -> UpdateAttendeeInput attendeeInput)
 
+        attendeeDict = (splitAttendees attendees)
       in
         H.div []
           [ case maybeModal of
@@ -105,11 +109,11 @@ view pageState =
           , H.div []
               [ H.b [] [ H.text "Are you attending?" ]
 
-              , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-              , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
-
               , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
               , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
+
+              , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
+              , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
 
               , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
               , H.div []
@@ -123,23 +127,38 @@ view pageState =
                 [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (ViewEventMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
                 ]
               ]
-          , H.br [] []
-          , H.h3 [] [ H.text "Attendees" ]
 
-          , H.div [ A.style "width" "100%" ]
-            ( H.div [ A.style "display" "flex", A.style "width" "100%" ]
-              [ H.span [ A.style "flex" "1", A.style "font-weight" "bold" ] [ H.text "Name" ]
-              , H.span [ A.style "flex" "1", A.style "font-weight" "bold" ] [ H.text "Coming?" ]
-              , H.span [ A.style "flex" "1", A.style "font-weight" "bold" ] [ H.text "Plus One?" ]
-              ]
-              :: List.map (\{name, status, plusOne} ->
-                H.div [ A.style "display" "flex", A.style "width" "100%" ]
-                [ H.span [ A.style "flex" "1" ] [ H.text name ]
-                , H.span [ A.style "flex" "1" ] [ H.text (attendeeStatusToString status) ]
-                , H.span [ A.style "flex" "1" ] [ H.text (if plusOne then "Yes" else "No") ]
-                ]
-                ) attendees
-            )
+          , H.br [] []
+          , H.br [] []
+
+          , case Dict.get "Coming" attendeeDict of
+              Nothing -> H.h3 [] [ H.text "Attending: 0" ]
+              Just attending ->
+                  let (comingCount, plusOnesCount) = countAttendees attending
+                  in H.div []
+                    [ H.h3 [] [ H.text ("Attending: " ++ String.fromInt comingCount ++ if plusOnesCount == 0 then "" else (" (+" ++ String.fromInt plusOnesCount ++ ")")) ]
+                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text (name ++ if plusOne then " (+1)" else "") ]) attending)
+                    ]
+
+          , H.br [] []
+          , case Dict.get "Maybe Coming" attendeeDict of
+              Nothing -> H.div [] []
+              Just maybeAttending ->
+                  let (maybeComingCount, plusOnesCount) = countAttendees maybeAttending
+                  in H.div []
+                    [ H.h3 [] [ H.text ("Maybe Attending: " ++ String.fromInt maybeComingCount ++ if plusOnesCount == 0 then "" else (" (+" ++ String.fromInt plusOnesCount ++ ")")) ]
+                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text (name ++ if plusOne then " (+1)" else "") ]) maybeAttending)
+                    ]
+
+          , H.br [] []
+          , case Dict.get "Not Coming" attendeeDict of
+              Nothing -> H.div [] []
+              Just notAttending ->
+                  let (notComingCount, plusOnesCount) = countAttendees notAttending
+                  in H.div []
+                    [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
+                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text name ]) notAttending)
+                    ]
           ]
 
 
@@ -188,3 +207,19 @@ attendEvent input = Http.request
                       , tracker = Nothing
                       }
 
+splitAttendees : List Attendee -> Dict String (List Attendee)
+splitAttendees = listToDict (attendeeStatusToString << .status)
+
+countAttendees : List Attendee -> (Int, Int)
+countAttendees = List.foldl (\attendee (coming, plusOne) -> (coming + 1, plusOne + if attendee.plusOne then 1 else 0)) (0, 0)
+
+listToDict : (a -> comparable) -> List a -> Dict comparable (List a)
+listToDict getKey =
+  let
+      updateExisting newValue maybeExisting =
+          case maybeExisting of
+            Nothing -> Just [newValue]
+            Just list -> Just (list ++ [newValue])
+
+      f x = Dict.update (getKey x) (updateExisting x)
+  in List.foldr f Dict.empty
