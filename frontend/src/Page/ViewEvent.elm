@@ -219,7 +219,7 @@ listToDict getKey =
       updateExisting newValue maybeExisting =
           case maybeExisting of
             Nothing -> Just [newValue]
-            Just list -> Just (list ++ [newValue])
+            Just list -> Just (newValue :: list)
 
       f x = Dict.update (getKey x) (updateExisting x)
   in List.foldr f Dict.empty
