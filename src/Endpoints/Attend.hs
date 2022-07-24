@@ -1,6 +1,7 @@
 module Endpoints.Attend (attend) where
 
 import           Control.Concurrent     (forkIO)
+import           Control.Monad          (void, when)
 import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Profunctor        (dimap, lmap)
@@ -34,18 +35,24 @@ attend connection smtpConfig eventId attendee@AttendInput { eventId = bodyEventI
   then throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
   else do
     let session = do
-                  mExistingAttendee <- Hasql.statement attendee findExistingStatement
-                  case mExistingAttendee of
-                    Just existingAttendee -> pure existingAttendee
-                    Nothing -> do
-                      Hasql.statement attendee obsoleteOldAttendeeStatement
-                      Hasql.statement attendee insertAttendeeStatement
+          emailSentAlready <- Hasql.statement attendee emailSentAlreadyStatement
+          mExistingAttendee <- Hasql.statement attendee findExistingStatement
+
+          insertedAttendee@Attendee.Attendee{Attendee.status} <- case mExistingAttendee of
+              Just existingAttendee -> pure existingAttendee
+              Nothing -> do
+                Hasql.statement attendee obsoleteOldAttendeeStatement
+                Hasql.statement attendee insertAttendeeStatement
+
+          pure (insertedAttendee, not emailSentAlready && status /= Attendee.NotComing)
+
 
     eAttendee <- liftIO $ Hasql.run session connection
     case eAttendee of
-      Right attendee -> do
+      Right (attendee, shouldSendEmail) -> do
         event <- getEvent connection eventId
-        liftIO . forkIO $ sendEmailInvitation smtpConfig event attendee
+
+        when shouldSendEmail (void . liftIO . forkIO $ sendEmailInvitation smtpConfig event attendee)
         pure event
       Left err -> do
         liftIO $ print err
@@ -90,3 +97,16 @@ insertAttendeeStatement = dimap to to [singletonStatement|
                         values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool)
                         returning event_id::uuid, email::text, name::text, status::text, plus_one::bool, rsvp_at::timestamptz
                       |]
+
+emailSentAlreadyStatement :: Statement AttendInput Bool
+emailSentAlreadyStatement = lmap (\AttendInput{eventId, email} -> (eventId, email))
+  [singletonStatement|
+    select exists (
+      select 1
+      from attendees
+      where
+        event_id = $1::uuid
+        and email = $2::text
+        and status in ('coming', 'maybe_coming')
+    )::bool
+  |]
