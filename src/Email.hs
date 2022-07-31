@@ -1,4 +1,4 @@
-module Email (eventToICalendarString, sendEmailInvitation, SmtpConfig(..)) where
+module Email (eventToICalendarString, sendEmailInvitation) where
 
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.String.Interpolate  (__i)
@@ -12,16 +12,10 @@ import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
 import           Network.Socket           (PortNumber)
 
+import           Types.AppEnv             (SmtpConfig (..))
 import           Types.Attendee           (Attendee (..))
 import           Types.Event              (Event (..))
 import qualified Types.Event              as Event
-
-data SmtpConfig = SmtpConfig
-  { server   :: String
-  , port     :: PortNumber
-  , login    :: String
-  , password :: String
-  }
 
 eventToICalendarString :: Event -> LBS.ByteString
 eventToICalendarString event@Event{Event.id = eid, startTime, endTime, title, description, location} =

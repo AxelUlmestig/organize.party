@@ -4,6 +4,7 @@ import           Control.Concurrent     (forkIO)
 import           Control.Monad          (void, when)
 import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Reader   (MonadReader, asks)
 import           Data.Profunctor        (dimap, lmap)
 import           Data.Text              (pack)
 import           Data.Types.Injective   (to)
@@ -22,6 +23,7 @@ import           Servant                (ServerError (errBody), err400, err404,
                                          err500)
 
 import qualified Email
+import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import           Types.AttendInput      (AttendInput (..))
 import qualified Types.AttendInput      as VP
 import           Types.Attendee         (Attendee, writeStatus)
@@ -29,8 +31,8 @@ import qualified Types.Attendee         as Attendee
 import           Types.Event            (Event)
 
 
-attend :: (MonadError ServerError m, MonadIO m) => Connection -> Email.SmtpConfig -> UUID -> AttendInput -> m Event
-attend connection smtpConfig eventId attendee@AttendInput { eventId = bodyEventId } =
+attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
+attend eventId attendee@AttendInput { eventId = bodyEventId } =
   if eventId /= bodyEventId
   then throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
   else do
@@ -47,12 +49,15 @@ attend connection smtpConfig eventId attendee@AttendInput { eventId = bodyEventI
           pure (insertedAttendee, not emailSentAlready && status /= Attendee.NotComing)
 
 
-    eAttendee <- liftIO $ Hasql.run session connection
+    conn <- asks connection
+    eAttendee <- liftIO $ Hasql.run session conn
     case eAttendee of
       Right (attendee, shouldSendEmail) -> do
-        event <- getEvent connection eventId
+        event <- getEvent eventId
 
-        when shouldSendEmail (void . liftIO . forkIO $ sendEmailInvitation smtpConfig event attendee)
+        when shouldSendEmail $ do
+          smtpConf <- asks smtpConfig
+          void . liftIO . forkIO $ sendEmailInvitation smtpConf event attendee
         pure event
       Left err -> do
         liftIO $ print err

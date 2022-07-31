@@ -19,6 +19,7 @@ executable events
                      , Types.CreateEventInput
                      , Types.Attendee
                      , Types.AttendInput
+                     , Types.AppEnv
                      , Endpoints.CreateEvent
                      , Endpoints.GetEvent
                      , Endpoints.Attend
@@ -49,6 +50,7 @@ executable events
                      , smtp-mail
                      , mime-mail
                      , network
+                     , transformers
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
                      , NamedFieldPuns

@@ -6,6 +6,7 @@
 module Main where
 
 import           Control.Monad.IO.Class      (liftIO)
+import           Control.Monad.Trans.Reader  (ReaderT (..))
 import qualified Data.ByteString             as BS
 import qualified Data.ByteString.Lazy        as LBS
 import           Data.ByteString.UTF8        as BSU
@@ -32,6 +33,7 @@ import qualified Email
 import qualified Endpoints.Attend
 import qualified Endpoints.CreateEvent
 import qualified Endpoints.GetEvent
+import           Types.AppEnv                (AppEnv (..), SmtpConfig (..))
 import           Types.AttendInput           (AttendInput)
 import           Types.Attendee              (Attendee)
 import           Types.CreateEventInput      (CreateEventInput)
@@ -49,11 +51,24 @@ type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "att
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 
+type MyHandler = ReaderT AppEnv Handler
+
 api :: Proxy API
 api = Proxy
 
-app :: Connection -> Email.SmtpConfig -> Application
-app connection = simpleCors . serve api . server connection
+app :: AppEnv -> Application
+app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servantServer
+  where
+    servantServer =
+        Endpoints.GetEvent.getEvent
+        :<|> Endpoints.CreateEvent.createEvent
+        :<|> Endpoints.Attend.attend
+        :<|> frontPage
+        :<|> eventPage
+        :<|> serveDirectoryWebApp "frontend/static"
+      where
+        frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
+        eventPage _ = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
 
 getDbSettings :: IO (Either String Settings)
 getDbSettings = do
@@ -65,7 +80,7 @@ getDbSettings = do
 
       pure $ settings host port "postgres" "postgres" "events"
 
-getSmtpConfig :: IO (Either String Email.SmtpConfig)
+getSmtpConfig :: IO (Either String SmtpConfig)
 getSmtpConfig = do
   mServer <- lookupEnv "SMTP_SERVER"
   mPort <- lookupEnv "SMTP_PORT"
@@ -76,7 +91,7 @@ getSmtpConfig = do
     port <- maybeToEither "Error: Missing env variable SMTP_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from SMTP_PORT" . readMaybe
     login <- maybeToEither "Error: Missing env variable SMTP_LOGIN" mLogin
     password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
-    pure Email.SmtpConfig {Email.server, Email.port, Email.login, Email.password}
+    pure SmtpConfig {server, port, login, password}
 
 main :: IO ()
 main = do
@@ -87,18 +102,7 @@ main = do
     Left err -> print err
     Right connection -> do
       putStrLn "listening on port 8081..."
-      run 8081 $ app connection smtpConfig
-
-server :: Connection -> Email.SmtpConfig -> Server API
-server connection smtpConfig = Endpoints.GetEvent.getEvent connection
-    :<|> Endpoints.CreateEvent.createEvent connection
-    :<|> Endpoints.Attend.attend connection smtpConfig
-    :<|> frontPage
-    :<|> eventPage
-    :<|> serveDirectoryWebApp "frontend/static"
-  where
-    frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
-    eventPage _ = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
+      run 8081 $ app AppEnv { connection, smtpConfig }
 
 -- type shenanigans to enable serving raw html
 

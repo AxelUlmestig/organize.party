@@ -1,6 +1,8 @@
 module Endpoints.GetEvent (getEvent, getAttendees) where
 
+import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Reader   (MonadReader, asks)
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
 import           Hasql.Connection       (Connection)
@@ -12,14 +14,15 @@ import           Hasql.Statement        (Statement)
 import           Hasql.TH               (singletonStatement, vectorStatement)
 import           Servant                (ServerError (..), err404, err500)
 
-import           Control.Monad.Except   (MonadError (throwError))
+import           Types.AppEnv
 import           Types.Event            (Attendee, Event (..))
 
-getEvent :: (MonadError ServerError m, MonadIO m) => Connection -> UUID -> m Event
-getEvent connection eventId = do
-    eEvent <- liftIO $ Hasql.run (Hasql.statement eventId statement) connection
+getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
+getEvent eventId = do
+    conn <- asks connection
+    eEvent <- liftIO $ Hasql.run (Hasql.statement eventId statement) conn
     case eEvent of
-      Right event -> getAttendees connection event
+      Right event -> getAttendees event
       Left err    -> do
         liftIO $ print err
         case err of
@@ -41,9 +44,10 @@ statement = to <$> [singletonStatement|
     where id = $1::uuid
   |]
 
-getAttendees :: (MonadError ServerError m, MonadIO m) => Connection -> Event -> m Event
-getAttendees connection event@Event{Types.Event.id} = do
-  eAttendees <- liftIO $ Hasql.run (Hasql.statement id getAttendeesStatement) connection
+getAttendees :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => Event -> m Event
+getAttendees event@Event{Types.Event.id} = do
+  conn <- asks connection
+  eAttendees <- liftIO $ Hasql.run (Hasql.statement id getAttendeesStatement) conn
   case eAttendees of
     Left err -> do
       liftIO $ print err
