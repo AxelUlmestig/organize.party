@@ -3,3 +3,7 @@
 
 tables/events 2022-06-04T11:43:29Z Axel Ulmestig <axel.ulmestig@gmail.com> # add events able
 tables/attendees 2022-06-04T12:03:52Z Axel Ulmestig <axel.ulmestig@gmail.com> # add attendees table
+@2022-07-31 2022-07-31T11:13:53Z Axel Ulmestig <axel.ulmestig@gmail.com> # 2022-07-31
+
+add_event_passwords 2022-07-31T11:14:46Z Axel Ulmestig <axel.ulmestig@gmail.com> # 2022-07-31
+tables/events [tables/events@2022-07-31] 2022-07-31T16:23:13Z Axel Ulmestig <axel.ulmestig@gmail.com> # add password columns
