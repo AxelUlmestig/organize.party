@@ -13,16 +13,13 @@ data CreateEventInput = CreateEventInput
                         , endTime        :: Maybe UTCTime
                         , location       :: Text
                         , googleMapsLink :: Maybe Text
+                        , password       :: Text
                         }
                         deriving (Generic)
 
 instance ToJSON CreateEventInput
 instance FromJSON CreateEventInput
 
-instance Injective (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) CreateEventInput where
-  to (title, description, startTime, endTime, location, googleMapsLink) = CreateEventInput title description startTime endTime location googleMapsLink
+instance Injective CreateEventInput (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, Text) where
+  to CreateEventInput{title, description, startTime, endTime, location, googleMapsLink, password} = (title, description, startTime, endTime, location, googleMapsLink, password)
 
-instance Injective CreateEventInput (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) where
-  to CreateEventInput{title, description, startTime, endTime, location, googleMapsLink} = (title, description, startTime, endTime, location, googleMapsLink)
-
-instance Iso (Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text) CreateEventInput

@@ -30,8 +30,11 @@ createEvent input = do
 statement :: Statement CreateEventInput Event
 statement = dimap to to
   [singletonStatement|
-    insert into events (title, description, time_start, time_end, location, location_google_maps_link)
-    values ($1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?)
+    insert into events (title, description, time_start, time_end, location, location_google_maps_link, password_salt, password_hash)
+    select $1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?, salt, digest($7::text || salt, 'sha256')
+    from (
+      select md5(random()::text || clock_timestamp()::text) as salt
+    ) t
     returning
       id::uuid,
       title::text,

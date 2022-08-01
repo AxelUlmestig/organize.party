@@ -102,6 +102,7 @@ type alias EventInput =
   , endTime        : Maybe Time.Posix
   , location       : String
   -- , googleMapsLink : Maybe String
+  , password       : String
   }
 
 -- Attendee
@@ -172,15 +173,17 @@ emptyEventInput startTime = { title = ""
                   , location = ""
                   , startTime = startTime
                   , endTime = Nothing
+                  , password = ""
                   }
 
 encodeEventInput : EventInput -> Value
-encodeEventInput { title, description, location, startTime, endTime } = Encode.object
+encodeEventInput { title, description, location, startTime, endTime, password } = Encode.object
                                                       [ ("title", Encode.string title)
                                                       , ("description", Encode.string description)
                                                       , ("location", Encode.string location)
                                                       , ("startTime", Iso8601.encode startTime)
                                                       , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
+                                                      , ("password", Encode.string password)
                                                       ]
 
 emptyAttendeeInput : String -> AttendeeInput
