@@ -42,7 +42,7 @@ import           Types.Event                 (Event)
 localPG :: Settings
 localPG = settings "db" 5433 "postgres" "postgres" "events"
 
-type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml :<|> Raw
+type API = EventsAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml :<|> EditEventHtml :<|> Raw
 
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type EventsAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
@@ -50,6 +50,7 @@ type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "att
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
+type EditEventHtml = "e" :> Capture "event_id" UUID :> "edit" :> Get '[HTML] RawHtml
 
 type MyHandler = ReaderT AppEnv Handler
 
@@ -64,7 +65,8 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> Endpoints.CreateEvent.createEvent
         :<|> Endpoints.Attend.attend
         :<|> frontPage
-        :<|> eventPage
+        :<|> eventPage -- view event
+        :<|> eventPage -- edit event
         :<|> serveDirectoryWebApp "frontend/static"
       where
         frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
