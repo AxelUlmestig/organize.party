@@ -22,6 +22,7 @@ executable events
                      , Types.AppEnv
                      , Endpoints.CreateEvent
                      , Endpoints.GetEvent
+                     , Endpoints.EditEvent
                      , Endpoints.Attend
                      , Email
   default-language:    Haskell2010
