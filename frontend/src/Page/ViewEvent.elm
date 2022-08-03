@@ -1,4 +1,4 @@
-module Page.ViewEvent exposing (view, update)
+module Page.ViewEvent exposing (view, update, fetchEvent)
 
 import Browser
 import Html as H exposing (Html)
@@ -36,6 +36,13 @@ disableUnlessValidInput { email, name } =
 
       mContains = Maybe.map (\regex -> Regex.contains regex email) mRegex
   in A.disabled (mContains /= Just True || name == "")
+
+fetchEvent : String -> Cmd Msg
+fetchEvent id =
+    Http.get
+        { url = "/api/v1/events/" ++ id
+        , expect = Http.expectJson (ViewEventMsg << LoadedEvent) eventDecoder
+        }
 
 view : PageState ViewEventState -> Html Msg
 view pageState =

@@ -4,10 +4,12 @@ module Types exposing (
     NewEventState(..),
     ViewEventState(..),
     ViewEventStateModal(..),
+    EditEventState(..),
 
     Msg(..),
     NewEventMsg(..),
     ViewEventMsg(..),
+    EditEventMsg(..),
 
     Event,
     EventInput,
@@ -38,8 +40,13 @@ import Json.Encode as Encode exposing (Value)
 type State
   = Loading
   | Failure
-  | ViewEventState ViewEventState
   | NewEventState NewEventState
+  | ViewEventState ViewEventState
+  | EditEventState EditEventState
+
+type NewEventState
+  = NewEvent { picker: DP.DatePicker, input: EventInput }
+  | NewEventLoading
 
 type ViewEventState
   = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
@@ -50,9 +57,9 @@ type ViewEventStateModal
   = InviteGuestsInfoModal
   | AttendeeSuccessModal
 
-type NewEventState
-  = NewEvent { picker: DP.DatePicker, input: EventInput }
-  | NewEventLoading
+type EditEventState
+  = EditEvent { picker: DP.DatePicker, input: EditEventInput }
+  | LoadingEventToEdit
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -67,6 +74,7 @@ type Msg
     | CurrentTimeIs Url Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
+    | EditEventMsg EditEventMsg
 
 type NewEventMsg
     = UpdateEventInput DP.DatePicker EventInput
@@ -82,10 +90,12 @@ type ViewEventMsg
     | LoadedEvent (Result Http.Error Event)
     | CloseModal
 
+type EditEventMsg
+    = LoadedEventForEdit (Result Http.Error Event)
 
 -- Event
 type alias Event =
-  { id : String
+  { id             : String
   , title          : String
   , description    : String
   , startTime      : Time.Posix
@@ -97,6 +107,17 @@ type alias Event =
 
 type alias EventInput =
   { title          : String
+  , description    : String
+  , startTime      : Time.Posix
+  , endTime        : Maybe Time.Posix
+  , location       : String
+  -- , googleMapsLink : Maybe String
+  , password       : String
+  }
+
+type alias EditEventInput =
+  { id              : String
+  , title          : String
   , description    : String
   , startTime      : Time.Posix
   , endTime        : Maybe Time.Posix

@@ -20,10 +20,10 @@ import Date as Date
 import Types exposing (..)
 import Page.NewEvent as NewEvent
 import Page.ViewEvent as ViewEvent
+import Page.EditEvent as EditEvent
 
 import FontAwesome.Styles as Icon
 
--- view : State -> Html Msg
 view : PageState State -> Browser.Document Msg
 view state =
   Browser.Document "📅"
@@ -79,16 +79,11 @@ view state =
           ViewEventState viewEventState -> ViewEvent.view (mapPageState (always viewEventState) state)
 
           NewEventState x -> NewEvent.view (mapPageState (always x) state)
+
+          EditEventState x -> EditEvent.view (mapPageState (always x) state)
       ]
   ]
 
-
-fetchEvent : String -> Cmd Msg
-fetchEvent id =
-    Http.get
-        { url = "/api/v1/events/" ++ id
-        , expect = Http.expectJson (ViewEventMsg << LoadedEvent) eventDecoder
-        }
 
 init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
 init _ url key =
@@ -110,7 +105,8 @@ update msg pageState =
               let
                 (newState, newCmd) = case P.parse routeParser url of
                                    Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
-                                   Just (EventIdR id) -> ( ViewEventState LoadingEvent, fetchEvent id )
+                                   Just (ViewEventR id) -> ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
+                                   Just (EditEventR id) -> ( EditEventState LoadingEventToEdit, EditEvent.fetchEvent id ) -- TODO: fetch event
                                    Nothing -> ( Failure, Cmd.none )
               in packageStateAndCmd zone newState newCmd
 
@@ -122,12 +118,18 @@ update msg pageState =
                     ( Just NewEventR, _ ) ->
                       let ( loading, currentTimeIs ) = init () url key
                       in packageStatePageUrlAndCmd loading.state url currentTimeIs
-                    ( Just (EventIdR id), ViewEventState AttendEventLoading ) -> packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (fetchEvent id)
-                    ( Just (EventIdR id), ViewEventState (ViewEvent _ event _) ) ->
+                    ( Just (ViewEventR id), ViewEventState AttendEventLoading ) -> packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
+                    ( Just (ViewEventR id), ViewEventState (ViewEvent _ event _) ) ->
                       if event.id == id
                       then packageStatePageUrlAndCmd state url Cmd.none
-                      else packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (fetchEvent id)
-                    ( Just (EventIdR id), _ ) -> packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (fetchEvent id)
+                      else packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (ViewEvent.fetchEvent id)
+                    ( Just (ViewEventR id), _ ) -> packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (ViewEvent.fetchEvent id)
+                    -- TODO: deal with url updated in EditEventState
+                    ( Just (EditEventR id), EditEventState (EditEvent { input } ) ) ->
+                      if input.id == id
+                      then packageStatePageUrlAndCmd state url Cmd.none
+                      else packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
+                    ( Just (EditEventR id), _ ) -> packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url Cmd.none
                     ( Nothing, _ ) -> packageStatePageUrlAndCmd Failure url Cmd.none
 
             NewEventMsg nem ->
@@ -153,15 +155,26 @@ update msg pageState =
                   in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
                 _ -> packageStateAndCmd timeZone Loading Cmd.none
 
+            EditEventMsg eem ->
+              case state of
+                EditEventState editEventState ->
+                  let
+                    editEventPageState = mapPageState (always editEventState) pageState
+                    (newState, newCmd) = EditEvent.update eem editEventPageState
+                  in packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+                _ -> packageStateAndCmd timeZone Loading Cmd.none
+
 
 routeParser : Parser (Route -> a) a
 routeParser = oneOf
     [ P.map NewEventR P.top
-    , P.map EventIdR (s "e" </> string)
+    , P.map ViewEventR (s "e" </> string)
+    , P.map EditEventR (s "e" </> string </> s "edit")
     ]
 
 type Route = NewEventR
-           | EventIdR String
+           | ViewEventR String
+           | EditEventR String
 
 pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
