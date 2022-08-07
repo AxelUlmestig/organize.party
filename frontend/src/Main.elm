@@ -106,11 +106,17 @@ update msg pageState =
                 (newState, newCmd) = case P.parse routeParser url of
                                    Just NewEventR -> ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
                                    Just (ViewEventR id) -> ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
-                                   Just (EditEventR id) -> ( EditEventState LoadingEventToEdit, EditEvent.fetchEvent id ) -- TODO: fetch event
+                                   Just (EditEventR id) -> ( EditEventState LoadingEventToEdit, EditEvent.fetchEvent id )
                                    Nothing -> ( Failure, Cmd.none )
               in packageStateAndCmd zone newState newCmd
 
-            UrlRequest _ -> packageStateAndCmd timeZone state Cmd.none
+            UrlRequest urlRequest ->
+                  case urlRequest of
+                    Browser.Internal url ->
+                      ( pageState, Nav.pushUrl key (Url.toString url) )
+
+                    Browser.External href ->
+                      ( pageState, Nav.load href )
 
             UrlChange url ->
                   case (P.parse routeParser url, state) of
@@ -123,13 +129,12 @@ update msg pageState =
                       if event.id == id
                       then packageStatePageUrlAndCmd state url Cmd.none
                       else packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (ViewEvent.fetchEvent id)
-                    ( Just (ViewEventR id), _ ) -> packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (ViewEvent.fetchEvent id)
-                    -- TODO: deal with url updated in EditEventState
+                    ( Just (ViewEventR id), _ ) -> packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
                     ( Just (EditEventR id), EditEventState (EditEvent { input } ) ) ->
                       if input.id == id
                       then packageStatePageUrlAndCmd state url Cmd.none
                       else packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
-                    ( Just (EditEventR id), _ ) -> packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url Cmd.none
+                    ( Just (EditEventR id), _ ) -> packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
                     ( Nothing, _ ) -> packageStatePageUrlAndCmd Failure url Cmd.none
 
             NewEventMsg nem ->

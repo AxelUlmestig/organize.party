@@ -51,7 +51,7 @@ view pageState =
     LoadingEvent -> H.text "Loading event..."
     ViewEvent maybeModal event attendeeInput ->
       let
-        { title, description, startTime, endTime, location, attendees } = event
+        { id, title, description, startTime, endTime, location, attendees } = event
 
         onStatusUpdate newStatus = ViewEventMsg (case newStatus of
                                     "Coming" -> UpdateAttendeeInput { attendeeInput | status = Coming }
@@ -90,27 +90,30 @@ view pageState =
                   ]
 
           , H.div []
-              [ H.div [] [ H.h1 [] [ H.text title ] ]
-              , H.div [] [ H.text description ]
-              , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
-                [ H.div []
-                  [ H.div [ A.style "margin-bottom" "1rem" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.locationDot)
-                    , H.text location
+            [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
+              [ H.h1 [] [ H.text title ]
+              , H.a [ A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.wrench) ]
+              ]
+            , H.div [] [ H.text description ]
+            , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
+              [ H.div []
+                [ H.div [ A.style "margin-bottom" "1rem" ]
+                  [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.locationDot)
+                  , H.text location
+                  ]
+                , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
+                  [ H.span [ A.style "flex" "1" ]
+                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.calendar)
+                    , H.text (viewEventDate pageState.timeZone startTime)
                     ]
-                    , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
-                      [ H.span [ A.style "flex" "1" ]
-                        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.calendar)
-                        , H.text (viewEventDate pageState.timeZone startTime)
-                        ]
-                      , H.span [ A.style "flex" "1" ]
-                        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.clock)
-                        , H.text (viewEventTime pageState.timeZone startTime)
-                        ]
-                      ]
+                  , H.span [ A.style "flex" "1" ]
+                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.clock)
+                    , H.text (viewEventTime pageState.timeZone startTime)
+                    ]
                   ]
                 ]
               ]
+            ]
 
           , H.br [] []
           , H.div []
