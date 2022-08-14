@@ -5,6 +5,7 @@ module Types exposing (
     ViewEventState(..),
     ViewEventStateModal(..),
     EditEventState(..),
+    EditEventStateModal(..),
 
     Msg(..),
     NewEventMsg(..),
@@ -61,8 +62,11 @@ type ViewEventStateModal
 
 type EditEventState
   = LoadingEventToEdit
-  | EditEvent { picker: DP.DatePicker, input: EditEventInput }
+  | EditEvent (Maybe EditEventStateModal) { picker: DP.DatePicker, input: EditEventInput }
   | SubmittedEdit { picker: DP.DatePicker, input: EditEventInput }
+
+type EditEventStateModal
+  = WrongPasswordModal
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -99,6 +103,7 @@ type EditEventMsg
     | EditEventOpenPicker
     | SubmitEdit { picker: DP.DatePicker, input: EditEventInput }
     | EditedEvent (Result Http.Error Event)
+    | CloseEditEventModal
 
 -- Event
 type alias Event =
