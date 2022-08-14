@@ -16,10 +16,12 @@ module Types exposing (
     AttendeeInput,
     Attendee,
     AttendeeStatus(..),
+    EditEventInput,
 
     mapPageState,
     eventDecoder,
     encodeEventInput,
+    encodeEditEventInput,
     encodeAttendeeInput,
     emptyAttendeeInput,
     emptyEventInput,
@@ -58,8 +60,9 @@ type ViewEventStateModal
   | AttendeeSuccessModal
 
 type EditEventState
-  = EditEvent { picker: DP.DatePicker, input: EditEventInput }
-  | LoadingEventToEdit
+  = LoadingEventToEdit
+  | EditEvent { picker: DP.DatePicker, input: EditEventInput }
+  | SubmittedEdit { picker: DP.DatePicker, input: EditEventInput }
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -92,6 +95,10 @@ type ViewEventMsg
 
 type EditEventMsg
     = LoadedEventForEdit (Result Http.Error Event)
+    | UpdateEditEventInput DP.DatePicker EditEventInput
+    | EditEventOpenPicker
+    | SubmitEdit { picker: DP.DatePicker, input: EditEventInput }
+    | EditedEvent (Result Http.Error Event)
 
 -- Event
 type alias Event =
@@ -116,7 +123,7 @@ type alias EventInput =
   }
 
 type alias EditEventInput =
-  { id              : String
+  { id             : String
   , title          : String
   , description    : String
   , startTime      : Time.Posix
@@ -206,6 +213,17 @@ encodeEventInput { title, description, location, startTime, endTime, password } 
                                                       , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
                                                       , ("password", Encode.string password)
                                                       ]
+
+encodeEditEventInput : EditEventInput -> Value
+encodeEditEventInput { title, description, location, startTime, endTime, password } =
+    Encode.object
+      [ ("title", Encode.string title)
+      , ("description", Encode.string description)
+      , ("location", Encode.string location)
+      , ("startTime", Iso8601.encode startTime)
+      , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
+      , ("password", Encode.string password)
+      ]
 
 emptyAttendeeInput : String -> AttendeeInput
 emptyAttendeeInput eventId =
