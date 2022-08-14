@@ -17,6 +17,7 @@ import FontAwesome.Styles as Icon
 
 import Util exposing (viewEventDate, viewEventTime)
 import Types exposing (..)
+import Shared.ViewAttendees exposing (viewAttendees)
 
 borderRadius = A.style "border-radius" "5px"
 
@@ -24,8 +25,8 @@ view : PageState EditEventState -> Html Msg
 view pageState =
   case pageState.state of
     LoadingEventToEdit -> H.text "Loading..."
-    SubmittedEdit _ -> H.text "Loading"
-    EditEvent maybeModal { picker, input } ->
+    SubmittedEdit _ _ -> H.text "Loading"
+    EditEvent attendees maybeModal { picker, input } ->
       let
         updatePicker : EditEventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         updatePicker input2 (picker2, mTimestamp) = case mTimestamp of
@@ -105,8 +106,13 @@ view pageState =
             ]
 
           , H.div [ A.class "text-center", A.style "margin-top" "1rem" ] [
-              H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg (SubmitEdit { picker = picker, input = input })), A.class "btn btn-primary" ] [ H.text "Submit" ]
+              H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg (SubmitEdit)), A.class "btn btn-primary" ] [ H.text "Submit" ]
               ]
+
+          , H.br [] []
+          , H.br [] []
+
+          , viewAttendees attendees
           ]
 
 update : EditEventMsg -> PageState EditEventState -> ( PageState State, Cmd Msg )
@@ -127,15 +133,18 @@ update msg pageState =
               , location = event.location
               , password = ""
               }
-            newState = EditEventState (EditEvent Nothing { picker = DP.init, input = editEventInput })
+            newState = EditEventState (EditEvent event.attendees Nothing { picker = DP.init, input = editEventInput })
             newMsg = Nav.pushUrl pageState.key ("/e/" ++ event.id ++ "/edit")
           in ( format newState, newMsg )
         Err _ ->
           ( format Failure, Cmd.none )
-    UpdateEditEventInput picker eventInput -> ( format (EditEventState (EditEvent Nothing { picker = picker, input = eventInput })), Cmd.none )
+    UpdateEditEventInput picker eventInput ->
+      case pageState.state of
+        EditEvent attendees _ _ -> ( format (EditEventState (EditEvent attendees Nothing { picker = picker, input = eventInput })), Cmd.none )
+        _ -> ( format Failure, Cmd.none )
     EditEventOpenPicker ->
       case pageState.state of
-        EditEvent _ { picker, input } ->
+        EditEvent attendees _ { picker, input } ->
           let
             newPicker = DP.openPicker
                   (pickerSettings pageState.timeZone picker input)
@@ -144,14 +153,17 @@ update msg pageState =
                   picker
 
             newPageState =
-              { state = EditEventState (EditEvent Nothing { input = input, picker = newPicker })
+              { state = EditEventState (EditEvent attendees Nothing { input = input, picker = newPicker })
               , timeZone = pageState.timeZone
               , key = pageState.key
               , pageUrl = pageState.pageUrl
               }
           in ( newPageState, Cmd.none )
         _ -> ( format (EditEventState pageState.state), Cmd.none )
-    SubmitEdit { picker, input } -> ( format (EditEventState (SubmittedEdit { picker = picker, input = input })), submitEdit input )
+    SubmitEdit ->
+      case pageState.state of
+        EditEvent attendees _ input -> ( format (EditEventState (SubmittedEdit attendees input)), submitEdit input.input )
+        _ -> ( format Failure, Cmd.none )
     EditedEvent result ->
       case result of
         Ok event ->
@@ -161,12 +173,12 @@ update msg pageState =
           in ( newState, cmd )
         Err (Http.BadStatus 403) ->
           case pageState.state of
-            SubmittedEdit state -> ( format (EditEventState (EditEvent (Just WrongPasswordModal) state)), Cmd.none )
+            SubmittedEdit attendees state -> ( format (EditEventState (EditEvent attendees (Just WrongPasswordModal) state)), Cmd.none )
             _ -> ( format Failure, Cmd.none )
         _ -> ( format Failure, Cmd.none )
     CloseEditEventModal ->
       case pageState.state of
-        EditEvent _ input -> ( format (EditEventState (EditEvent Nothing input)), Cmd.none )
+        EditEvent attendees _ input -> ( format (EditEventState (EditEvent attendees Nothing input)), Cmd.none )
         otherState -> ( format (EditEventState otherState), Cmd.none )
 
 

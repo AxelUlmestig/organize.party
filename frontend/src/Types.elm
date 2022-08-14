@@ -62,8 +62,8 @@ type ViewEventStateModal
 
 type EditEventState
   = LoadingEventToEdit
-  | EditEvent (Maybe EditEventStateModal) { picker: DP.DatePicker, input: EditEventInput }
-  | SubmittedEdit { picker: DP.DatePicker, input: EditEventInput }
+  | EditEvent (List Attendee) (Maybe EditEventStateModal) { picker: DP.DatePicker, input: EditEventInput }
+  | SubmittedEdit (List Attendee) { picker: DP.DatePicker, input: EditEventInput }
 
 type EditEventStateModal
   = WrongPasswordModal
@@ -101,7 +101,7 @@ type EditEventMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | UpdateEditEventInput DP.DatePicker EditEventInput
     | EditEventOpenPicker
-    | SubmitEdit { picker: DP.DatePicker, input: EditEventInput }
+    | SubmitEdit
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
 
