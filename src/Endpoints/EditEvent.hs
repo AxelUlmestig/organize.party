@@ -12,9 +12,11 @@ import           Hasql.TH               (maybeStatement, singletonStatement)
 import           Servant                (ServerError (..), err403, err404,
                                          err500)
 
+import           Endpoints.GetEvent     (getAttendeesStatement)
 import           Types.AppEnv           (AppEnv, connection)
 import           Types.CreateEventInput
 import           Types.Event            (Event)
+import qualified Types.Event            as Event
 
 data EditResult
   = Success Event
@@ -43,7 +45,9 @@ session (eventId, input) = do
     maybeEvent <- Hasql.statement (eventId, input) updateIfPasswordMatchesStatement
     case maybeEvent of
       Nothing    -> pure Forbidden
-      Just event -> pure $ Success event
+      Just event -> do
+        attendees <- Hasql.statement (Event.id event) getAttendeesStatement
+        pure $ Success $ event { Event.attendees = attendees }
 
 existsStatement :: Statement UUID Bool
 existsStatement =
