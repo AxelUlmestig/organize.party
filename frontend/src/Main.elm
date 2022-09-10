@@ -181,21 +181,10 @@ type Route = NewEventR
            | ViewEventR String
            | EditEventR String
 
-pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
-pickerSettings timeZone picker input =
-  let
-    getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
-    getValueFromPicker (dp, mTime) = case mTime of
-                                             Nothing -> NewEventMsg (UpdateEventInput dp input)
-                                             Just newStart -> NewEventMsg (UpdateEventInput dp { input | startTime = newStart })
-
-  in DP.defaultSettings timeZone getValueFromPicker
-
 subscriptions : PageState State -> Sub Msg
 subscriptions model =
   case model.state of
-    NewEventState (NewEvent { picker, input }) ->
-      DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
+    NewEventState state -> NewEvent.handleSubscription (setPageState state model)
     EditEventState state -> EditEvent.handleSubscription (setPageState state model)
     _ -> Sub.none
 

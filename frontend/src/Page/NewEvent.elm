@@ -1,4 +1,4 @@
-module Page.NewEvent exposing (view, update)
+module Page.NewEvent exposing (view, update, handleSubscription)
 
 import Browser
 import Html as H exposing (Html)
@@ -174,3 +174,9 @@ createNewEvent input = Http.post
                       , body = Http.jsonBody (encodeEventInput input)
                       }
 
+handleSubscription : PageState NewEventState -> Sub Msg
+handleSubscription pageState =
+  case pageState.state of
+    NewEvent { picker, input } ->
+      DP.subscriptions (pickerSettings pageState.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
+    _ -> Sub.none

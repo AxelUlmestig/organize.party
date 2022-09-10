@@ -218,7 +218,7 @@ handleSubscription pageState =
     EditEvent _ _ { picker, input } ->
       DP.subscriptions
         (pickerSettings pageState.timeZone picker input)
-        (\(newPicker, _) -> (EditEventMsg (UpdateEditEventInput newPicker input)))
+        (\(newPicker, _) -> EditEventMsg (UpdateEditEventInput newPicker input))
         picker
     _ -> Sub.none
 
