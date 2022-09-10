@@ -18,14 +18,14 @@ data Event = Event
            , googleMapsLink :: Maybe Text
            , attendees      :: [Attendee]
            }
-           deriving (Generic)
+           deriving (Generic, Eq)
 
 data Attendee = Attendee
                 { name    :: Text
                 , status  :: AttendeeStatus
                 , plusOne :: Bool
                 }
-                deriving (Generic)
+                deriving (Generic, Eq)
 
 instance ToJSON Attendee
 instance ToJSON Event

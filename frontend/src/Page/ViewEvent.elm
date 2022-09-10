@@ -1,4 +1,4 @@
-module Page.ViewEvent exposing (view, update)
+module Page.ViewEvent exposing (view, update, fetchEvent)
 
 import Browser
 import Html as H exposing (Html)
@@ -21,11 +21,11 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Regex
 import List.Extra
-import Dict exposing (Dict)
 import Tuple
 
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
+import Shared.ViewAttendees exposing (viewAttendees)
 
 borderRadius = A.style "border-radius" "5px"
 
@@ -37,6 +37,13 @@ disableUnlessValidInput { email, name } =
       mContains = Maybe.map (\regex -> Regex.contains regex email) mRegex
   in A.disabled (mContains /= Just True || name == "")
 
+fetchEvent : String -> Cmd Msg
+fetchEvent id =
+    Http.get
+        { url = "/api/v1/events/" ++ id
+        , expect = Http.expectJson (ViewEventMsg << LoadedEvent) eventDecoder
+        }
+
 view : PageState ViewEventState -> Html Msg
 view pageState =
   case pageState.state of
@@ -44,15 +51,13 @@ view pageState =
     LoadingEvent -> H.text "Loading event..."
     ViewEvent maybeModal event attendeeInput ->
       let
-        { title, description, startTime, endTime, location, attendees } = event
+        { id, title, description, startTime, endTime, location, attendees } = event
 
         onStatusUpdate newStatus = ViewEventMsg (case newStatus of
                                     "Coming" -> UpdateAttendeeInput { attendeeInput | status = Coming }
                                     "Maybe Coming" -> UpdateAttendeeInput { attendeeInput | status = MaybeComing }
                                     "Not Coming" -> UpdateAttendeeInput { attendeeInput | status = NotComing }
                                     _ -> UpdateAttendeeInput attendeeInput)
-
-        attendeeDict = (splitAttendees attendees)
       in
         H.div []
           [ case maybeModal of
@@ -83,27 +88,30 @@ view pageState =
                   ]
 
           , H.div []
-              [ H.div [] [ H.h1 [] [ H.text title ] ]
-              , H.div [] [ H.text description ]
-              , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
-                [ H.div []
-                  [ H.div [ A.style "margin-bottom" "1rem" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.locationDot)
-                    , H.text location
+            [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
+              [ H.h1 [] [ H.text title ]
+              , H.a [ A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.wrench) ]
+              ]
+            , H.div [] [ H.text description ]
+            , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
+              [ H.div []
+                [ H.div [ A.style "margin-bottom" "1rem" ]
+                  [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.locationDot)
+                  , H.text location
+                  ]
+                , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
+                  [ H.span [ A.style "flex" "1" ]
+                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.calendar)
+                    , H.text (viewEventDate pageState.timeZone startTime)
                     ]
-                    , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
-                      [ H.span [ A.style "flex" "1" ]
-                        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.calendar)
-                        , H.text (viewEventDate pageState.timeZone startTime)
-                        ]
-                      , H.span [ A.style "flex" "1" ]
-                        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.clock)
-                        , H.text (viewEventTime pageState.timeZone startTime)
-                        ]
-                      ]
+                  , H.span [ A.style "flex" "1" ]
+                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem"  ] Icon.clock)
+                    , H.text (viewEventTime pageState.timeZone startTime)
+                    ]
                   ]
                 ]
               ]
+            ]
 
           , H.br [] []
           , H.div []
@@ -131,34 +139,7 @@ view pageState =
           , H.br [] []
           , H.br [] []
 
-          , case Dict.get "Coming" attendeeDict of
-              Nothing -> H.h3 [] [ H.text "Attending: 0" ]
-              Just attending ->
-                  let (comingCount, plusOnesCount) = countAttendees attending
-                  in H.div []
-                    [ H.h3 [] [ H.text ("Attending: " ++ String.fromInt comingCount ++ if plusOnesCount == 0 then "" else (" (+" ++ String.fromInt plusOnesCount ++ ")")) ]
-                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text (name ++ if plusOne then " (+1)" else "") ]) attending)
-                    ]
-
-          , H.br [] []
-          , case Dict.get "Maybe Coming" attendeeDict of
-              Nothing -> H.div [] []
-              Just maybeAttending ->
-                  let (maybeComingCount, plusOnesCount) = countAttendees maybeAttending
-                  in H.div []
-                    [ H.h3 [] [ H.text ("Maybe Attending: " ++ String.fromInt maybeComingCount ++ if plusOnesCount == 0 then "" else (" (+" ++ String.fromInt plusOnesCount ++ ")")) ]
-                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text (name ++ if plusOne then " (+1)" else "") ]) maybeAttending)
-                    ]
-
-          , H.br [] []
-          , case Dict.get "Not Coming" attendeeDict of
-              Nothing -> H.div [] []
-              Just notAttending ->
-                  let (notComingCount, plusOnesCount) = countAttendees notAttending
-                  in H.div []
-                    [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
-                    , H.div [] (List.map (\{name, plusOne} -> H.div [] [ H.text name ]) notAttending)
-                    ]
+          , viewAttendees attendees
           ]
 
 
@@ -207,19 +188,3 @@ attendEvent input = Http.request
                       , tracker = Nothing
                       }
 
-splitAttendees : List Attendee -> Dict String (List Attendee)
-splitAttendees = listToDict (attendeeStatusToString << .status)
-
-countAttendees : List Attendee -> (Int, Int)
-countAttendees = List.foldl (\attendee (coming, plusOne) -> (coming + 1, plusOne + if attendee.plusOne then 1 else 0)) (0, 0)
-
-listToDict : (a -> comparable) -> List a -> Dict comparable (List a)
-listToDict getKey =
-  let
-      updateExisting newValue maybeExisting =
-          case maybeExisting of
-            Nothing -> Just [newValue]
-            Just list -> Just (newValue :: list)
-
-      f x = Dict.update (getKey x) (updateExisting x)
-  in List.foldr f Dict.empty

@@ -4,20 +4,26 @@ module Types exposing (
     NewEventState(..),
     ViewEventState(..),
     ViewEventStateModal(..),
+    EditEventState(..),
+    EditEventStateModal(..),
 
     Msg(..),
     NewEventMsg(..),
     ViewEventMsg(..),
+    EditEventMsg(..),
 
     Event,
     EventInput,
     AttendeeInput,
     Attendee,
     AttendeeStatus(..),
+    EditEventInput,
 
     mapPageState,
+    setPageState,
     eventDecoder,
     encodeEventInput,
+    encodeEditEventInput,
     encodeAttendeeInput,
     emptyAttendeeInput,
     emptyEventInput,
@@ -38,8 +44,13 @@ import Json.Encode as Encode exposing (Value)
 type State
   = Loading
   | Failure
-  | ViewEventState ViewEventState
   | NewEventState NewEventState
+  | ViewEventState ViewEventState
+  | EditEventState EditEventState
+
+type NewEventState
+  = NewEvent { picker: DP.DatePicker, input: EventInput }
+  | NewEventLoading
 
 type ViewEventState
   = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
@@ -50,9 +61,13 @@ type ViewEventStateModal
   = InviteGuestsInfoModal
   | AttendeeSuccessModal
 
-type NewEventState
-  = NewEvent { picker: DP.DatePicker, input: EventInput }
-  | NewEventLoading
+type EditEventState
+  = LoadingEventToEdit
+  | EditEvent (List Attendee) (Maybe EditEventStateModal) { picker: DP.DatePicker, input: EditEventInput }
+  | SubmittedEdit (List Attendee) { picker: DP.DatePicker, input: EditEventInput }
+
+type EditEventStateModal
+  = WrongPasswordModal
 
 type alias PageState a = { key: Nav.Key
                          , timeZone : Time.Zone
@@ -67,6 +82,7 @@ type Msg
     | CurrentTimeIs Url Time.Zone Time.Posix
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
+    | EditEventMsg EditEventMsg
 
 type NewEventMsg
     = UpdateEventInput DP.DatePicker EventInput
@@ -82,10 +98,17 @@ type ViewEventMsg
     | LoadedEvent (Result Http.Error Event)
     | CloseModal
 
+type EditEventMsg
+    = LoadedEventForEdit (Result Http.Error Event)
+    | UpdateEditEventInput DP.DatePicker EditEventInput
+    | EditEventOpenPicker
+    | SubmitEdit
+    | EditedEvent (Result Http.Error Event)
+    | CloseEditEventModal
 
 -- Event
 type alias Event =
-  { id : String
+  { id             : String
   , title          : String
   , description    : String
   , startTime      : Time.Posix
@@ -102,6 +125,18 @@ type alias EventInput =
   , endTime        : Maybe Time.Posix
   , location       : String
   -- , googleMapsLink : Maybe String
+  , password       : String
+  }
+
+type alias EditEventInput =
+  { id             : String
+  , title          : String
+  , description    : String
+  , startTime      : Time.Posix
+  , endTime        : Maybe Time.Posix
+  , location       : String
+  -- , googleMapsLink : Maybe String
+  , password       : String
   }
 
 -- Attendee
@@ -131,6 +166,9 @@ mapPageState f ps =
   , key = ps.key
   , pageUrl = ps.pageUrl
   }
+
+setPageState : a -> PageState b -> PageState a
+setPageState x = mapPageState (\_ -> x)
 
 -- encoders and decoders
 eventDecoder : D.Decoder Event
@@ -172,16 +210,29 @@ emptyEventInput startTime = { title = ""
                   , location = ""
                   , startTime = startTime
                   , endTime = Nothing
+                  , password = ""
                   }
 
 encodeEventInput : EventInput -> Value
-encodeEventInput { title, description, location, startTime, endTime } = Encode.object
+encodeEventInput { title, description, location, startTime, endTime, password } = Encode.object
                                                       [ ("title", Encode.string title)
                                                       , ("description", Encode.string description)
                                                       , ("location", Encode.string location)
                                                       , ("startTime", Iso8601.encode startTime)
                                                       , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
+                                                      , ("password", Encode.string password)
                                                       ]
+
+encodeEditEventInput : EditEventInput -> Value
+encodeEditEventInput { title, description, location, startTime, endTime, password } =
+    Encode.object
+      [ ("title", Encode.string title)
+      , ("description", Encode.string description)
+      , ("location", Encode.string location)
+      , ("startTime", Iso8601.encode startTime)
+      , ("endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime)
+      , ("password", Encode.string password)
+      ]
 
 emptyAttendeeInput : String -> AttendeeInput
 emptyAttendeeInput eventId =
