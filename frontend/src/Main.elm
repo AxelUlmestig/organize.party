@@ -192,9 +192,12 @@ pickerSettings timeZone picker input =
   in DP.defaultSettings timeZone getValueFromPicker
 
 subscriptions : PageState State -> Sub Msg
-subscriptions model = case model.state of
-                        NewEventState (NewEvent { picker, input }) -> DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
-                        _ -> Sub.none
+subscriptions model =
+  case model.state of
+    NewEventState (NewEvent { picker, input }) ->
+      DP.subscriptions (pickerSettings model.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
+    EditEventState state -> EditEvent.handleSubscription (setPageState state model)
+    _ -> Sub.none
 
 main =
     Browser.application

@@ -1,4 +1,4 @@
-module Page.EditEvent exposing (view, update, fetchEvent)
+module Page.EditEvent exposing (view, update, fetchEvent, handleSubscription)
 
 import Browser
 import Html as H exposing (Html)
@@ -211,4 +211,14 @@ submitEdit input =
     , timeout = Nothing
     , tracker = Nothing
     }
+
+handleSubscription : PageState EditEventState -> Sub Msg
+handleSubscription pageState =
+  case pageState.state of
+    EditEvent _ _ { picker, input } ->
+      DP.subscriptions
+        (pickerSettings pageState.timeZone picker input)
+        (\(newPicker, _) -> (EditEventMsg (UpdateEditEventInput newPicker input)))
+        picker
+    _ -> Sub.none
 

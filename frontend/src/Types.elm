@@ -20,6 +20,7 @@ module Types exposing (
     EditEventInput,
 
     mapPageState,
+    setPageState,
     eventDecoder,
     encodeEventInput,
     encodeEditEventInput,
@@ -165,6 +166,9 @@ mapPageState f ps =
   , key = ps.key
   , pageUrl = ps.pageUrl
   }
+
+setPageState : a -> PageState b -> PageState a
+setPageState x = mapPageState (\_ -> x)
 
 -- encoders and decoders
 eventDecoder : D.Decoder Event
