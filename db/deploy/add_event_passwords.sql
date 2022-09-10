@@ -11,7 +11,7 @@ alter table events
 
 update events
   set password_salt = md5(random()::text || clock_timestamp()::text)
-  where password_salt is not null;
+  where password_salt is null;
 
 alter table events
   alter column password_salt
