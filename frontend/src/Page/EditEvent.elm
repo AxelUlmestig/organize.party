@@ -18,6 +18,7 @@ import FontAwesome.Styles as Icon
 import Util exposing (viewEventDate, viewEventTime)
 import Types exposing (..)
 import Shared.ViewAttendees exposing (viewAttendees)
+import Shared.SectionSeparator exposing (sectionSeparator)
 
 borderRadius = A.style "border-radius" "5px"
 
@@ -51,10 +52,8 @@ view pageState =
                   ]
 
           , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
-          , H.div [ A.class "d-flex flex-row justify-content-start" ]
-            [ H.h5 [ A.class "mb-4" ] [ H.text "What" ]
-            , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
-            ]
+
+          , sectionSeparator "What"
 
           , H.div [] [ H.text "Event name" ]
           , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> EditEventMsg (UpdateEditEventInput picker { input | title = t })) ] [] ]
@@ -62,10 +61,7 @@ view pageState =
           , H.div [] [ H.text "Description" ]
           , H.div [] [ H.textarea [ A.style "width" "100%", borderRadius, A.value input.description, onInput (\d -> EditEventMsg (UpdateEditEventInput picker { input | description = d })) ] [] ]
 
-          , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-            [ H.h5 [ A.class "mb-4" ] [ H.text "When" ]
-            , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
-            ]
+          , sectionSeparator "When"
 
           , H.div [ A.style "display" "flex", A.style "color" "black", onClick (EditEventMsg EditEventOpenPicker) ]
             [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
@@ -81,10 +77,7 @@ view pageState =
             ]
           , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
 
-          , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-            [ H.h5 [ A.class "mb-4" ] [ H.text "Where" ]
-            , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
-            ]
+          , sectionSeparator "Where"
 
           , H.div [] [ H.text "Location" ]
           , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
@@ -93,10 +86,7 @@ view pageState =
             , H.input [ A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> EditEventMsg (UpdateEditEventInput picker { input | location = l })) ] []
             ]
 
-          , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-            [ H.h5 [ A.class "mb-4", A.style "white-space" "nowrap" ] [ H.text "Password" ]
-            , H.hr [ A.style "width" "100%", A.style "margin-left" "1rem" ] []
-            ]
+          , sectionSeparator "Password"
 
           , H.div [] [ H.text "Password" ]
           , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
