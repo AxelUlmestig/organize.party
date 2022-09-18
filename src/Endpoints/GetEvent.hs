@@ -39,9 +39,12 @@ statement = to <$> [singletonStatement|
        time_start::timestamptz,
        time_end::timestamptz?,
        location::text,
-       location_google_maps_link::text?
-    from events
-    where id = $1::uuid
+       location_google_maps_link::text?,
+       ics_sequence::int
+    from event_data
+    where
+      id = $1::uuid
+      and superseded_at is null
   |]
 
 getAttendees :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => Event -> m Event
