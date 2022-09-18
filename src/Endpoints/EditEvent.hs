@@ -1,5 +1,7 @@
 module Endpoints.EditEvent (editEvent) where
 
+import           Control.Concurrent     (forkIO)
+import           Control.Monad          (forM_)
 import           Control.Monad.Except   (MonadError (..))
 import           Control.Monad.IO.Class (MonadIO (liftIO))
 import           Control.Monad.Reader   (MonadReader, asks)
@@ -8,12 +10,15 @@ import           Data.Types.Isomorphic  (to)
 import           Data.UUID              (UUID)
 import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
-import           Hasql.TH               (maybeStatement, singletonStatement)
+import           Hasql.TH               (maybeStatement, singletonStatement,
+                                         vectorStatement)
 import           Servant                (ServerError (..), err403, err404,
                                          err500)
 
+import           Email                  (sendEmailInvitation)
 import           Endpoints.GetEvent     (getAttendeesStatement)
-import           Types.AppEnv           (AppEnv, connection)
+import           Types.AppEnv           (AppEnv (..), SmtpConfig (..),
+                                         connection)
 import           Types.CreateEventInput
 import           Types.Event            (Event)
 import qualified Types.Event            as Event
@@ -34,7 +39,10 @@ editEvent eventId input = do
       throwError err500 { errBody = "Something went wrong" }
     Right Forbidden -> throwError err403 { errBody = "Password didn't match" }
     Right NotFound -> throwError err404 { errBody = "Event not found" }
-    Right (Success event) -> pure event
+    Right (Success event) -> do
+      smtpConf <- asks smtpConfig
+      sendEmailUpdate event
+      pure event
 
 session :: (UUID, CreateEventInput) -> Hasql.Session EditResult
 session (eventId, input) = do
@@ -80,5 +88,34 @@ updateIfPasswordMatchesStatement =
       location_google_maps_link::text?
   |]
   where
-    f (eventId, CreateEventInput{title, description, startTime, endTime, location, googleMapsLink, password}) =
+    f (eventId, CreateEventInput{title, description, startTime, endTime, location, googleMapsLink, Types.CreateEventInput.password}) =
       (eventId, title, description, startTime, endTime, location, googleMapsLink, password)
+
+sendEmailUpdate event = do
+  conn <- asks connection
+  eAttendees <- liftIO $ Hasql.run (Hasql.statement (Event.id event) statement) conn
+
+  case eAttendees of
+    Left err -> do
+      liftIO $ print err
+      throwError err500 { errBody = "Something went wrong" }
+    Right attendees -> do
+      smtpConf <- asks smtpConfig
+      liftIO $ forM_ attendees $ \attendee' -> do
+        forkIO $ sendEmailInvitation smtpConf event attendee'
+  where
+    statement = fmap to <$>
+      [vectorStatement|
+        select
+          event_id::uuid,
+          email::text,
+          name::text,
+          status::text,
+          plus_one::bool,
+          rsvp_at::timestamptz
+        from attendees
+        where
+          event_id = $1::uuid
+          and superseded_at is null
+          and status in ('coming', 'maybe_coming')
+      |]
