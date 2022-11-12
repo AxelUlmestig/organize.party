@@ -1,6 +1,9 @@
 # events
 
 ### Dependencies
+- docker
+- docker-compose
+- elm
 
 you might need to install the following dependencies
 
