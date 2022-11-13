@@ -1,11 +1,13 @@
 module Util exposing (viewEventDate, viewEventTime)
+
 import Date
+import Html as H exposing (Html)
 import Iso8601
 import Time
-import Time.Extra exposing (toOffset, Interval(..), add)
-import Html as H exposing (Html)
-
+import Time.Extra exposing (Interval(..), add, toOffset)
 import Types exposing (..)
+
+
 
 -- viewEventDate : Time.Zone -> Time.Posix -> Time.Posix -> Html Msg
 -- viewEventDate timeZone start end =
@@ -22,9 +24,12 @@ import Types exposing (..)
 --     then H.div [] [ H.text (formatDate start ++ ", " ++ formatTime start ++ " - " ++ formatTime end) ]
 --     else H.div [] [ H.text (formatDate start ++ " " ++ formatTime start ++ ", " ++ formatDate end ++ " " ++ formatTime end) ]
 
+
 viewEventDate : Time.Zone -> Time.Posix -> String
-viewEventDate timeZone time = Date.toIsoString (Date.fromPosix timeZone time)
+viewEventDate timeZone time =
+    Date.toIsoString (Date.fromPosix timeZone time)
+
 
 viewEventTime : Time.Zone -> Time.Posix -> String
-viewEventTime timeZone time = String.padLeft 2 '0' (String.fromInt (Time.toHour timeZone time)) ++ ":" ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute timeZone time))
-
+viewEventTime timeZone time =
+    String.padLeft 2 '0' (String.fromInt (Time.toHour timeZone time)) ++ ":" ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute timeZone time))
