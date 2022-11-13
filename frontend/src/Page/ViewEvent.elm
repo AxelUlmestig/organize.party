@@ -118,7 +118,7 @@ view pageState =
                         [ H.h1 [] [ H.text title ]
                         , H.a [ A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.wrench) ]
                         ]
-                    , H.div [] [ H.text description ]
+                    , H.div [ A.style "white-space" "pre-wrap" ] [ H.text description ]
                     , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
                         [ H.div []
                             [ H.div [ A.style "margin-bottom" "1rem" ]
