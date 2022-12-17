@@ -28,7 +28,9 @@ view : PageState NewEventState -> Html Msg
 view pageState =
     case pageState.state of
         NewEventLoading ->
-            H.text "Loading..."
+            H.div [ A.class "center" ]
+              [ H.text "Loading..."
+              ]
 
         NewEvent { picker, input } ->
             let

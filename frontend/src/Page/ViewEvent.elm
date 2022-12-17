@@ -57,13 +57,19 @@ view : PageState ViewEventState -> Html Msg
 view pageState =
     case pageState.state of
         AttendEventLoading ->
-            H.text "Loading event..."
+            H.div [ A.class "center" ]
+              [ H.text "Loading event..."
+              ]
 
         LoadingEvent ->
-            H.text "Loading event..."
+            H.div [ A.class "center" ]
+              [ H.text "Loading event..."
+              ]
 
         EventNotFound ->
-            H.text "Event not found, please verify the URL"
+            H.div [ A.class "center" ]
+              [ H.text "Event not found, please verify the URL"
+              ]
 
         ViewEvent maybeModal event attendeeInput ->
             let

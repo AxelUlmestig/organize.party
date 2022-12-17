@@ -65,6 +65,13 @@ view state =
             padding: 4em 2em;
             border-radius: 5px;
           }
+
+          .center {
+              right: 50%;
+              bottom: 50%;
+              transform: translate(50%,50%);
+              position: absolute;
+          }
           """
             ]
         , H.div
@@ -73,10 +80,14 @@ view state =
             ]
             [ case state.state of
                 Loading ->
-                    H.text "Loading"
+                    H.div [ A.class "center" ]
+                      [ H.text "Loading"
+                      ]
 
                 Failure ->
-                    H.text "Error"
+                    H.div [ A.class "center" ]
+                      [ H.text "Error"
+                      ]
 
                 ViewEventState viewEventState ->
                     ViewEvent.view (mapPageState (always viewEventState) state)
