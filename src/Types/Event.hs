@@ -17,7 +17,8 @@ data Event = Event
            , location       :: Text
            , googleMapsLink :: Maybe Text
            , attendees      :: [Attendee]
-           , icsSequence    :: Int
+           , createdAt      :: UTCTime
+           , modifiedAt     :: UTCTime
            }
            deriving (Generic, Eq)
 
@@ -31,8 +32,8 @@ data Attendee = Attendee
 instance ToJSON Attendee
 instance ToJSON Event
 
-instance (Integral int) => Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, int) Event where
-  to (id, title, description, startTime, endTime, location, googleMapsLink, icsSequence) = Event id title description startTime endTime location googleMapsLink [] (fromIntegral icsSequence)
+instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, UTCTime, UTCTime) Event where
+  to (id, title, description, startTime, endTime, location, googleMapsLink, createdAt, modifiedAt) = Event id title description startTime endTime location googleMapsLink [] createdAt modifiedAt
 
 instance Injective (Text, Text, Bool) Attendee where
   to (name, status, plusOne) = Attendee name (readStatus status) plusOne

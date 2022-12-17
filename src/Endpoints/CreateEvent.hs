@@ -30,25 +30,33 @@ createEvent input = do
 statement :: Statement CreateEventInput Event
 statement = dimap to to
   [singletonStatement|
-    with event as (
-      insert into events (password_salt, password_hash)
-        select salt, digest($7::text || salt, 'sha256')
-        from (
-          select md5(random()::text || clock_timestamp()::text) as salt
-        ) t
-      returning *
-    )
+    with
+      event as (
+        insert into events (password_salt, password_hash)
+          select salt, digest($7::text || salt, 'sha256')
+          from (
+            select md5(random()::text || clock_timestamp()::text) as salt
+          ) t
+        returning *
+      ),
 
-    insert into event_data (id, title, description, time_start, time_end, location, location_google_maps_link)
-    select event.id, $1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?
-    from event
-    returning
-      id::uuid,
-      title::text,
-      description::text,
-      time_start::timestamptz,
-      time_end::timestamptz?,
-      location::text,
-      location_google_maps_link::text?,
-      ics_sequence::int
+      inserted_event_data as (
+        insert into event_data (id, title, description, time_start, time_end, location, location_google_maps_link)
+        select event.id, $1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?
+        from event
+        returning *
+      )
+
+      select
+        inserted_event_data.id::uuid,
+        inserted_event_data.title::text,
+        inserted_event_data.description::text,
+        inserted_event_data.time_start::timestamptz,
+        inserted_event_data.time_end::timestamptz?,
+        inserted_event_data.location::text,
+        inserted_event_data.location_google_maps_link::text?,
+        event.created_at::timestamptz,
+        inserted_event_data.created_at::timestamptz
+      from inserted_event_data
+      cross join event
   |]

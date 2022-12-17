@@ -17,12 +17,8 @@ import           Types.Attendee           (Attendee (..))
 import           Types.Event              (Event (..))
 import qualified Types.Event              as Event
 
--- TODO: remove unsafePerformIO
-import           Data.Time.Clock          (getCurrentTime)
-import           System.IO.Unsafe         (unsafePerformIO)
-
-eventToICalendarString :: Bool -> Event -> LBS.ByteString
-eventToICalendarString isUpdate event@Event{Event.id = eid, startTime, endTime, title, description, location, icsSequence} =
+eventToICalendarString :: Text -> Event -> LBS.ByteString
+eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
   [__i|
     BEGIN:VCALENDAR
 
@@ -42,8 +38,8 @@ eventToICalendarString isUpdate event@Event{Event.id = eid, startTime, endTime, 
     #{maybe "" (("DTEND:" <>) . formatICalendarTimestamp) endTime}
     SUMMARY:#{title}
     DESCRIPTION:#{LT.replace "\n" "\\n" (formatDescription event)}
-    CREATED:20221217T134133Z
-    LAST-MODIFIED:#{formatICalendarTimestamp (unsafePerformIO getCurrentTime)}
+    CREATED:#{formatICalendarTimestamp createdAt}
+    LAST-MODIFIED:#{formatICalendarTimestamp modifiedAt}
     LOCATION:#{location}
     SEQUENCE:0
 
@@ -51,15 +47,12 @@ eventToICalendarString isUpdate event@Event{Event.id = eid, startTime, endTime, 
     TRANSP:TRANSPARENT
 
     ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
-     ;CN=axel.ulmestig@gmail.com;X-NUM-GUESTS=0:mailto:axel.ulmestig@gmail.com
+     ;CN=#{email};X-NUM-GUESTS=0:mailto:#{email}
 
     END:VEVENT
 
     END:VCALENDAR
   |]
-
---     #{if isUpdate then "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=Recipient Name;X-NUM-GUESTS=0:mailto:recipient@gmail.com"::Text else ""::Text}
---     #{if isUpdate then "STATUS:CONFIRMED"::Text else ""::Text}
 
 formatDescription :: Event -> LT.Text
 formatDescription Event{description, Event.id = eid} =
@@ -77,7 +70,7 @@ sendEmailInvitation SmtpConfig{server, port, login, password} event@Event{title}
   let bcc        = []
   let subject    = title
   let body       = Mail.plainPart (formatDescription event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString False event
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
@@ -91,7 +84,7 @@ sendEventUpdateEmail SmtpConfig{server, port, login, password} event@Event{title
   let bcc        = []
   let subject    = title
   let body       = Mail.plainPart (formatDescription event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString True event
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 

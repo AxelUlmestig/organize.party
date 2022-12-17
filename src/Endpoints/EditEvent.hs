@@ -84,44 +84,51 @@ updateEventDataStatement :: Statement (UUID, CreateEventInput) Event
 updateEventDataStatement =
   dimap f to
   [singletonStatement|
-    with previous_event_data as (
-      update event_data
-      set superseded_at = now()
-      where
-        id = $1::uuid
-        and superseded_at is null
-      returning *
-    )
+    with
+      previous_event_data as (
+        update event_data
+        set superseded_at = now()
+        where
+          id = $1::uuid
+          and superseded_at is null
+        returning *
+      ),
 
-    insert into event_data (
-      id,
-      title,
-      description,
-      time_start,
-      time_end,
-      location,
-      location_google_maps_link,
-      ics_sequence
-    )
+      inserted_event_data as (
+        insert into event_data (
+          id,
+          title,
+          description,
+          time_start,
+          time_end,
+          location,
+          location_google_maps_link
+        )
+        select
+          previous_event_data.id,
+          $2::text,
+          $3::text,
+          $4::timestamptz,
+          $5::timestamptz?,
+          $6::text,
+          $7::text?
+        from previous_event_data
+        returning *
+      )
+
     select
-      previous_event_data.id,
-      $2::text,
-      $3::text,
-      $4::timestamptz,
-      $5::timestamptz?,
-      $6::text,
-      $7::text?,
-      previous_event_data.ics_sequence + 1
-    from previous_event_data
-    returning
-      id::uuid,
-      title::text,
-      description::text,
-      time_start::timestamptz,
-      time_end::timestamptz?,
-      location::text,
-      location_google_maps_link::text?,
-      ics_sequence::int
+      inserted_event_data.id::uuid,
+      inserted_event_data.title::text,
+      inserted_event_data.description::text,
+      inserted_event_data.time_start::timestamptz,
+      inserted_event_data.time_end::timestamptz?,
+      inserted_event_data.location::text,
+      inserted_event_data.location_google_maps_link::text?,
+      events.created_at::timestamptz,
+      inserted_event_data.created_at::timestamptz
+    from inserted_event_data
+    join events
+      on events.id = inserted_event_data.id
   |]
   where
     f (eventId, CreateEventInput{title, description, startTime, endTime, location, googleMapsLink, Types.CreateEventInput.password}) =

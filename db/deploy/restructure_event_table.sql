@@ -10,8 +10,7 @@ BEGIN;
     time_start,
     time_end,
     location,
-    location_google_maps_link,
-    ics_sequence
+    location_google_maps_link
   )
   select
     id,
@@ -20,12 +19,12 @@ BEGIN;
     time_start,
     time_end,
     location,
-    location_google_maps_link,
-    0
+    location_google_maps_link
   from events;
 
   -- remove columns from events
   alter table events
+    add column created_at timestamptz not null default now(),
     drop column title,
     drop column description,
     drop column time_start,
