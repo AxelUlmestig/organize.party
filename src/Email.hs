@@ -32,7 +32,7 @@ eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, tit
     UID:#{eid}
     X-MICROSOFT-CDO-OWNERAPPTID:#{eid}
 
-    DTSTAMP:#{formatICalendarTimestamp startTime}
+    DTSTAMP:#{formatICalendarTimestamp modifiedAt}
     ORGANIZER;CN=organize.party:MAILTO:noreply@organize.party
     DTSTART:#{formatICalendarTimestamp startTime}
     #{maybe "" (("DTEND:" <>) . formatICalendarTimestamp) endTime}
