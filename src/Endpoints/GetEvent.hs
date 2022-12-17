@@ -11,7 +11,7 @@ import           Hasql.Session          (CommandError (ResultError),
                                          ResultError (UnexpectedAmountOfRows))
 import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
-import           Hasql.TH               (singletonStatement, vectorStatement)
+import           Hasql.TH               (maybeStatement, vectorStatement)
 import           Servant                (ServerError (..), err404, err500)
 
 import           Types.AppEnv
@@ -22,27 +22,34 @@ getEvent eventId = do
     conn <- asks connection
     eEvent <- liftIO $ Hasql.run (Hasql.statement eventId statement) conn
     case eEvent of
-      Right event -> getAttendees event
-      Left err    -> do
+      Right (Just event)  -> getAttendees event
+      Right Nothing       -> throwError err404 { errBody = "Event not found" }
+      Left err            -> do
         liftIO $ print err
-        case err of
-          QueryError _ _ (ResultError (UnexpectedAmountOfRows _)) -> throwError err404 { errBody = "Event not found" }
-          _                                                       -> throwError err500 { errBody = "Something went wrong" }
+        throwError err500 { errBody = "Something went wrong" }
 
 
-statement :: Statement UUID Event
-statement = to <$> [singletonStatement|
-    select
-       id::uuid,
-       title::text,
-       description::text,
-       time_start::timestamptz,
-       time_end::timestamptz?,
-       location::text,
-       location_google_maps_link::text?
-    from events
-    where id = $1::uuid
-  |]
+statement :: Statement UUID (Maybe Event)
+statement =
+  fmap to <$>
+    [maybeStatement|
+      select
+         event_data.id::uuid,
+         event_data.title::text,
+         event_data.description::text,
+         event_data.time_start::timestamptz,
+         event_data.time_end::timestamptz?,
+         event_data.location::text,
+         event_data.location_google_maps_link::text?,
+         events.created_at::timestamptz,
+         event_data.created_at::timestamptz
+      from event_data
+      join events
+        on events.id = event_data.id
+      where
+        event_data.id = $1::uuid
+        and event_data.superseded_at is null
+    |]
 
 getAttendees :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => Event -> m Event
 getAttendees event@Event{Types.Event.id} = do
