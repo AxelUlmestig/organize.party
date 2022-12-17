@@ -14,7 +14,7 @@ import FontAwesome.Styles as Icon
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
-import Http
+import Http exposing (Error(..))
 import Iso8601 as Iso8601
 import Json.Decode as D
 import Json.Encode as Encode exposing (Value)
@@ -61,6 +61,9 @@ view pageState =
 
         LoadingEvent ->
             H.text "Loading event..."
+
+        EventNotFound ->
+            H.text "Event not found, please verify the URL"
 
         ViewEvent maybeModal event attendeeInput ->
             let
@@ -196,6 +199,9 @@ update msg pageState =
             case result of
                 Ok event ->
                     ( format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
+
+                Err (BadStatus 404) ->
+                    ( format (ViewEventState EventNotFound), Cmd.none )
 
                 Err _ ->
                     ( format Failure, Cmd.none )

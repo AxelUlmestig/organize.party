@@ -59,6 +59,7 @@ type ViewEventState
     = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
     | AttendEventLoading
     | LoadingEvent
+    | EventNotFound
 
 
 type ViewEventStateModal
