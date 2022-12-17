@@ -16,7 +16,7 @@ import           Hasql.TH               (maybeStatement, resultlessStatement,
 import           Servant                (ServerError (..), err403, err404,
                                          err500)
 
-import           Email                  (sendEmailInvitation)
+import           Email                  (sendEventUpdateEmail)
 import           Endpoints.GetEvent     (getAttendeesStatement)
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..),
                                          connection)
@@ -139,7 +139,7 @@ sendEmailUpdate event = do
     Right attendees -> do
       smtpConf <- asks smtpConfig
       liftIO $ forM_ attendees $ \attendee' -> do
-        forkIO $ sendEmailInvitation smtpConf event attendee'
+        forkIO $ sendEventUpdateEmail smtpConf event attendee'
   where
     statement = fmap to <$>
       [vectorStatement|
