@@ -28,10 +28,14 @@ view : PageState EditEventState -> Html Msg
 view pageState =
     case pageState.state of
         LoadingEventToEdit ->
-            H.text "Loading..."
+            H.div [ A.class "center" ]
+              [ H.text "Loading..."
+              ]
 
         SubmittedEdit _ _ ->
-            H.text "Loading"
+            H.div [ A.class "center" ]
+              [ H.text "Loading..."
+              ]
 
         EditEvent attendees maybeModal { picker, input } ->
             let
