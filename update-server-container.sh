@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if ! [ -x "$(command -v uglifyjs)" ]; then
+  echo "Error: uglifyjs is not installed. Please install it and try again" >&2
+  exit 1
+fi
+
 RAW_JS_FILE=deleteme.elm.js
 MIN_JS_FILE=elm.min.js
 
