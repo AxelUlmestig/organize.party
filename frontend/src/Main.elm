@@ -17,6 +17,7 @@ import Page.EditEvent as EditEvent
 import Page.NewEvent as NewEvent
 import Page.ViewEvent as ViewEvent
 import SingleDatePicker as DP
+import TimePicker as TP
 import Task as Task
 import Time as Time
 import Types exposing (..)
@@ -29,7 +30,7 @@ view : PageState State -> Browser.Document Msg
 view state =
     Browser.Document "📅"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
-        , H.node "link" [ A.rel "stylesheet", A.href "/datepicker.css" ] []
+        , H.node "link" [ A.rel "stylesheet", A.href "/datepicker.css", A.href "/elm-time-picker.css" ] []
         , H.node "link"
             [ A.rel "stylesheet"
             , A.href "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
@@ -134,7 +135,7 @@ update msg pageState =
                 ( newState, newCmd ) =
                     case P.parse routeParser url of
                         Just NewEventR ->
-                            ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
+                            ( NewEventState (NewEvent { datePicker = DP.init, timePicker = TP.init Nothing, input = emptyEventInput time }), Cmd.none )
 
                         Just (ViewEventR id) ->
                             ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )

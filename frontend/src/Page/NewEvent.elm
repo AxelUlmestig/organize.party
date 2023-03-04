@@ -66,6 +66,14 @@ view pageState =
                     ] []
                   ]
                 , sectionSeparator "When"
+                , H.text "hello"
+                , let
+                    onUpdate msg =
+                          let
+                            ( updatedPicker, _ ) = TimePicker.update timePickerSettings msg timePicker
+                          in NewEventMsg <| UpdateEventStartDate updatedPicker (datePicker, Nothing)
+                  -- in H.map (\tp -> UpdateEventStartDate tp (datePicker, Nothing)) <| TimePicker.view timePickerSettings timePicker
+                  in H.map onUpdate <| TimePicker.view timePickerSettings timePicker
                 , H.input [ A.property "type" (Json.string "time"), A.name "time" ] []
                 , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
@@ -128,7 +136,7 @@ update msg pageState =
             in
             ( newPageState, Cmd.none )
 
-        UpdateEventStartDate ( datePicker, mTime ) ->
+        UpdateEventStartDate timePicker ( datePicker, mTime ) ->
             case pageState.state of
                 NewEvent oldState ->
                     let
@@ -139,7 +147,13 @@ update msg pageState =
                             oldState.input
 
                         newEventState =
-                            NewEventState (NewEvent { datePicker = datePicker, input = { oldInput | startTime = newStartTime } })
+                            NewEventState (
+                              NewEvent
+                                { datePicker = datePicker
+                                , timePicker = timePicker
+                                , input = { oldInput | startTime = newStartTime }
+                                }
+                            )
 
                         newPageState =
                             { state = newEventState
@@ -167,7 +181,7 @@ update msg pageState =
                     let
                         newPicker =
                             DP.openPicker
-                                (datePickerSettings pageState.timeZone oldState.datePicker oldState.input)
+                                (datePickerSettings oldState.timePicker pageState.timeZone oldState.datePicker oldState.input)
                                 oldState.input.startTime
                                 (Just oldState.input.startTime)
                                 oldState.datePicker
@@ -196,17 +210,17 @@ update msg pageState =
                     ( format Failure, Cmd.none )
 
 
-datePickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
-datePickerSettings timeZone datePicker input =
+datePickerSettings : TimePicker -> Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
+datePickerSettings timePicker timeZone datePicker input =
     let
         getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         getValueFromPicker ( dp, mTime ) =
             case mTime of
                 Nothing ->
-                    NewEventMsg (UpdateEventInput dp input)
+                    NewEventMsg (UpdateEventInput dp timePicker input)
 
                 Just newStart ->
-                    NewEventMsg (UpdateEventInput dp { input | startTime = newStart })
+                    NewEventMsg (UpdateEventInput dp timePicker { input | startTime = newStart })
     in
     DP.defaultSettings timeZone getValueFromPicker
 
@@ -233,7 +247,11 @@ createNewEvent input =
 handleSubscription : PageState NewEventState -> Sub Msg
 handleSubscription pageState =
     case pageState.state of
-        NewEvent { datePicker, timePicker, input } -> DP.subscriptions (datePickerSettings pageState.timeZone datePicker input) (NewEventMsg << UpdateEventStartDate timePicker) datePicker
+        NewEvent { datePicker, timePicker, input } ->
+          DP.subscriptions
+            (datePickerSettings timePicker pageState.timeZone datePicker input)
+            (NewEventMsg << UpdateEventStartDate timePicker)
+            datePicker
 
         _ ->
             Sub.none
