@@ -136,7 +136,12 @@ update msg pageState =
                 ( newState, newCmd ) =
                     case P.parse routeParser url of
                         Just NewEventR ->
-                            ( NewEventState (NewEvent { datePicker = DP.init, timePicker = TP.init Nothing, input = emptyEventInput time }), Cmd.none )
+                            let timeOfDay =
+                                  { hours = Time.toHour zone time
+                                  , minutes = Time.toMinute zone time
+                                  , seconds = Time.toSecond zone time
+                                  }
+                            in ( NewEventState (NewEvent { datePicker = DP.init, timePicker = TP.init (Just timeOfDay), input = emptyEventInput time }), Cmd.none )
 
                         Just (ViewEventR id) ->
                             ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
