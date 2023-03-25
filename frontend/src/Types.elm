@@ -100,11 +100,11 @@ type Msg
 
 type NewEventMsg
     = UpdateEventInput DP.DatePicker TP.TimePicker EventInput
-    | UpdateEventStartDate TP.TimePicker ( DP.DatePicker, Maybe Time.Posix )
+    | UpdateEventStartDate ( DP.DatePicker, Maybe Time.Posix )
     | OpenPicker
     | CreateEventMsg EventInput
     | CreatedEvent (Result Http.Error Event)
-    | UpdateEventStartTime TP.Msg
+    | UpdateEventStartTime TP.TimePicker Time.Posix
 
 
 type ViewEventMsg

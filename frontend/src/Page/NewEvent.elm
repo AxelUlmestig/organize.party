@@ -1,4 +1,8 @@
-module Page.NewEvent exposing (handleSubscription, update, view)
+module Page.NewEvent exposing (
+  handleSubscription,
+  update,
+  view
+  )
 
 import Browser
 import Browser.Navigation as Nav
@@ -16,6 +20,7 @@ import Iso8601 as Iso8601
 import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Time as Time
+import Time.Extra
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
 import Json.Encode as Json
@@ -66,15 +71,21 @@ view pageState =
                     ] []
                   ]
                 , sectionSeparator "When"
-                , H.text "hello"
                 , let
                     onUpdate msg =
                           let
-                            ( updatedPicker, _ ) = TimePicker.update timePickerSettings msg timePicker
-                          in NewEventMsg <| UpdateEventStartDate updatedPicker (datePicker, Nothing)
+                            ( updatedPicker, timeEvent ) = TimePicker.update timePickerSettings msg timePicker
+                            newTime =
+                                case timeEvent of
+                                  NoChange -> Nothing
+                                  Changed mTime -> Maybe.map (\timeOfDay -> setTimeOfDay pageState.timeZone timeOfDay input.startTime) mTime
+                          in NewEventMsg <| UpdateEventStartTime updatedPicker (Maybe.withDefault input.startTime newTime)
+                          -- in NewEventMsg <| UpdateEventStartDate updatedPicker (datePicker, newTime)
                   -- in H.map (\tp -> UpdateEventStartDate tp (datePicker, Nothing)) <| TimePicker.view timePickerSettings timePicker
-                  in H.map onUpdate <| TimePicker.view timePickerSettings timePicker
-                , H.input [ A.property "type" (Json.string "time"), A.name "time" ] []
+                  in H.div [ A.class "default-time-picker" ]
+                    [ H.map onUpdate <| TimePicker.view timePickerSettings (timePicker)
+                    ]
+                -- , H.input [ A.property "type" (Json.string "time"), A.name "time" ] []
                 , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                         [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
@@ -136,7 +147,7 @@ update msg pageState =
             in
             ( newPageState, Cmd.none )
 
-        UpdateEventStartDate timePicker ( datePicker, mTime ) ->
+        UpdateEventStartDate (datePicker, mTime) ->
             case pageState.state of
                 NewEvent oldState ->
                     let
@@ -150,7 +161,7 @@ update msg pageState =
                             NewEventState (
                               NewEvent
                                 { datePicker = datePicker
-                                , timePicker = timePicker
+                                , timePicker = oldState.timePicker
                                 , input = { oldInput | startTime = newStartTime }
                                 }
                             )
@@ -167,11 +178,14 @@ update msg pageState =
                 _ ->
                     ( format (NewEventState pageState.state), Cmd.none )
 
-        UpdateEventStartTime m ->
+        UpdateEventStartTime newPicker newTime ->
             case pageState.state of
                 NewEvent oldState ->
-                    -- TODO
-                    ( format (NewEventState pageState.state), Cmd.none )
+                    let
+                        oldInput = oldState.input
+                        updatedInput = { oldInput | startTime = newTime }
+                        updatedState = NewEvent { oldState | timePicker = newPicker, input = updatedInput }
+                    in ( format (NewEventState updatedState), Cmd.none )
                 _ ->
                     ( format (NewEventState pageState.state), Cmd.none )
 
@@ -231,7 +245,11 @@ timePickerSettings =
         defaultSettings =
             TimePicker.defaultSettings
     in
-    { defaultSettings | showSeconds = False, minuteStep = 1, use24Hours = True }
+      { defaultSettings
+      | showSeconds = False
+      , minuteStep = 1
+      , use24Hours = True
+      }
 
 
 
@@ -250,8 +268,18 @@ handleSubscription pageState =
         NewEvent { datePicker, timePicker, input } ->
           DP.subscriptions
             (datePickerSettings timePicker pageState.timeZone datePicker input)
-            (NewEventMsg << UpdateEventStartDate timePicker)
+            (NewEventMsg << UpdateEventStartDate)
             datePicker
 
         _ ->
             Sub.none
+
+setTimeOfDay : Time.Zone -> TimePicker.Time -> Time.Posix -> Time.Posix
+setTimeOfDay zone { hours, minutes, seconds } posixTime =
+  let
+      floored = Time.Extra.floor Time.Extra.Day zone posixTime
+      setHour = Time.Extra.add Time.Extra.Hour hours zone
+      setMinute = Time.Extra.add Time.Extra.Minute minutes zone
+      setSecond = Time.Extra.add Time.Extra.Second seconds zone
+  in (setHour << setMinute << setSecond) floored
+
