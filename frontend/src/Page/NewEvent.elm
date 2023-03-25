@@ -157,11 +157,20 @@ update msg pageState =
                         oldInput =
                             oldState.input
 
+                        newTimePicker =
+                            let
+                              timeOfDay =
+                                  { hours = Time.toHour pageState.timeZone newStartTime
+                                  , minutes = Time.toMinute pageState.timeZone newStartTime
+                                  , seconds = Time.toSecond pageState.timeZone newStartTime
+                                  }
+                            in TimePicker.init (Just timeOfDay)
+
                         newEventState =
                             NewEventState (
                               NewEvent
                                 { datePicker = datePicker
-                                , timePicker = oldState.timePicker
+                                , timePicker = newTimePicker
                                 , input = { oldInput | startTime = newStartTime }
                                 }
                             )
