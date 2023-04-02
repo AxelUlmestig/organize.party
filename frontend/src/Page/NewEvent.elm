@@ -71,31 +71,32 @@ view pageState =
                     ] []
                   ]
                 , sectionSeparator "When"
-                , let
-                    onUpdate msg =
-                          let
-                            ( updatedPicker, timeEvent ) = TimePicker.update timePickerSettings msg timePicker
-                            newTime =
-                                case timeEvent of
-                                  NoChange -> Nothing
-                                  Changed mTime -> Maybe.map (\timeOfDay -> setTimeOfDay pageState.timeZone timeOfDay input.startTime) mTime
-                          in NewEventMsg <| UpdateEventStartTime updatedPicker (Maybe.withDefault input.startTime newTime)
-                          -- in NewEventMsg <| UpdateEventStartDate updatedPicker (datePicker, newTime)
-                  -- in H.map (\tp -> UpdateEventStartDate tp (datePicker, Nothing)) <| TimePicker.view timePickerSettings timePicker
-                  in H.div [ A.class "default-time-picker" ]
-                    [ H.map onUpdate <| TimePicker.view timePickerSettings (timePicker)
-                    ]
                 -- , H.input [ A.property "type" (Json.string "time"), A.name "time" ] []
-                , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
-                    [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
+                , H.div [ A.style "display" "flex", A.style "color" "black" ]
+                    [ H.span [ onClick (NewEventMsg OpenPicker), A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                         [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
                         , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate pageState.timeZone input.startTime) ] []
                         ]
                     , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "0 5px 5px 0" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
-                        , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
+                        -- , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
+
+                        , let
+                            onUpdate msg =
+                                  let
+                                    ( updatedPicker, timeEvent ) = TimePicker.update timePickerSettings msg timePicker
+                                    newTime =
+                                        case timeEvent of
+                                          NoChange -> Nothing
+                                          Changed mTime -> Maybe.map (\timeOfDay -> setTimeOfDay pageState.timeZone timeOfDay input.startTime) mTime
+                                  in NewEventMsg <| UpdateEventStartTime updatedPicker (Maybe.withDefault input.startTime newTime)
+                                  -- in NewEventMsg <| UpdateEventStartDate updatedPicker (datePicker, newTime)
+                          -- in H.map (\tp -> UpdateEventStartDate tp (datePicker, Nothing)) <| TimePicker.view timePickerSettings timePicker
+                          in H.div [ A.class "default-time-picker", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0" ]
+                            [ H.map onUpdate <| TimePicker.view timePickerSettings (timePicker)
+                            ]
                         ]
                     ]
                 , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) datePicker

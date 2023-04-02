@@ -1,5 +1,8 @@
+
+
 .default-time-picker .elm-time-picker-container {
     position: relative;
+    height: 100%;
 }
 
 .default-time-picker .elm-time-picker-container:before {
@@ -14,13 +17,13 @@
     position: absolute;
     top: 0;
     left: 0;
-    outline: none;
+    /* outline: none; */
     list-style: none;
-    font-size: 12px;
+    /* font-size: 12px; */
     text-align: left;
     background-color: #fff;
-    border-radius: 4px;
-    box-shadow: 0 1px 6px rgba(0,0,0,.2);
+    /* border-radius: 4px; */
+    /* box-shadow: 0 1px 6px rgba(0,0,0,.2) */;
     background-clip: padding-box;
     line-height: 1.5;
     overflow: hidden;
@@ -52,6 +55,14 @@
 }
 
 .default-time-picker .elm-time-picker-input-container input {
+  readonly;
+  width: 100%;
+  border-radius: 0 5px 5px 0;
+}
+
+
+/*
+.default-time-picker .elm-time-picker-input-container input {
     margin: 0;
     border: 0;
     width: 100%;
@@ -60,6 +71,7 @@
     outline: 0;
     padding: 6px;
 }
+*/
 
 .default-time-picker .elm-time-picker-input-container input[disabled] {
     background-color: #f7f7f7;
@@ -69,6 +81,7 @@
 }
 
 .default-time-picker .elm-time-picker-panel-clear-btn {
+    display: none; /* added to remove option of clearing field */
     position: absolute;
     right: 5px;
     cursor: pointer;
