@@ -37,6 +37,6 @@ cat << EOF > frontend/index.html
 </html>
 EOF
 
-docker-compose up --force-recreate --build -d server
+docker compose up --force-recreate --build -d server
 docker image prune -f
-docker-compose exec db sqitch --chdir db deploy
+docker compose exec db sqitch --chdir db deploy
