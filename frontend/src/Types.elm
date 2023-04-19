@@ -36,7 +36,7 @@ import Json.Encode as Encode exposing (Value)
 import SingleDatePicker as DP
 import Time as Time
 import Url exposing (Url)
-
+import TimePicker as TP
 
 
 -- State
@@ -51,7 +51,7 @@ type State
 
 
 type NewEventState
-    = NewEvent { picker : DP.DatePicker, input : EventInput }
+    = NewEvent { datePicker : DP.DatePicker, timePicker : TP.TimePicker, input : EventInput }
     | NewEventLoading
 
 
@@ -99,11 +99,12 @@ type Msg
 
 
 type NewEventMsg
-    = UpdateEventInput DP.DatePicker EventInput
-    | UpdateEventStartTime ( DP.DatePicker, Maybe Time.Posix )
+    = UpdateEventInput DP.DatePicker TP.TimePicker EventInput
+    | UpdateEventStartDate ( DP.DatePicker, Maybe Time.Posix )
     | OpenPicker
     | CreateEventMsg EventInput
     | CreatedEvent (Result Http.Error Event)
+    | UpdateEventStartTime TP.TimePicker Time.Posix
 
 
 type ViewEventMsg

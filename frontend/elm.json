@@ -20,7 +20,8 @@
             "justinmimbs/time-extra": "1.1.0",
             "lattyware/elm-fontawesome": "6.0.0",
             "mercurymedia/elm-datetime-picker": "5.0.1",
-            "rtfeldman/elm-iso8601-date-strings": "1.1.4"
+            "rtfeldman/elm-iso8601-date-strings": "1.1.4",
+            "stephenreddek/elm-time-picker": "1.0.4"
         },
         "indirect": {
             "elm/bytes": "1.0.8",
