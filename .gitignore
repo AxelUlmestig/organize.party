@@ -2,5 +2,5 @@
 frontend/elm-stuff/
 dist-newstyle/
 frontend/index.html
-frontend/static/elm.min.js
+frontend/static/elm.min.*.js
 .env
