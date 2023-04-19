@@ -96,6 +96,7 @@ type Msg
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
+    | DoNothing
 
 
 type NewEventMsg
@@ -104,6 +105,8 @@ type NewEventMsg
     | OpenPicker
     | CreateEventMsg EventInput
     | CreatedEvent (Result Http.Error Event)
+    | FocusTimePicker
+    | FocusTimePickerSoon
 
 
 type ViewEventMsg

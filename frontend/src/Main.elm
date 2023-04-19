@@ -129,6 +129,8 @@ update msg pageState =
             ( { key = key, timeZone = timeZone, state = nextState, pageUrl = url }, cmd )
     in
     case msg of
+        DoNothing -> ( pageState, Cmd.none )
+
         CurrentTimeIs url zone time ->
             let
                 ( newState, newCmd ) =
