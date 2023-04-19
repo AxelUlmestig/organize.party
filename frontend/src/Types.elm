@@ -124,6 +124,8 @@ type EditEventMsg
     | SubmitEdit
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
+    | EditFocusTimePicker
+    | EditFocusTimePickerSoon
 
 
 

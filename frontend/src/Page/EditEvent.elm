@@ -18,6 +18,9 @@ import SingleDatePicker as DP
 import Time as Time
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
+import Browser.Dom as Dom
+import Task
+import Process
 
 
 borderRadius =
@@ -167,7 +170,7 @@ update msg pageState =
                             , pageUrl = pageState.pageUrl
                             }
                     in
-                    ( newPageState, Cmd.none )
+                    ( newPageState, focusTimePickerOrTryAgainLater )
 
                 _ ->
                     ( format (EditEventState pageState.state), Cmd.none )
@@ -211,6 +214,8 @@ update msg pageState =
                 otherState ->
                     ( format (EditEventState otherState), Cmd.none )
 
+        EditFocusTimePicker -> ( format (EditEventState pageState.state), focusTimePickerOrTryAgainLater )
+        EditFocusTimePickerSoon -> ( format (EditEventState pageState.state), delay100ms (NewEventMsg FocusTimePicker) )
 
 fetchEvent : String -> Cmd Msg
 fetchEvent id =
@@ -259,3 +264,15 @@ handleSubscription pageState =
 
         _ ->
             Sub.none
+
+focusTimePickerOrTryAgainLater : Cmd Msg
+focusTimePickerOrTryAgainLater =
+  let
+      handleFocusResult result =
+        case result of
+          Ok _ -> DoNothing
+          Err _ -> EditEventMsg EditFocusTimePickerSoon
+  in Task.attempt handleFocusResult (Dom.focus "hour-select")
+
+delay100ms : msg -> Cmd msg
+delay100ms msg = Process.sleep 100 |> Task.perform (\_ -> msg)
