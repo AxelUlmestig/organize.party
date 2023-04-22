@@ -56,14 +56,21 @@ view pageState =
                 , sectionSeparator "When"
                 , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                            [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
-                        , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate pageState.timeZone input.startTime) ] []
+                        [ H.span [ A.class "input-icon-container" ]
+                          [ Icon.view (
+                              Icon.styled [
+                                -- A.class "input-icon",
+                                Icon.lg,
+                                A.style "display" "block",
+                                A.style "margin" "auto"
+                              ] Icon.calendar
+                          ) ]
+                        , H.input [ A.readonly True, A.class "input-field-with-icon", A.value (viewEventDate pageState.timeZone input.startTime) ] []
                         ]
-                    , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                    , H.span [ A.style "flex" "1", A.class "input-icon-container-container d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
+                        [ H.span [ A.class "input-icon-container" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
-                        , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
+                        , H.input [ A.readonly True, A.class "input-field-with-icon", A.value (viewEventTime pageState.timeZone input.startTime) ] []
                         ]
                     ]
                 , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
