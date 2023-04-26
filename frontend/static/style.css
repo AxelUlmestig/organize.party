@@ -1,6 +1,11 @@
 body {
-  background-color: #fbfafa;
-  color: #1c2c3b;
+  background-color: #fbfafa !important;
+  color: #1c2c3b !important;
+}
+
+.input-without-icon {
+  width: 100%;
+  border-radius: 5px;
 }
 
 .input-field-with-icon {
@@ -25,6 +30,28 @@ body {
 .input-icon {
   display: block;
   margin: auto;
+}
+
+.submit-button-container {
+  margin-top: 1rem;
+}
+
+/* !Important to overrule bootstrap */
+.submit-button {
+  background-color: #1c2c3b !important;
+}
+
+.date-input-flex-container {
+  display: flex;
+  color: black;
+}
+
+.input-flex {
+  flex: 2;
+}
+
+.input-top-margin {
+  margin-top: 1rem;
 }
 
 /* stuff related to the the datepicker window */
