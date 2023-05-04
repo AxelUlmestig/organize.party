@@ -6,3 +6,7 @@ start-dev-backend:
 .PHONY: build-frontend
 build-frontend:
 	(cd frontend && elm make src/Main.elm)
+
+.PHONY: access-database
+access-database:
+	docker compose exec db psql postgres://postgres:postgres@localhost:5432/events
