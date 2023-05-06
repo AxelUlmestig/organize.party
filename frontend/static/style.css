@@ -55,6 +55,49 @@ body {
   margin-top: 1rem;
 }
 
+.edit-event-button-wrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+.edit-event-button-href {
+  display: flex;
+  align-items: center;
+  flex-direction: column
+}
+
+.event-description-wrapper {
+  white-space: pre-wrap
+}
+
+.event-details-wrapper {
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0px 0px 5px gray;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.event-details-location-wrapper {
+  margin-bottom: 1rem;
+}
+
+.event-details-bottom-row-wrapper {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.attendee-questionnaire-field-wrapper {
+  margin-top: 0.5rem;
+}
+
+.attendee-questionnaire-field {
+  width: 100%;
+  border-radius: 5px;
+}
+
 /* stuff related to the the datepicker window */
 .modal {
   position: fixed;
