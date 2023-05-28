@@ -30,6 +30,7 @@ view state =
     Browser.Document "📅"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , H.node "link" [ A.rel "stylesheet", A.href "/datepicker.css" ] []
+        , H.node "link" [ A.rel "stylesheet", A.href "/style.css" ] []
         , H.node "link"
             [ A.rel "stylesheet"
             , A.href "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
@@ -38,42 +39,6 @@ view state =
             ]
             []
         , Icon.css
-        , H.node "style"
-            []
-            [ H.text
-                """
-          body {
-            background-color: #fbfafa;
-            color: #1c2c3b;
-          }
-
-          .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 100%;
-            background-color: rgba(0,0,0,.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-          }
-
-          .modal_window {
-            position: relative;
-            background-color: white;
-            padding: 4em 2em;
-            border-radius: 5px;
-          }
-
-          .center {
-              right: 50%;
-              bottom: 50%;
-              transform: translate(50%,50%);
-              position: absolute;
-          }
-          """
-            ]
         , H.div
             [ A.class "container"
             , A.style "max-width" "700px"

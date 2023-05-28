@@ -23,10 +23,6 @@ import Task
 import Process
 
 
-borderRadius =
-    A.style "border-radius" "5px"
-
-
 view : PageState NewEventState -> Html Msg
 view pageState =
     case pageState.state of
@@ -50,39 +46,46 @@ view pageState =
                 [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
                 , sectionSeparator "What"
                 , H.div [] [ H.text "Event name" ]
-                , H.div [] [ H.input [ A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+                , H.div [] [ H.input [ A.class "input-without-icon", A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
                 , H.div [] [ H.text "Description" ]
-                , H.div [] [ H.textarea [ A.style "width" "100%", borderRadius, A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
+                , H.div [] [ H.textarea [ A.class "input-without-icon", A.value input.description, onInput (\d -> NewEventMsg (UpdateEventInput picker { input | description = d })) ] [] ]
                 , sectionSeparator "When"
-                , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
-                    [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                            [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
-                        , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate pageState.timeZone input.startTime) ] []
+                , H.div [ A.class "date-input-flex-container d-flex flex-row justify-content-start", onClick (NewEventMsg OpenPicker) ]
+                    [ H.span [ A.class "input-flex d-flex flex-row justify-content-start" ]
+                        [ H.span [ A.class "input-icon-container" ]
+                          [ Icon.view (
+                              Icon.styled [
+                                -- A.class "input-icon",
+                                Icon.lg,
+                                A.style "display" "block",
+                                A.style "margin" "auto"
+                              ] Icon.calendar
+                          ) ]
+                        , H.input [ A.readonly True, A.class "input-field-with-icon", A.value (viewEventDate pageState.timeZone input.startTime) ] []
                         ]
-                    , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                    , H.span [ A.style "flex" "1", A.class "input-icon-container-container d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
+                        [ H.span [ A.class "input-icon-container" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
-                        , H.input [ A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
+                        , H.input [ A.readonly True, A.class "input-field-with-icon", A.value (viewEventTime pageState.timeZone input.startTime) ] []
                         ]
                     ]
                 , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
                 , sectionSeparator "Where"
                 , H.div [] [ H.text "Location" ]
                 , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-                    [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                    [ H.span [ A.class "input-icon-container" ]
                         [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-                    , H.input [ A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] []
+                    , H.input [ A.class "input-field-with-icon", A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] []
                     ]
                 , sectionSeparator "Password For Future Edits"
                 , H.div [] [ H.text "Password" ]
-                , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-                    [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "2rem", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
+                , H.div [ A.class "input-top-margin d-flex flex-row justify-content-start" ]
+                    [ H.span [ A.class "input-icon-container" ]
                         [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-                    , H.input [ A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> NewEventMsg (UpdateEventInput picker { input | password = pw })) ] []
+                    , H.input [ A.class "input-field-with-icon", A.value input.password, onInput (\pw -> NewEventMsg (UpdateEventInput picker { input | password = pw })) ] []
                     ]
-                , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                    [ H.button [ A.style "background-color" "#1c2c3b", onClick (NewEventMsg (CreateEventMsg input)), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                , H.div [ A.class "input-top-margin text-center" ]
+                    [ H.button [ A.class "submit-button btn btn-primary", onClick (NewEventMsg (CreateEventMsg input)) ] [ H.text "Submit" ]
                     ]
                 ]
 
