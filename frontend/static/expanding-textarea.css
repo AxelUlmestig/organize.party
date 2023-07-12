@@ -1,0 +1,27 @@
+.autoexpand {
+  position: relative;
+  width: 100%;
+}
+.autoexpand textarea {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  width: 100%;
+  height: 100%;
+  resize: none;
+}
+.autoexpand textarea, .autoexpand div {
+  font-size: 16px;
+  font-family: sans-serif;
+  border: 1px solid grey;
+  line-height: 1.3em;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  margin: 0px;
+  border-radius: 5px;
+}
+.autoexpand div {
+  word-break: break-all;
+}

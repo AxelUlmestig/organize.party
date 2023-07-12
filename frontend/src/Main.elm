@@ -29,7 +29,9 @@ view : PageState State -> Browser.Document Msg
 view state =
     Browser.Document "📅"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
+        , H.node "link" [ A.rel "stylesheet", A.href "/style.css" ] []
         , H.node "link" [ A.rel "stylesheet", A.href "/datepicker.css" ] []
+        , H.node "link" [ A.rel "stylesheet", A.href "/expanding-textarea.css" ] []
         , H.node "link"
             [ A.rel "stylesheet"
             , A.href "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
