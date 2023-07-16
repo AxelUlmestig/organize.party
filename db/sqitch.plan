@@ -12,3 +12,4 @@ tables/events [tables/events@2022-07-31] 2022-07-31T16:23:13Z Axel Ulmestig <axe
 tables/event_data 2022-09-18T14:48:16Z Axel Ulmestig <axel.ulmestig@gmail.com> # event data
 restructure_event_table 2022-09-18T14:59:55Z Axel Ulmestig <axel.ulmestig@gmail.com> # move data from events table to event_data
 tables/events [tables/events@rework-events] 2022-09-18T14:56:53Z Axel Ulmestig <axel.ulmestig@gmail.com> # move columns to event_data
+tables/attendees [tables/attendees@rework-events] 2023-07-16T14:45:01Z root <root@f58a032cfd5d> # add comment column

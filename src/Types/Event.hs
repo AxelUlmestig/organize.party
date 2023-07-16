@@ -25,6 +25,7 @@ data Event = Event
 data Attendee = Attendee
                 { name    :: Text
                 , status  :: AttendeeStatus
+                , comment :: Maybe Text
                 , plusOne :: Bool
                 }
                 deriving (Generic, Eq)
@@ -35,5 +36,5 @@ instance ToJSON Event
 instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, UTCTime, UTCTime) Event where
   to (id, title, description, startTime, endTime, location, googleMapsLink, createdAt, modifiedAt) = Event id title description startTime endTime location googleMapsLink [] createdAt modifiedAt
 
-instance Injective (Text, Text, Bool) Attendee where
-  to (name, status, plusOne) = Attendee name (readStatus status) plusOne
+instance Injective (Text, Text, Maybe Text, Bool) Attendee where
+  to (name, status, comment, plusOne) = Attendee{ status = readStatus status, ..}

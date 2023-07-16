@@ -21,8 +21,8 @@ import           Endpoints.GetEvent     (getAttendeesStatement)
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..),
                                          connection)
 import           Types.CreateEventInput
-import           Types.Event            (Event)
 import qualified Types.Event            as Event
+import           Types.Event            (Event)
 
 data EditResult
   = Success Event
@@ -155,6 +155,7 @@ sendEmailUpdate event = do
           email::text,
           name::text,
           status::text,
+          comment::text?,
           plus_one::bool,
           rsvp_at::timestamptz
         from attendees

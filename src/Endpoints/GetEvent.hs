@@ -66,6 +66,7 @@ getAttendeesStatement = fmap to . vectorToList <$> [vectorStatement|
                                                      select
                                                        name::text,
                                                        status::text,
+                                                       comment::text?,
                                                        plus_one::bool
                                                      from attendees
                                                      where
