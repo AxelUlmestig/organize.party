@@ -120,6 +120,18 @@ view pageState =
                                                 [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
+
+                                    AttendeeCommentModal name comment ->
+                                        H.div []
+                                            [ H.b [] [ H.text name ]
+                                            , H.text " says"
+                                            , H.br [] []
+                                            , H.br [] []
+                                            , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
+                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                ]
+                                            ]
                                 ]
                             ]
                 , H.div []
@@ -211,6 +223,12 @@ update msg pageState =
 
                 Err _ ->
                     ( format Failure, Cmd.none )
+
+        DisplayComment name comment ->
+            case pageState.state of
+                ViewEvent _ event attendeeInput -> ( format (ViewEventState (ViewEvent (Just (AttendeeCommentModal name comment)) event attendeeInput)), Cmd.none )
+                otherState ->
+                    ( format (ViewEventState otherState), Cmd.none )
 
         CloseModal ->
             case state of

@@ -2,8 +2,16 @@ module Shared.ViewAttendees exposing (viewAttendees)
 
 import Dict exposing (Dict)
 import Html as H exposing (Html)
+import Html.Attributes as A
+import Html.Events as Events
 import Types exposing (..)
-
+import FontAwesome as Icon exposing (Icon)
+import FontAwesome.Attributes as Icon
+import FontAwesome.Brands as Icon
+import FontAwesome.Layering as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
+import Shared.FormatUrls exposing (formatTextWithLinks)
 
 viewAttendees : List Attendee -> Html Msg
 viewAttendees attendees =
@@ -35,17 +43,18 @@ viewAttendees attendees =
                         ]
                     , H.div []
                         (List.map
-                            (\{ name, plusOne } ->
+                            (\attendee ->
                                 H.div []
                                     [ H.text
-                                        (name
-                                            ++ (if plusOne then
+                                        (attendee.name
+                                            ++ (if attendee.plusOne then
                                                     " (+1)"
 
                                                 else
                                                     ""
                                                )
                                         )
+                                    , renderComment attendee
                                     ]
                             )
                             attending
@@ -145,3 +154,15 @@ listToDict getKey =
             Dict.update (getKey x) (updateExisting x)
     in
     List.foldr f Dict.empty
+
+renderComment : Attendee -> Html Msg
+renderComment attendee =
+  case attendee.comment of
+    Nothing -> H.text ""
+    Just comment ->
+      H.span
+        [ Events.onClick (ViewEventMsg (DisplayComment attendee.name comment))
+        , A.class "clickable"
+        ]
+        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.comment)
+        ]

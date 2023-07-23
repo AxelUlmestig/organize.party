@@ -65,6 +65,7 @@ type ViewEventState
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
+    | AttendeeCommentModal String String
 
 
 type EditEventState
@@ -114,6 +115,7 @@ type ViewEventMsg
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
     | LoadedEvent (Result Http.Error Event)
+    | DisplayComment String String
     | CloseModal
 
 
@@ -177,6 +179,7 @@ type alias EditEventInput =
 type alias Attendee =
     { name : String
     , status : AttendeeStatus
+    , comment : Maybe String
     , plusOne : Bool
     }
 
@@ -228,9 +231,10 @@ eventDecoder =
 
 attendeeDecoder : D.Decoder Attendee
 attendeeDecoder =
-    D.map3 Attendee
+    D.map4 Attendee
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
+        (D.maybe <| D.field "comment" D.string)
         (D.field "plusOne" D.bool)
 
 
