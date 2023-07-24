@@ -27,7 +27,7 @@ borderRadius =
     A.style "border-radius" "5px"
 
 
-view : PageState NewEventState -> Html Msg
+view : PageState NewEventState -> Html NewEventMsg
 view pageState =
     case pageState.state of
         NewEventLoading ->
@@ -37,29 +37,29 @@ view pageState =
 
         NewEvent { picker, input } ->
             let
-                updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
+                updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> NewEventMsg
                 updatePicker input2 ( picker2, mTimestamp ) =
                     case mTimestamp of
                         Just newStart ->
-                            NewEventMsg (UpdateEventInput picker2 { input2 | startTime = newStart })
+                            UpdateEventInput picker2 { input2 | startTime = newStart }
 
                         Nothing ->
-                            NewEventMsg (UpdateEventInput picker2 input2)
+                            UpdateEventInput picker2 input2
             in
             H.div []
                 [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
                 , sectionSeparator "What"
                 , H.div [] [ H.text "Event name" ]
-                , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> NewEventMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+                , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> UpdateEventInput picker { input | title = t }) ] [] ]
                 , H.div [] [ H.text "Description" ]
                 , expandingTextarea
                     { text = input.description
-                    , onInput = (\d -> NewEventMsg (UpdateEventInput picker { input | description = d }))
+                    , onInput = (\d -> UpdateEventInput picker { input | description = d })
                     , placeholder = ""
                     , styling = []
                     }
                 , sectionSeparator "When"
-                , H.div [ A.style "display" "flex", A.style "color" "black", onClick (NewEventMsg OpenPicker) ]
+                , H.div [ A.style "display" "flex", A.style "color" "black", onClick OpenPicker ]
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                         [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
@@ -78,7 +78,7 @@ view pageState =
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                       [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                           [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> NewEventMsg (UpdateEventInput picker { input | location = l })) ] []
+                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> UpdateEventInput picker { input | location = l }) ] []
                       ]
                     ]
                 , sectionSeparator "Password For Future Edits"
@@ -87,11 +87,11 @@ view pageState =
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                       [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                           [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> NewEventMsg (UpdateEventInput picker { input | password = pw })) ] []
+                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> UpdateEventInput picker { input | password = pw }) ] []
                       ]
                     ]
                 , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                    [ H.button [ A.style "background-color" "#1c2c3b", onClick (NewEventMsg (CreateEventMsg input)), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                    [ H.button [ A.style "background-color" "#1c2c3b", onClick (CreateEventMsg input), A.class "btn btn-primary" ] [ H.text "Submit" ]
                     ]
                 ]
 

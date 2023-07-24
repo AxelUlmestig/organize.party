@@ -54,7 +54,7 @@ fetchEvent id =
         }
 
 
-view : PageState ViewEventState -> Html Msg
+view : PageState ViewEventState -> Html ViewEventMsg
 view pageState =
     case pageState.state of
         AttendEventLoading ->
@@ -78,20 +78,18 @@ view pageState =
                     event
 
                 onStatusUpdate newStatus =
-                    ViewEventMsg
-                        (case newStatus of
-                            "Coming" ->
-                                UpdateAttendeeInput { attendeeInput | status = Coming }
+                    case newStatus of
+                        "Coming" ->
+                            UpdateAttendeeInput { attendeeInput | status = Coming }
 
-                            "Maybe Coming" ->
-                                UpdateAttendeeInput { attendeeInput | status = MaybeComing }
+                        "Maybe Coming" ->
+                            UpdateAttendeeInput { attendeeInput | status = MaybeComing }
 
-                            "Not Coming" ->
-                                UpdateAttendeeInput { attendeeInput | status = NotComing }
+                        "Not Coming" ->
+                            UpdateAttendeeInput { attendeeInput | status = NotComing }
 
-                            _ ->
-                                UpdateAttendeeInput attendeeInput
-                        )
+                        _ ->
+                            UpdateAttendeeInput attendeeInput
             in
             H.div []
                 [ case maybeModal of
@@ -108,7 +106,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Share this page with your friends to invite them."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
 
@@ -118,7 +116,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Fill in the form again with the same email address to edit your status."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
 
@@ -130,7 +128,7 @@ view pageState =
                                             , H.br [] []
                                             , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Close" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Close" ]
                                                 ]
                                             ]
                                 ]
@@ -164,10 +162,10 @@ view pageState =
                 , H.div []
                     [ H.b [] [ H.text "Are you attending?" ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
+                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
+                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
                     , H.div []
                         [ H.select [ onInput onStatusUpdate ]
                             [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
@@ -178,17 +176,17 @@ view pageState =
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Leave a comment" ]
                     , expandingTextarea
                         { text = attendeeInput.comment
-                        , onInput = (\comment -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | comment = comment }))
+                        , onInput = (\comment -> UpdateAttendeeInput { attendeeInput | comment = comment })
                         , placeholder = ""
                         , styling = []
                         }
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (ViewEventMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (AttendMsg attendeeInput), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
                     ]
                 , H.br [] []
                 , H.br [] []
-                , H.map (ViewEventMsg << ViewEventDisplayComment) (viewAttendees attendees)
+                , H.map ViewEventDisplayComment (viewAttendees attendees)
                 ]
 
 
