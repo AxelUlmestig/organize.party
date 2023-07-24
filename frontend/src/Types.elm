@@ -190,6 +190,7 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
+    , comment : String
     }
 
 
@@ -311,13 +312,14 @@ emptyAttendeeInput eventId =
     { eventId = eventId
     , email = ""
     , name = ""
+    , comment = ""
     , status = Coming
     , plusOne = False
     }
 
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -336,4 +338,5 @@ encodeAttendeeInput { eventId, email, name, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "comment", if comment == "" then Encode.null else Encode.string comment )
         ]

@@ -26,6 +26,7 @@ import Tuple
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
 import Shared.FormatUrls exposing (formatTextWithLinks)
+import Shared.ExpandingTextarea exposing (expandingTextarea)
 
 borderRadius =
     A.style "border-radius" "5px"
@@ -124,12 +125,12 @@ view pageState =
                                     AttendeeCommentModal name comment ->
                                         H.div []
                                             [ H.b [] [ H.text name ]
-                                            , H.text " says"
+                                            , H.text " commented"
                                             , H.br [] []
                                             , H.br [] []
                                             , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Close" ]
                                                 ]
                                             ]
                                 ]
@@ -174,6 +175,13 @@ view pageState =
                             , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
                             ]
                         ]
+                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Leave a comment" ]
+                    , expandingTextarea
+                        { text = attendeeInput.comment
+                        , onInput = (\comment -> ViewEventMsg (UpdateAttendeeInput { attendeeInput | comment = comment }))
+                        , placeholder = ""
+                        , styling = []
+                        }
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
                         [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (ViewEventMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
