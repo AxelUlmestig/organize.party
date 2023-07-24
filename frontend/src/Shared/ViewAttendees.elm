@@ -18,6 +18,15 @@ viewAttendees attendees =
     let
         attendeeDict =
             splitAttendees attendees
+
+        onClickBehaviour attendee =
+          case attendee.comment of
+            Nothing -> []
+            Just comment ->
+              [ Events.onClick (ViewEventMsg (DisplayComment attendee.name comment))
+              , A.class "clickable"
+              ]
+
     in
     H.div []
         [ case Dict.get "Coming" attendeeDict of
@@ -44,7 +53,7 @@ viewAttendees attendees =
                     , H.div []
                         (List.map
                             (\attendee ->
-                                H.div []
+                                H.div (onClickBehaviour attendee)
                                     [ H.text
                                         (attendee.name
                                             ++ (if attendee.plusOne then
@@ -84,17 +93,18 @@ viewAttendees attendees =
                         ]
                     , H.div []
                         (List.map
-                            (\{ name, plusOne } ->
-                                H.div []
+                            (\attendee ->
+                                H.div (onClickBehaviour attendee)
                                     [ H.text
-                                        (name
-                                            ++ (if plusOne then
+                                        (attendee.name
+                                            ++ (if attendee.plusOne then
                                                     " (+1)"
 
                                                 else
                                                     ""
                                                )
                                         )
+                                    , renderComment attendee
                                     ]
                             )
                             maybeAttending
@@ -112,7 +122,7 @@ viewAttendees attendees =
                 in
                 H.div []
                     [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
-                    , H.div [] (List.map (\{ name, plusOne } -> H.div [] [ H.text name ]) notAttending)
+                    , H.div [] (List.map (\attendee -> H.div (onClickBehaviour attendee) [ H.text attendee.name, renderComment attendee ]) notAttending)
                     ]
         ]
 
@@ -161,8 +171,6 @@ renderComment attendee =
     Nothing -> H.text ""
     Just comment ->
       H.span
-        [ Events.onClick (ViewEventMsg (DisplayComment attendee.name comment))
-        , A.class "clickable"
-        ]
+        []
         [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.comment)
         ]
