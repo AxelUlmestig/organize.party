@@ -22,6 +22,7 @@ import Browser.Dom as Dom
 import Task
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Shared.FormatUrls exposing (formatTextWithLinks)
 
 borderRadius =
     A.style "border-radius" "5px"
@@ -65,6 +66,17 @@ view pageState =
                                             [ H.text "Error: incorrect password"
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
                                                 [ H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                ]
+                                            ]
+                                    EditEventAttendeeCommentModal { name, comment } ->
+                                        H.div []
+                                            [ H.b [] [ H.text name ]
+                                            , H.text " commented"
+                                            , H.br [] []
+                                            , H.br [] []
+                                            , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
+                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Close" ]
                                                 ]
                                             ]
                                 ]
@@ -117,7 +129,7 @@ view pageState =
                     ]
                 , H.br [] []
                 , H.br [] []
-                , viewAttendees attendees
+                , H.map (EditEventMsg << EditEventDisplayComment) (viewAttendees attendees)
                 ]
 
 
@@ -225,6 +237,12 @@ update msg pageState =
 
         EditFocusTimePicker -> ( format (EditEventState pageState.state), focusTimePickerOrTryAgainLater )
         EditFocusTimePickerSoon -> ( format (EditEventState pageState.state), delay100ms (NewEventMsg FocusTimePicker) )
+        EditEventDisplayComment comment ->
+            case pageState.state of
+                EditEvent attendees _ input ->
+                    ( format (EditEventState (EditEvent attendees (Just (EditEventAttendeeCommentModal comment)) input)), Cmd.none )
+                otherState ->
+                    ( format (EditEventState otherState), Cmd.none )
 
 fetchEvent : String -> Cmd Msg
 fetchEvent id =

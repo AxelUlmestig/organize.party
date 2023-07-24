@@ -122,7 +122,7 @@ view pageState =
                                                 ]
                                             ]
 
-                                    AttendeeCommentModal name comment ->
+                                    ViewEventAttendeeCommentModal name comment ->
                                         H.div []
                                             [ H.b [] [ H.text name ]
                                             , H.text " commented"
@@ -188,7 +188,7 @@ view pageState =
                     ]
                 , H.br [] []
                 , H.br [] []
-                , viewAttendees attendees
+                , H.map (ViewEventMsg << ViewEventDisplayComment) (viewAttendees attendees)
                 ]
 
 
@@ -232,9 +232,9 @@ update msg pageState =
                 Err _ ->
                     ( format Failure, Cmd.none )
 
-        DisplayComment name comment ->
+        ViewEventDisplayComment { name, comment } ->
             case pageState.state of
-                ViewEvent _ event attendeeInput -> ( format (ViewEventState (ViewEvent (Just (AttendeeCommentModal name comment)) event attendeeInput)), Cmd.none )
+                ViewEvent _ event attendeeInput -> ( format (ViewEventState (ViewEvent (Just (ViewEventAttendeeCommentModal name comment)) event attendeeInput)), Cmd.none )
                 otherState ->
                     ( format (ViewEventState otherState), Cmd.none )
 

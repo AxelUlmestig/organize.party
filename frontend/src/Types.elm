@@ -16,6 +16,7 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
+    , DisplayComment
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -65,7 +66,7 @@ type ViewEventState
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
-    | AttendeeCommentModal String String
+    | ViewEventAttendeeCommentModal String String
 
 
 type EditEventState
@@ -76,6 +77,7 @@ type EditEventState
 
 type EditEventStateModal
     = WrongPasswordModal
+    | EditEventAttendeeCommentModal DisplayComment
 
 
 type alias PageState a =
@@ -115,7 +117,7 @@ type ViewEventMsg
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
     | LoadedEvent (Result Http.Error Event)
-    | DisplayComment String String
+    | ViewEventDisplayComment DisplayComment
     | CloseModal
 
 
@@ -128,8 +130,14 @@ type EditEventMsg
     | CloseEditEventModal
     | EditFocusTimePicker
     | EditFocusTimePickerSoon
+    | EditEventDisplayComment DisplayComment
 
+-- View comment
 
+type alias DisplayComment =
+  { name : String
+  , comment : String
+  }
 
 -- Event
 

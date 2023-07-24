@@ -13,7 +13,7 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Shared.FormatUrls exposing (formatTextWithLinks)
 
-viewAttendees : List Attendee -> Html Msg
+viewAttendees : List Attendee -> Html DisplayComment
 viewAttendees attendees =
     let
         attendeeDict =
@@ -23,7 +23,7 @@ viewAttendees attendees =
           case attendee.comment of
             Nothing -> []
             Just comment ->
-              [ Events.onClick (ViewEventMsg (DisplayComment attendee.name comment))
+              [ Events.onClick { name = attendee.name, comment = comment }
               , A.class "clickable"
               ]
 
@@ -165,7 +165,7 @@ listToDict getKey =
     in
     List.foldr f Dict.empty
 
-renderComment : Attendee -> Html Msg
+renderComment : Attendee -> Html msg
 renderComment attendee =
   case attendee.comment of
     Nothing -> H.text ""
