@@ -138,7 +138,7 @@ update msg pageState =
                 ( newState, newCmd ) =
                     case P.parse routeParser url of
                         Just NewEventR ->
-                            ( NewEventState (NewEvent { picker = DP.init, input = emptyEventInput time }), Cmd.none )
+                            ( NewEventState (NewEvent { timezone = pageState.timeZone, picker = DP.init, input = emptyEventInput time }), Cmd.none )
 
                         Just (ViewEventR id) ->
                             ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
@@ -184,8 +184,8 @@ update msg pageState =
                 ( Just (ViewEventR id), _ ) ->
                     packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
 
-                ( Just (EditEventR id), EditEventState (EditEvent _ Nothing { input }) ) ->
-                    if input.id == id then
+                ( Just (EditEventR id), EditEventState (EditEvent eventId _ Nothing { input }) ) ->
+                    if eventId == id then
                         packageStatePageUrlAndCmd state url Cmd.none
 
                     else

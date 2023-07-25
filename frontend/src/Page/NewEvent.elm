@@ -22,6 +22,9 @@ import Browser.Dom as Dom
 import Task
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Platform.Sub as Sub
+import Shared.EventEditor as EventEditor
+import Dict exposing (Dict)
 
 borderRadius =
     A.style "border-radius" "5px"
@@ -36,64 +39,10 @@ view pageState =
               ]
 
         NewEvent { picker, input } ->
-            let
-                updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> NewEventMsg
-                updatePicker input2 ( picker2, mTimestamp ) =
-                    case mTimestamp of
-                        Just newStart ->
-                            UpdateEventInput picker2 { input2 | startTime = newStart }
-
-                        Nothing ->
-                            UpdateEventInput picker2 input2
-            in
             H.div []
-                [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
-                , sectionSeparator "What"
-                , H.div [] [ H.text "Event name" ]
-                , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> UpdateEventInput picker { input | title = t }) ] [] ]
-                , H.div [] [ H.text "Description" ]
-                , expandingTextarea
-                    { text = input.description
-                    , onInput = (\d -> UpdateEventInput picker { input | description = d })
-                    , placeholder = ""
-                    , styling = []
-                    }
-                , sectionSeparator "When"
-                , H.div [ A.style "display" "flex", A.style "color" "black", onClick OpenPicker ]
-                    [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                            [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
-                        , H.input [ A.class "padded-input", A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate pageState.timeZone input.startTime) ] []
-                        ]
-                    , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
-                        [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                            [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
-                        , H.input [ A.class "padded-input", A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime pageState.timeZone input.startTime) ] []
-                        ]
-                    ]
-                , DP.view (DP.defaultSettings pageState.timeZone (updatePicker input)) picker
-                , sectionSeparator "Where"
-                , H.div [] [ H.text "Location" ]
-                , H.div [ A.style "display" "flex", A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-                    [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                      [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                          [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> UpdateEventInput picker { input | location = l }) ] []
-                      ]
-                    ]
-                , sectionSeparator "Password For Future Edits"
-                , H.div [] [ H.text "Password" ]
-                , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-                    [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                      [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                          [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> UpdateEventInput picker { input | password = pw }) ] []
-                      ]
-                    ]
-                , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                    [ H.button [ A.style "background-color" "#1c2c3b", onClick (CreateEventMsg input), A.class "btn btn-primary" ] [ H.text "Submit" ]
-                    ]
-                ]
+              [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
+              , H.map CreateEventEventEditorMsg <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
+              ]
 
 
 update : NewEventMsg -> PageState NewEventState -> ( PageState State, Cmd Msg )
@@ -103,67 +52,16 @@ update msg pageState =
             \x -> mapPageState (always x) pageState
     in
     case msg of
-        UpdateEventInput picker input ->
-            let
-                newPageState =
-                    { state = NewEventState (NewEvent { picker = picker, input = input })
-                    , timeZone = pageState.timeZone
-                    , key = pageState.key
-                    , pageUrl = pageState.pageUrl
-                    }
-            in
-            ( newPageState, Cmd.none )
+        CreateEventEventEditorMsg (EventEditor.EventEditorInternalMsg internalMsg) ->
+          case pageState.state of
+            NewEvent eventEditorState ->
+              let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
+              in ( format (NewEventState (NewEvent newEventEditorState)), Cmd.map (NewEventMsg << CreateEventEventEditorMsg) newEventEditorMsg )
 
-        UpdateEventStartTime ( picker, mTime ) ->
-            case pageState.state of
-                NewEvent oldState ->
-                    let
-                        newStartTime =
-                            Maybe.withDefault oldState.input.startTime mTime
+            state -> ( format (NewEventState pageState.state), Cmd.none )
 
-                        oldInput =
-                            oldState.input
-
-                        newEventState =
-                            NewEventState (NewEvent { picker = picker, input = { oldInput | startTime = newStartTime } })
-
-                        newPageState =
-                            { state = newEventState
-                            , timeZone = pageState.timeZone
-                            , key = pageState.key
-                            , pageUrl = pageState.pageUrl
-                            }
-                    in
-                    ( newPageState, focusTimePickerOrTryAgainLater )
-
-                _ ->
-                    ( format (NewEventState pageState.state), Cmd.none )
-
-        OpenPicker ->
-            case pageState.state of
-                NewEvent oldState ->
-                    let
-                        newPicker =
-                            DP.openPicker
-                                (pickerSettings pageState.timeZone oldState.picker oldState.input)
-                                oldState.input.startTime
-                                (Just oldState.input.startTime)
-                                oldState.picker
-
-                        newPageState =
-                            { state = NewEventState (NewEvent { oldState | picker = newPicker })
-                            , timeZone = pageState.timeZone
-                            , key = pageState.key
-                            , pageUrl = pageState.pageUrl
-                            }
-                    in
-                    ( newPageState, Cmd.none )
-
-                _ ->
-                    ( format (NewEventState pageState.state), Cmd.none )
-
-        CreateEventMsg input ->
-            ( format (NewEventState NewEventLoading), createNewEvent input )
+        CreateEventEventEditorMsg (EventEditor.EventEditorSubmit event) ->
+            ( format (NewEventState NewEventLoading), createNewEvent event )
 
         CreatedEvent result ->
             case result of
@@ -172,24 +70,6 @@ update msg pageState =
 
                 Err _ ->
                     ( format Failure, Cmd.none )
-
-        FocusTimePicker -> ( format (NewEventState pageState.state), focusTimePickerOrTryAgainLater )
-        FocusTimePickerSoon -> ( format (NewEventState pageState.state), delay100ms (NewEventMsg FocusTimePicker) )
-
-
-pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
-pickerSettings timeZone picker input =
-    let
-        getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
-        getValueFromPicker ( dp, mTime ) =
-            case mTime of
-                Nothing ->
-                    NewEventMsg (UpdateEventInput dp input)
-
-                Just newStart ->
-                    NewEventMsg (UpdateEventInput dp { input | startTime = newStart })
-    in
-    DP.defaultSettings timeZone getValueFromPicker
 
 
 createNewEvent : EventInput -> Cmd Msg
@@ -204,20 +84,7 @@ createNewEvent input =
 handleSubscription : PageState NewEventState -> Sub Msg
 handleSubscription pageState =
     case pageState.state of
-        NewEvent { picker, input } ->
-            DP.subscriptions (pickerSettings pageState.timeZone picker input) (NewEventMsg << UpdateEventStartTime) picker
-
+        NewEvent eventState ->
+            Sub.map (NewEventMsg << CreateEventEventEditorMsg) <| EventEditor.handleSubscription eventState
         _ ->
             Sub.none
-
-focusTimePickerOrTryAgainLater : Cmd Msg
-focusTimePickerOrTryAgainLater =
-  let
-      handleFocusResult result =
-        case result of
-          Ok _ -> DoNothing
-          Err _ -> NewEventMsg FocusTimePickerSoon
-  in Task.attempt handleFocusResult (Dom.focus "hour-select")
-
-delay100ms : msg -> Cmd msg
-delay100ms msg = Process.sleep 100 |> Task.perform (\_ -> msg)
