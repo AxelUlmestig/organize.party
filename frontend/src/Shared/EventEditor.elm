@@ -123,7 +123,7 @@ update msg state =
 
           oldInput =
               state.input
-      in ( { state | picker = picker, input = { oldInput | startTime = newStartTime } }, focusTimePickerOrTryAgainLater )
+      in ( { state | picker = picker, input = { oldInput | startTime = newStartTime } }, Cmd.none )
 
     OpenPicker ->
       let
@@ -133,7 +133,7 @@ update msg state =
                   state.input.startTime
                   (Just state.input.startTime)
                   state.picker
-      in ( { state | picker = newPicker }, Cmd.none )
+      in ( { state | picker = newPicker }, focusTimePickerOrTryAgainLater )
 
     FocusTimePicker -> ( state, focusTimePickerOrTryAgainLater )
     FocusTimePickerSoon -> ( state, delay100ms (EventEditorInternalMsg FocusTimePicker) )
