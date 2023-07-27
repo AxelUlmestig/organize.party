@@ -92,13 +92,13 @@ view state =
                       ]
 
                 ViewEventState viewEventState ->
-                    ViewEvent.view (mapPageState (always viewEventState) state)
+                    H.map ViewEventMsg <| ViewEvent.view (mapPageState (always viewEventState) state)
 
                 NewEventState x ->
-                    NewEvent.view (mapPageState (always x) state)
+                    H.map NewEventMsg <| NewEvent.view (mapPageState (always x) state)
 
                 EditEventState x ->
-                    EditEvent.view (mapPageState (always x) state)
+                    H.map EditEventMsg <| EditEvent.view (mapPageState (always x) state)
             ]
         ]
 

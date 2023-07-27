@@ -16,6 +16,7 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
+    , DisplayComment
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -65,6 +66,7 @@ type ViewEventState
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
+    | ViewEventAttendeeCommentModal String String
 
 
 type EditEventState
@@ -75,6 +77,7 @@ type EditEventState
 
 type EditEventStateModal
     = WrongPasswordModal
+    | EditEventAttendeeCommentModal DisplayComment
 
 
 type alias PageState a =
@@ -114,6 +117,7 @@ type ViewEventMsg
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
     | LoadedEvent (Result Http.Error Event)
+    | ViewEventDisplayComment DisplayComment
     | CloseModal
 
 
@@ -126,8 +130,14 @@ type EditEventMsg
     | CloseEditEventModal
     | EditFocusTimePicker
     | EditFocusTimePickerSoon
+    | EditEventDisplayComment DisplayComment
 
+-- View comment
 
+type alias DisplayComment =
+  { name : String
+  , comment : String
+  }
 
 -- Event
 
@@ -177,6 +187,7 @@ type alias EditEventInput =
 type alias Attendee =
     { name : String
     , status : AttendeeStatus
+    , comment : Maybe String
     , plusOne : Bool
     }
 
@@ -187,6 +198,7 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
+    , comment : String
     }
 
 
@@ -228,9 +240,10 @@ eventDecoder =
 
 attendeeDecoder : D.Decoder Attendee
 attendeeDecoder =
-    D.map3 Attendee
+    D.map4 Attendee
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
+        (D.maybe <| D.field "comment" D.string)
         (D.field "plusOne" D.bool)
 
 
@@ -307,13 +320,14 @@ emptyAttendeeInput eventId =
     { eventId = eventId
     , email = ""
     , name = ""
+    , comment = ""
     , status = Coming
     , plusOne = False
     }
 
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -332,4 +346,5 @@ encodeAttendeeInput { eventId, email, name, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "comment", if comment == "" then Encode.null else Encode.string comment )
         ]

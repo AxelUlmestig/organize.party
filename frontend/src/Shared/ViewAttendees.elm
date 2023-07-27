@@ -2,14 +2,31 @@ module Shared.ViewAttendees exposing (viewAttendees)
 
 import Dict exposing (Dict)
 import Html as H exposing (Html)
+import Html.Attributes as A
+import Html.Events as Events
 import Types exposing (..)
+import FontAwesome as Icon exposing (Icon)
+import FontAwesome.Attributes as Icon
+import FontAwesome.Brands as Icon
+import FontAwesome.Layering as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
+import Shared.FormatUrls exposing (formatTextWithLinks)
 
-
-viewAttendees : List Attendee -> Html Msg
+viewAttendees : List Attendee -> Html DisplayComment
 viewAttendees attendees =
     let
         attendeeDict =
             splitAttendees attendees
+
+        onClickBehaviour attendee =
+          case attendee.comment of
+            Nothing -> []
+            Just comment ->
+              [ Events.onClick { name = attendee.name, comment = comment }
+              , A.class "clickable"
+              ]
+
     in
     H.div []
         [ case Dict.get "Coming" attendeeDict of
@@ -35,17 +52,18 @@ viewAttendees attendees =
                         ]
                     , H.div []
                         (List.map
-                            (\{ name, plusOne } ->
-                                H.div []
+                            (\attendee ->
+                                H.div (onClickBehaviour attendee)
                                     [ H.text
-                                        (name
-                                            ++ (if plusOne then
+                                        (attendee.name
+                                            ++ (if attendee.plusOne then
                                                     " (+1)"
 
                                                 else
                                                     ""
                                                )
                                         )
+                                    , renderComment attendee
                                     ]
                             )
                             attending
@@ -75,17 +93,18 @@ viewAttendees attendees =
                         ]
                     , H.div []
                         (List.map
-                            (\{ name, plusOne } ->
-                                H.div []
+                            (\attendee ->
+                                H.div (onClickBehaviour attendee)
                                     [ H.text
-                                        (name
-                                            ++ (if plusOne then
+                                        (attendee.name
+                                            ++ (if attendee.plusOne then
                                                     " (+1)"
 
                                                 else
                                                     ""
                                                )
                                         )
+                                    , renderComment attendee
                                     ]
                             )
                             maybeAttending
@@ -103,7 +122,7 @@ viewAttendees attendees =
                 in
                 H.div []
                     [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
-                    , H.div [] (List.map (\{ name, plusOne } -> H.div [] [ H.text name ]) notAttending)
+                    , H.div [] (List.map (\attendee -> H.div (onClickBehaviour attendee) [ H.text attendee.name, renderComment attendee ]) notAttending)
                     ]
         ]
 
@@ -145,3 +164,13 @@ listToDict getKey =
             Dict.update (getKey x) (updateExisting x)
     in
     List.foldr f Dict.empty
+
+renderComment : Attendee -> Html msg
+renderComment attendee =
+  case attendee.comment of
+    Nothing -> H.text ""
+    Just comment ->
+      H.span
+        []
+        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.comment)
+        ]

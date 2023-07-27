@@ -22,12 +22,13 @@ import Browser.Dom as Dom
 import Task
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Shared.FormatUrls exposing (formatTextWithLinks)
 
 borderRadius =
     A.style "border-radius" "5px"
 
 
-view : PageState EditEventState -> Html Msg
+view : PageState EditEventState -> Html EditEventMsg
 view pageState =
     case pageState.state of
         LoadingEventToEdit ->
@@ -42,14 +43,14 @@ view pageState =
 
         EditEvent attendees maybeModal { picker, input } ->
             let
-                updatePicker : EditEventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
+                updatePicker : EditEventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> EditEventMsg
                 updatePicker input2 ( picker2, mTimestamp ) =
                     case mTimestamp of
                         Just newStart ->
-                            EditEventMsg (UpdateEditEventInput picker2 { input2 | startTime = newStart })
+                            UpdateEditEventInput picker2 { input2 | startTime = newStart }
 
                         Nothing ->
-                            EditEventMsg (UpdateEditEventInput picker2 input2)
+                            UpdateEditEventInput picker2 input2
             in
             H.div []
                 [ case maybeModal of
@@ -64,7 +65,18 @@ view pageState =
                                         H.div []
                                             [ H.text "Error: incorrect password"
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseEditEventModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                ]
+                                            ]
+                                    EditEventAttendeeCommentModal { name, comment } ->
+                                        H.div []
+                                            [ H.b [] [ H.text name ]
+                                            , H.text " commented"
+                                            , H.br [] []
+                                            , H.br [] []
+                                            , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
+                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseEditEventModal, A.class "btn btn-primary" ] [ H.text "Close" ]
                                                 ]
                                             ]
                                 ]
@@ -72,16 +84,16 @@ view pageState =
                 , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
                 , sectionSeparator "What"
                 , H.div [] [ H.text "Event name" ]
-                , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> EditEventMsg (UpdateEditEventInput picker { input | title = t })) ] [] ]
+                , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> UpdateEditEventInput picker { input | title = t }) ] [] ]
                 , H.div [] [ H.text "Description" ]
                 , expandingTextarea
                     { text = input.description
-                    , onInput = (\d -> EditEventMsg (UpdateEditEventInput picker { input | description = d }))
+                    , onInput = (\d -> UpdateEditEventInput picker { input | description = d })
                     , placeholder = ""
                     , styling = []
                     }
                 , sectionSeparator "When"
-                , H.div [ A.style "display" "flex", A.style "color" "black", onClick (EditEventMsg EditEventOpenPicker) ]
+                , H.div [ A.style "display" "flex", A.style "color" "black", onClick EditEventOpenPicker ]
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                         [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                             [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
@@ -100,7 +112,7 @@ view pageState =
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                       [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                           [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> EditEventMsg (UpdateEditEventInput picker { input | location = l })) ] []
+                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> UpdateEditEventInput picker { input | location = l }) ] []
                       ]
                     ]
                 , sectionSeparator "Password"
@@ -109,15 +121,15 @@ view pageState =
                     [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
                       [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                           [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> EditEventMsg (UpdateEditEventInput picker { input | password = pw })) ] []
+                      , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> UpdateEditEventInput picker { input | password = pw }) ] []
                       ]
                     ]
                 , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                    [ H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventMsg SubmitEdit), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                    [ H.button [ A.style "background-color" "#1c2c3b", onClick SubmitEdit, A.class "btn btn-primary" ] [ H.text "Submit" ]
                     ]
                 , H.br [] []
                 , H.br [] []
-                , viewAttendees attendees
+                , H.map EditEventDisplayComment (viewAttendees attendees)
                 ]
 
 
@@ -225,6 +237,12 @@ update msg pageState =
 
         EditFocusTimePicker -> ( format (EditEventState pageState.state), focusTimePickerOrTryAgainLater )
         EditFocusTimePickerSoon -> ( format (EditEventState pageState.state), delay100ms (NewEventMsg FocusTimePicker) )
+        EditEventDisplayComment comment ->
+            case pageState.state of
+                EditEvent attendees _ input ->
+                    ( format (EditEventState (EditEvent attendees (Just (EditEventAttendeeCommentModal comment)) input)), Cmd.none )
+                otherState ->
+                    ( format (EditEventState otherState), Cmd.none )
 
 fetchEvent : String -> Cmd Msg
 fetchEvent id =

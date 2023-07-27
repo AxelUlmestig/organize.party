@@ -10,3 +10,7 @@ build-frontend:
 .PHONY: access-database
 access-database:
 	docker compose exec db psql postgres://postgres:postgres@localhost:5432/events
+
+.PHONY: deploy-migrations
+deploy-migrations:
+	docker compose exec db sqitch --chdir db deploy

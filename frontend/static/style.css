@@ -1,3 +1,7 @@
 .padded-input {
   padding: 5px;
 }
+
+.clickable {
+  cursor: pointer;
+}
