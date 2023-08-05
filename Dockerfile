@@ -1,4 +1,4 @@
-FROM haskell:8.10
+FROM haskell:9.4.5
 
 WORKDIR /events
 
