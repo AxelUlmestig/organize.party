@@ -5,7 +5,6 @@ import Html as H exposing (Html)
 import Iso8601
 import Time
 import Time.Extra exposing (Interval(..), add, toOffset)
-import Types exposing (..)
 
 
 

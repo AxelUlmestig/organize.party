@@ -37,6 +37,7 @@ import Json.Encode as Encode exposing (Value)
 import SingleDatePicker as DP
 import Time as Time
 import Url exposing (Url)
+import Shared.EventEditor as EventEditor
 
 
 
@@ -52,7 +53,7 @@ type State
 
 
 type NewEventState
-    = NewEvent { picker : DP.DatePicker, input : EventInput }
+    = NewEvent EventEditor.EventEditorState
     | NewEventLoading
 
 
@@ -71,8 +72,8 @@ type ViewEventStateModal
 
 type EditEventState
     = LoadingEventToEdit
-    | EditEvent (List Attendee) (Maybe EditEventStateModal) { picker : DP.DatePicker, input : EditEventInput }
-    | SubmittedEdit (List Attendee) { picker : DP.DatePicker, input : EditEventInput }
+    | EditEvent String (List Attendee) (Maybe EditEventStateModal) EventEditor.EventEditorState
+    | SubmittedEdit String (List Attendee) EventEditor.EventEditorState
 
 
 type EditEventStateModal
@@ -103,13 +104,8 @@ type Msg
 
 
 type NewEventMsg
-    = UpdateEventInput DP.DatePicker EventInput
-    | UpdateEventStartTime ( DP.DatePicker, Maybe Time.Posix )
-    | OpenPicker
-    | CreateEventMsg EventInput
+    = CreateEventEventEditorMsg EventEditor.EventEditorMsg
     | CreatedEvent (Result Http.Error Event)
-    | FocusTimePicker
-    | FocusTimePickerSoon
 
 
 type ViewEventMsg
@@ -123,13 +119,9 @@ type ViewEventMsg
 
 type EditEventMsg
     = LoadedEventForEdit (Result Http.Error Event)
-    | UpdateEditEventInput DP.DatePicker EditEventInput
-    | EditEventOpenPicker
-    | SubmitEdit
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
-    | EditFocusTimePicker
-    | EditFocusTimePickerSoon
+    | EditEventEventEditorMsg EventEditor.EventEditorMsg
     | EditEventDisplayComment DisplayComment
 
 -- View comment
