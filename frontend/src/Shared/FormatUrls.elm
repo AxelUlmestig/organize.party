@@ -3,7 +3,6 @@ module Shared.FormatUrls exposing (formatTextWithLinks)
 import Parser exposing (..)
 import Html as H exposing (Html)
 import Html.Attributes as A
-import Debug exposing (..)
 import List
 
 formatTextWithLinks : String -> Html msg

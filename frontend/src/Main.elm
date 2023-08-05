@@ -138,7 +138,7 @@ update msg pageState =
                 ( newState, newCmd ) =
                     case P.parse routeParser url of
                         Just NewEventR ->
-                            ( NewEventState (NewEvent { timezone = pageState.timeZone, picker = DP.init, input = emptyEventInput time }), Cmd.none )
+                            ( NewEventState (NewEvent { timezone = zone, picker = DP.init, input = emptyEventInput time }), Cmd.none )
 
                         Just (ViewEventR id) ->
                             ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
