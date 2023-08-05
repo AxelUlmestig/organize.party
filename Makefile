@@ -5,7 +5,7 @@ start-dev-backend:
 
 .PHONY: build-frontend
 build-frontend:
-	(cd frontend && elm make src/Main.elm)
+	./scripts/build-frontend.sh
 
 .PHONY: access-database
 access-database:
@@ -13,4 +13,11 @@ access-database:
 
 .PHONY: deploy-migrations
 deploy-migrations:
+	docker compose exec db sqitch --chdir db deploy
+
+.PHONY: update-server-container
+update-server-container:
+	./scripts/build-frontend.sh --optimize
+	docker compose up --force-recreate --build -d server
+	docker image prune -f
 	docker compose exec db sqitch --chdir db deploy
