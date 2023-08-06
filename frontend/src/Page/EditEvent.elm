@@ -26,6 +26,7 @@ import Shared.FormatUrls exposing (formatTextWithLinks)
 import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
+import Task
 
 copy : Dict String String
 copy = Dict.insert "password_header" "Password" <| Dict.empty
@@ -117,7 +118,10 @@ update msg pageState =
                             format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id)))
 
                         cmd =
-                            Nav.pushUrl pageState.key ("/e/" ++ event.id)
+                            Cmd.batch
+                              [ Nav.pushUrl pageState.key ("/e/" ++ event.id)
+                              , Task.perform ViewEventMsg <| Task.succeed <| RequestLocalStorageAttendeeInput event.id
+                              ]
                     in
                     ( newState, cmd )
 

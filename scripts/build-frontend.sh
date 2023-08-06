@@ -39,7 +39,7 @@ if [ $optimize = true ]; then
 else
   ELM_JS_FILE=elm.js
 
-  (cd frontend; elm make src/Main.elm --optimize --output=$ELM_JS_FILE)
+  (cd frontend; elm make src/Main.elm --output=$ELM_JS_FILE)
   mv frontend/$ELM_JS_FILE frontend/static/$ELM_JS_FILE
 fi
 
@@ -49,11 +49,31 @@ cat << EOF > frontend/index.html
   <head>
     <script src="/$ELM_JS_FILE"></script>
   </head>
+
   <body>
-    <script type="text/javascript">
-      Elm.Main.init();
-    </script>
+    <div id="myapp"></div>
   </body>
+
+  <script type="text/javascript">
+    const app = Elm.Main.init({
+      node: document.getElementById('myapp')
+    })
+
+    app.ports.writeToLocalStorage.subscribe(
+      ({ eventId, attendeeInput }) => localStorage.setItem(eventId, JSON.stringify(attendeeInput))
+    );
+
+    app.ports.requestLocalStorageAttendeeInput.subscribe(
+        (eventId) => {
+          app
+            .ports
+            .localStorageAttendeeInputReceiver
+            .send(
+              localStorage.getItem(eventId)
+            )
+        }
+    );
+  </script>
 </html>
 EOF
 

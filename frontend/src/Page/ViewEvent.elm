@@ -1,4 +1,4 @@
-module Page.ViewEvent exposing (fetchEvent, update, view)
+port module Page.ViewEvent exposing (fetchEvent, update, view, handleSubscription)
 
 import Basics.Extra exposing (uncurry)
 import Browser
@@ -27,6 +27,11 @@ import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
 import Shared.FormatUrls exposing (formatTextWithLinks)
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Json.Decode as Decode
+
+port writeToLocalStorage : Value -> Cmd msg
+port requestLocalStorageAttendeeInput : String -> Cmd msg
+port localStorageAttendeeInputReceiver : (Maybe String -> msg) -> Sub msg
 
 borderRadius =
     A.style "border-radius" "5px"
@@ -203,7 +208,10 @@ update msg pageState =
         AttendedEvent result ->
             case result of
                 Ok attendedEvent ->
-                    ( format (ViewEventState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id))), Nav.pushUrl key ("/e/" ++ attendedEvent.id) )
+
+                    let pushUrlCmd = Nav.pushUrl key ("/e/" ++ attendedEvent.id)
+                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
+                    in ( format (ViewEventState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id))), cmds )
 
                 Err _ ->
                     ( format Failure, Cmd.none )
@@ -211,7 +219,13 @@ update msg pageState =
         UpdateAttendeeInput input ->
             case pageState.state of
                 ViewEvent modal event _ ->
-                    ( format (ViewEventState (ViewEvent modal event input)), Cmd.none )
+                    let newState = format (ViewEventState (ViewEvent modal event input))
+                        localStorageObject =
+                          Encode.object
+                            [ ("eventId", Encode.string input.eventId)
+                            , ("attendeeInput", encodeAttendeeInput input)
+                            ]
+                    in ( newState, writeToLocalStorage localStorageObject )
 
                 _ ->
                     ( format (ViewEventState pageState.state), Cmd.none )
@@ -222,7 +236,9 @@ update msg pageState =
         LoadedEvent result ->
             case result of
                 Ok event ->
-                    ( format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
+                    let pushUrlCmd = Nav.pushUrl pageState.key ("/e/" ++ event.id)
+                        cmds = Cmd.batch [requestLocalStorageAttendeeInput event.id, pushUrlCmd]
+                    in ( format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id))), cmds )
 
                 Err (BadStatus 404) ->
                     ( format (ViewEventState EventNotFound), Cmd.none )
@@ -244,6 +260,15 @@ update msg pageState =
                 otherState ->
                     ( format (ViewEventState otherState), Cmd.none )
 
+        RequestLocalStorageAttendeeInput eventId ->
+            ( format (ViewEventState state), requestLocalStorageAttendeeInput eventId )
+
+handleSubscription : PageState ViewEventState -> Sub Msg
+handleSubscription _ =
+  localStorageAttendeeInputReceiver
+    <| \mJsonString -> case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
+      Just (Ok attendeeInput) -> ViewEventMsg <| UpdateAttendeeInput attendeeInput
+      _ -> DoNothing
 
 attendEvent : AttendeeInput -> Cmd Msg
 attendEvent input =

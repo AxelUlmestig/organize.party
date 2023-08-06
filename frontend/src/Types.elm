@@ -21,6 +21,7 @@ module Types exposing
     , emptyAttendeeInput
     , emptyEventInput
     , encodeAttendeeInput
+    , attendeeInputDecoder
     , encodeEditEventInput
     , encodeEventInput
     , eventDecoder
@@ -38,6 +39,7 @@ import SingleDatePicker as DP
 import Time as Time
 import Url exposing (Url)
 import Shared.EventEditor as EventEditor
+import Maybe
 
 
 
@@ -115,6 +117,7 @@ type ViewEventMsg
     | LoadedEvent (Result Http.Error Event)
     | ViewEventDisplayComment DisplayComment
     | CloseModal
+    | RequestLocalStorageAttendeeInput String
 
 
 type EditEventMsg
@@ -340,3 +343,14 @@ encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
         , ( "plusOne", Encode.bool plusOne )
         , ( "comment", if comment == "" then Encode.null else Encode.string comment )
         ]
+
+attendeeInputDecoder : D.Decoder AttendeeInput
+attendeeInputDecoder =
+    D.map6 AttendeeInput
+        (D.field "eventId" D.string)
+        (D.field "email" D.string)
+        (D.field "name" D.string)
+        (D.field "status" attendeeStatusDecoder)
+        (D.field "plusOne" D.bool)
+        (D.map (Maybe.withDefault "") <| D.maybe <| D.field "comment" D.string)
+

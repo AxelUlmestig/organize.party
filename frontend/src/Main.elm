@@ -1,7 +1,5 @@
 module Main exposing (main)
 
--- exposing (Decoder, field, string)
-
 import Browser
 import Browser.Navigation as Nav
 import Date as Date
@@ -23,7 +21,6 @@ import Types exposing (..)
 import Url exposing (Url)
 import Url.Parser as P exposing ((</>), Parser, int, map, oneOf, s, string)
 import Url.Parser.Query as Q
-
 
 view : PageState State -> Browser.Document Msg
 view state =
@@ -270,6 +267,9 @@ subscriptions model =
 
         EditEventState state ->
             EditEvent.handleSubscription (setPageState state model)
+
+        ViewEventState state ->
+            ViewEvent.handleSubscription (setPageState state model)
 
         _ ->
             Sub.none
