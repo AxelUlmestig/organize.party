@@ -165,7 +165,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone Loading Cmd.none
+                    packageStateAndCmd timeZone state Cmd.none
 
         ViewEventMsg vem ->
             case state of
@@ -180,7 +180,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone Loading Cmd.none
+                    packageStateAndCmd timeZone state Cmd.none
 
         EditEventMsg eem ->
             case state of
@@ -195,7 +195,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone Loading Cmd.none
+                    packageStateAndCmd timeZone state Cmd.none
 
 
 routeParser : Parser (Route -> a) a
