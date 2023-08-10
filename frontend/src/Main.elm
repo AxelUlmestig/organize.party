@@ -24,7 +24,7 @@ import Url.Parser.Query as Q
 
 view : PageState State -> Browser.Document Msg
 view state =
-    Browser.Document "📅"
+    Browser.Document "organize.party"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , Icon.css
         , H.div
