@@ -101,11 +101,8 @@ update msg pageState =
                             }
 
                         newState = EditEventState (EditEvent event.id event.attendees Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput })
-
-                        newMsg =
-                            Nav.pushUrl pageState.key ("/e/" ++ event.id ++ "/edit")
                     in
-                    ( format newState, newMsg )
+                    ( format newState, Cmd.none )
 
                 Err _ ->
                     ( format Failure, Cmd.none )
