@@ -5,3 +5,34 @@
 .clickable {
   cursor: pointer;
 }
+
+body {
+  background-color: #fbfafa;
+  color: #1c2c3b;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background-color: rgba(0,0,0,.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal_window {
+  position: relative;
+  background-color: white;
+  padding: 4em 2em;
+  border-radius: 5px;
+}
+
+.center {
+    right: 50%;
+    bottom: 50%;
+    transform: translate(50%,50%);
+    position: absolute;
+}

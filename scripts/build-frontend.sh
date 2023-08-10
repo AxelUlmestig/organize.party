@@ -48,6 +48,16 @@ cat << EOF > frontend/index.html
 <html>
   <head>
     <script src="/$ELM_JS_FILE"></script>
+
+    <link rel="stylesheet" href="/datepicker.css">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/expanding-textarea.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
+      integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
+      crossorigin="anonymous"
+    >
   </head>
 
   <body>
