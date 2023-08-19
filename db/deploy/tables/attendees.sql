@@ -31,8 +31,7 @@ create table if not exists attendees (
   status attendee_status not null,
   plus_one bool not null,
   rsvp_at timestamp with time zone not null default now(),
-  superseded_at timestamp with time zone,
-  comment text
+  superseded_at timestamp with time zone
 );
 
 create unique index if not exists unique_attendee_idx
@@ -41,8 +40,15 @@ create unique index if not exists unique_attendee_idx
 
 -- 👇 Alterations below 👇
 
+insert into comments (event_id, email, name, comment, created_at)
+  select event_id, email, name, comment, rsvp_at
+  from attendees
+  where
+    superseded_at is null
+    and comment is not null;
+
 alter table attendees
-  add column if not exists
-  comment text;
+  drop column if exists
+  comment;
 
 commit;
