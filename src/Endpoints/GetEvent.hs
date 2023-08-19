@@ -14,13 +14,23 @@ import           Hasql.Statement        (Statement)
 import           Hasql.TH               (maybeStatement, vectorStatement)
 import           Servant                (ServerError (..), err404, err500)
 
+import qualified Data.Vector            as Vector
 import           Types.AppEnv
-import           Types.Event            (Attendee, Event (..))
+import           Types.Event            (Attendee, Comment (..), Event (..))
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
+    let statement = do
+            mEvent <- Hasql.statement eventId getEventStatement
+            case mEvent of
+              Nothing    -> pure Nothing
+              Just event -> do
+                attendees <- Hasql.statement event.id getAttendeesStatement
+                comments <- Hasql.statement event.id getCommentsStatement
+                pure $ Just event { attendees, comments }
+
     conn <- asks connection
-    eEvent <- liftIO $ Hasql.run (Hasql.statement eventId statement) conn
+    eEvent <- liftIO $ Hasql.run statement conn
     case eEvent of
       Right (Just event)  -> getAttendees event
       Right Nothing       -> throwError err404 { errBody = "Event not found" }
@@ -29,8 +39,8 @@ getEvent eventId = do
         throwError err500 { errBody = "Something went wrong" }
 
 
-statement :: Statement UUID (Maybe Event)
-statement =
+getEventStatement :: Statement UUID (Maybe Event)
+getEventStatement =
   fmap to <$>
     [maybeStatement|
       select
@@ -62,19 +72,32 @@ getAttendees event@Event{Types.Event.id} = do
     Right attendees -> return $ event { attendees = attendees }
 
 getAttendeesStatement :: Statement UUID [Attendee]
-getAttendeesStatement = fmap to . vectorToList <$> [vectorStatement|
-                                                     select
-                                                       name::text,
-                                                       status::text,
-                                                       comment::text?,
-                                                       plus_one::bool
-                                                     from attendees
-                                                     where
-                                                       event_id = $1::uuid
-                                                       and superseded_at is null
-                                                     order by
-                                                       status,
-                                                       rsvp_at desc
-                                                   |]
-  where
-    vectorToList = foldr (:) []
+getAttendeesStatement =
+  fmap to . Vector.toList <$>
+    [vectorStatement|
+      select
+        name::text,
+        status::text,
+        comment::text?,
+        plus_one::bool
+      from attendees
+      where
+        event_id = $1::uuid
+        and superseded_at is null
+      order by
+        status,
+        rsvp_at desc
+    |]
+
+getCommentsStatement :: Statement UUID [Comment]
+getCommentsStatement =
+  fmap to . Vector.toList <$>
+    [vectorStatement|
+      select
+        name::text,
+        comment::text,
+        created_at::timestamptz
+      from comments
+      where
+        event_id = $1::uuid
+    |]
