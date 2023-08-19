@@ -21,6 +21,7 @@ import Json.Encode as Encode exposing (Value)
 import List.Extra
 import Regex
 import Shared.ViewAttendees exposing (viewAttendees)
+import Shared.ViewComments exposing (viewComments)
 import Time as Time
 import Tuple
 import Types exposing (..)
@@ -79,7 +80,7 @@ view pageState =
 
         ViewEvent maybeModal event attendeeInput ->
             let
-                { id, title, description, startTime, endTime, location, attendees } =
+                { id, title, description, startTime, endTime, location, attendees, comments } =
                     event
 
                 onStatusUpdate newStatus =
@@ -173,6 +174,7 @@ view pageState =
                 , H.br [] []
                 , H.br [] []
                 , viewAttendees attendees
+                , viewComments comments
                 ]
 
 

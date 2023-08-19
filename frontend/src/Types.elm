@@ -2,6 +2,7 @@ module Types exposing
     ( Attendee
     , AttendeeInput
     , AttendeeStatus(..)
+    , Comment
     , EditEventInput
     , EditEventMsg(..)
     , EditEventState(..)
@@ -16,7 +17,6 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
-    , DisplayComment
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -125,13 +125,6 @@ type EditEventMsg
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
 
--- View comment
-
-type alias DisplayComment =
-  { name : String
-  , comment : String
-  }
-
 -- Event
 
 
@@ -143,7 +136,7 @@ type alias Event =
     , endTime : Maybe Time.Posix
     , location : String
     , attendees : List Attendee
-
+    , comments : List Comment
     -- , googleMapsLink : Maybe String
     }
 
@@ -199,6 +192,14 @@ type AttendeeStatus
     | MaybeComing
     | NotComing
 
+-- Comment
+
+type alias Comment =
+    { name : String
+    , comment : String
+    , timestamp : Time.Posix
+    }
+
 
 mapPageState : (a -> b) -> PageState a -> PageState b
 mapPageState f ps =
@@ -220,7 +221,7 @@ setPageState x =
 
 eventDecoder : D.Decoder Event
 eventDecoder =
-    D.map7 Event
+    D.map8 Event
         (D.field "id" D.string)
         (D.field "title" D.string)
         (D.field "description" D.string)
@@ -228,6 +229,7 @@ eventDecoder =
         (D.maybe (D.field "endTime" Iso8601.decoder))
         (D.field "location" D.string)
         (D.field "attendees" (D.list attendeeDecoder))
+        (D.field "comments" (D.list commentDecoder))
 
 
 attendeeDecoder : D.Decoder Attendee
@@ -238,6 +240,12 @@ attendeeDecoder =
         (D.maybe <| D.field "comment" D.string)
         (D.field "plusOne" D.bool)
 
+commentDecoder : D.Decoder Comment
+commentDecoder =
+    D.map3 Comment
+        (D.field "commenterName" D.string)
+        (D.field "comment" D.string)
+        (D.field "timestamp" Iso8601.decoder)
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =
