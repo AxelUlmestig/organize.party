@@ -124,18 +124,6 @@ view pageState =
                                                 [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
-
-                                    ViewEventAttendeeCommentModal name comment ->
-                                        H.div []
-                                            [ H.b [] [ H.text name ]
-                                            , H.text " commented"
-                                            , H.br [] []
-                                            , H.br [] []
-                                            , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
-                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Close" ]
-                                                ]
-                                            ]
                                 ]
                             ]
                 , H.div []
@@ -178,20 +166,13 @@ view pageState =
                             , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
                             ]
                         ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Leave a comment" ]
-                    , expandingTextarea
-                        { text = attendeeInput.comment
-                        , onInput = (\comment -> UpdateAttendeeInput { attendeeInput | comment = comment })
-                        , placeholder = ""
-                        , styling = []
-                        }
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
                         [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (AttendMsg attendeeInput), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
                     ]
                 , H.br [] []
                 , H.br [] []
-                , H.map ViewEventDisplayComment (viewAttendees attendees)
+                , viewAttendees attendees
                 ]
 
 
@@ -245,12 +226,6 @@ update msg pageState =
 
                 Err _ ->
                     ( format Failure, Cmd.none )
-
-        ViewEventDisplayComment { name, comment } ->
-            case pageState.state of
-                ViewEvent _ event attendeeInput -> ( format (ViewEventState (ViewEvent (Just (ViewEventAttendeeCommentModal name comment)) event attendeeInput)), Cmd.none )
-                otherState ->
-                    ( format (ViewEventState otherState), Cmd.none )
 
         CloseModal ->
             case state of

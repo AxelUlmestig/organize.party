@@ -69,7 +69,7 @@ type ViewEventState
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
-    | ViewEventAttendeeCommentModal String String
+
 
 
 type EditEventState
@@ -80,7 +80,7 @@ type EditEventState
 
 type EditEventStateModal
     = WrongPasswordModal
-    | EditEventAttendeeCommentModal DisplayComment
+
 
 
 type alias PageState a =
@@ -115,7 +115,6 @@ type ViewEventMsg
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
     | LoadedEvent (Result Http.Error Event)
-    | ViewEventDisplayComment DisplayComment
     | CloseModal
     | RequestLocalStorageAttendeeInput String
 
@@ -125,7 +124,6 @@ type EditEventMsg
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
-    | EditEventDisplayComment DisplayComment
 
 -- View comment
 
@@ -193,7 +191,6 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
-    , comment : String
     }
 
 
@@ -315,14 +312,13 @@ emptyAttendeeInput eventId =
     { eventId = eventId
     , email = ""
     , name = ""
-    , comment = ""
     , status = Coming
     , plusOne = False
     }
 
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, status, plusOne } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -341,16 +337,14 @@ encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
-        , ( "comment", if comment == "" then Encode.null else Encode.string comment )
         ]
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
-    D.map6 AttendeeInput
+    D.map5 AttendeeInput
         (D.field "eventId" D.string)
         (D.field "email" D.string)
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
         (D.field "plusOne" D.bool)
-        (D.map (Maybe.withDefault "") <| D.maybe <| D.field "comment" D.string)
 

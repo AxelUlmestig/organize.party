@@ -61,22 +61,11 @@ view pageState =
                                                 [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseEditEventModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
-                                    EditEventAttendeeCommentModal { name, comment } ->
-                                        H.div []
-                                            [ H.b [] [ H.text name ]
-                                            , H.text " commented"
-                                            , H.br [] []
-                                            , H.br [] []
-                                            , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks comment ]
-                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseEditEventModal, A.class "btn btn-primary" ] [ H.text "Close" ]
-                                                ]
-                                            ]
                                 ]
                             ]
                 , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
                 , H.map EditEventEventEditorMsg (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
-                , H.map EditEventDisplayComment (viewAttendees attendees)
+                , viewAttendees attendees
                 ]
 
 
@@ -150,13 +139,6 @@ update msg pageState =
                 EditEvent eventId attendees _ input ->
                     ( format (EditEventState (EditEvent eventId attendees Nothing input)), Cmd.none )
 
-                otherState ->
-                    ( format (EditEventState otherState), Cmd.none )
-
-        EditEventDisplayComment comment ->
-            case pageState.state of
-                EditEvent eventId attendees _ input ->
-                    ( format (EditEventState (EditEvent eventId attendees (Just (EditEventAttendeeCommentModal comment)) input)), Cmd.none )
                 otherState ->
                     ( format (EditEventState otherState), Cmd.none )
 
