@@ -23,7 +23,6 @@ data Attendee = Attendee
                 , name    :: Text
                 , status  :: AttendeeStatus
                 , plusOne :: Bool
-                , comment :: Maybe Text
                 , rsvpAt  :: UTCTime
                 }
                 deriving (Generic, Show)
@@ -41,8 +40,8 @@ readStatus "maybe_coming" = MaybeComing
 readStatus "not_coming"   = NotComing
 readStatus other          = error [iii|unknown AttendeeStatus: #{other}|]
 
-instance Injective (UUID, Text, Text, Text, Maybe Text, Bool, UTCTime) Attendee where
-  to (eventId, email, name, status, comment, plusOne, rsvpAt) = Attendee{ status = readStatus status, .. }
+instance Injective (UUID, Text, Text, Text, Bool, UTCTime) Attendee where
+  to (eventId, email, name, status, plusOne, rsvpAt) = Attendee{ status = readStatus status, .. }
 
-instance Injective Attendee (UUID, Text, Text, Maybe Text, Text, Bool) where
-  to Attendee{eventId, email, name, comment, status, plusOne} = (eventId, email, name, comment, writeStatus status, plusOne)
+instance Injective Attendee (UUID, Text, Text, Text, Bool) where
+  to Attendee{eventId, email, name, status, plusOne} = (eventId, email, name, writeStatus status, plusOne)

@@ -155,7 +155,6 @@ sendEmailUpdate event = do
           email::text,
           name::text,
           status::text,
-          comment::text?,
           plus_one::bool,
           rsvp_at::timestamptz
         from attendees

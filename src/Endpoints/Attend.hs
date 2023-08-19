@@ -72,7 +72,6 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                       email::text,
                       name::text,
                       status::text,
-                      comment::text?,
                       plus_one::bool,
                       rsvp_at::timestamptz
                     from attendees
@@ -80,9 +79,8 @@ findExistingStatement = dimap to (fmap to) [maybeStatement|
                       event_id = $1::uuid
                       and email = $2::text
                       and name = $3::text
-                      and comment = $4::text?
-                      and status = $5::text::attendee_status
-                      and plus_one = $6::bool
+                      and status = $4::text::attendee_status
+                      and plus_one = $5::bool
                       and superseded_at is null
                   |]
   where
@@ -104,9 +102,9 @@ insertAttendeeStatement :: Statement AttendInput Attendee
 insertAttendeeStatement =
   dimap to to
     [singletonStatement|
-      insert into attendees (event_id, email, name, comment, status, plus_one)
-      values ($1::uuid, $2::text, $3::text, $4::text?, lower($5::text)::attendee_status, $6::bool)
-      returning event_id::uuid, email::text, name::text, status::text, comment::text?, plus_one::bool, rsvp_at::timestamptz
+      insert into attendees (event_id, email, name, status, plus_one)
+      values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool)
+      returning event_id::uuid, email::text, name::text, status::text, plus_one::bool, rsvp_at::timestamptz
     |]
 
 emailSentAlreadyStatement :: Statement AttendInput Bool
