@@ -174,6 +174,7 @@ view pageState =
                 , H.br [] []
                 , H.br [] []
                 , viewAttendees attendees
+                , addCommentView attendeeInput
                 , viewComments comments
                 ]
 
@@ -240,6 +241,27 @@ update msg pageState =
         RequestLocalStorageAttendeeInput eventId ->
             ( format (ViewEventState state), requestLocalStorageAttendeeInput eventId )
 
+        CommentOnEvent input ->
+            -- can't think of a less messy way to delete the comment from the input state
+            let localStorageObject =
+                    Encode.object
+                      [ ("eventId", Encode.string input.eventId)
+                      , ("attendeeInput", encodeAttendeeInput { input | comment = "" })
+                      ]
+            in ( format (ViewEventState AttendEventLoading), Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ])
+
+        CommentedOnEvent result ->
+            case result of
+                Ok attendedEvent ->
+
+                    let pushUrlCmd = Nav.pushUrl key ("/e/" ++ attendedEvent.id)
+                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
+                    in ( format (ViewEventState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id))), cmds )
+
+                Err _ ->
+                    ( format Failure, Cmd.none )
+
+
 handleSubscription : PageState ViewEventState -> Sub Msg
 handleSubscription _ =
   localStorageAttendeeInputReceiver
@@ -254,7 +276,38 @@ attendEvent input =
         , headers = []
         , url = "/api/v1/events/" ++ input.eventId ++ "/attend"
         , expect = Http.expectJson (ViewEventMsg << AttendedEvent) eventDecoder
-        , body = Http.jsonBody (encodeAttendeeInput input)
+        , body = Http.jsonBody (encodeAttendeeInputForRsvp input)
         , timeout = Nothing
         , tracker = Nothing
         }
+
+commentOnEvent : AttendeeInput -> Cmd Msg
+commentOnEvent input =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "/api/v1/events/" ++ input.eventId ++ "/comment"
+        , expect = Http.expectJson (ViewEventMsg << CommentedOnEvent) eventDecoder
+        , body = Http.jsonBody (encodeAttendeeInputForComment input)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+addCommentView : AttendeeInput -> Html ViewEventMsg
+addCommentView attendeeInput =
+  H.div []
+    [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
+    , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
+    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
+    , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Comment" ]
+    , expandingTextarea
+        { text = attendeeInput.comment
+        , onInput = (\c -> UpdateAttendeeInput { attendeeInput | comment = c })
+        , placeholder = "Leave a comment"
+        , styling = []
+        }
+    , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
+        ]
+    ]

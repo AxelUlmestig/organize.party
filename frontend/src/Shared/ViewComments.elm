@@ -12,12 +12,14 @@ import FontAwesome.Layering as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Shared.FormatUrls exposing (formatTextWithLinks)
+import Time
 
 
 viewComments : List Comment -> Html msg
 viewComments comments =
-  H.div [] <|
-    List.map viewComment comments
+  H.div []
+    <| List.map viewComment
+    <| List.sortBy (((*) (-1)) << Time.posixToMillis << .timestamp) comments
 
 viewComment : Comment -> Html msg
 viewComment comment =

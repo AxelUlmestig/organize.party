@@ -21,6 +21,8 @@ module Types exposing
     , emptyAttendeeInput
     , emptyEventInput
     , encodeAttendeeInput
+    , encodeAttendeeInputForRsvp
+    , encodeAttendeeInputForComment
     , attendeeInputDecoder
     , encodeEditEventInput
     , encodeEventInput
@@ -117,6 +119,8 @@ type ViewEventMsg
     | LoadedEvent (Result Http.Error Event)
     | CloseModal
     | RequestLocalStorageAttendeeInput String
+    | CommentOnEvent AttendeeInput
+    | CommentedOnEvent (Result Http.Error Event)
 
 
 type EditEventMsg
@@ -184,6 +188,7 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
+    , comment : String
     }
 
 
@@ -322,11 +327,35 @@ emptyAttendeeInput eventId =
     , name = ""
     , status = Coming
     , plusOne = False
+    , comment = ""
     }
 
-
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
+    let
+        encodeAttendeeStatus ai =
+            case ai of
+                Coming ->
+                    Encode.string "Coming"
+
+                MaybeComing ->
+                    Encode.string "MaybeComing"
+
+                NotComing ->
+                    Encode.string "NotComing"
+    in
+    Encode.object
+        [ ( "eventId", Encode.string eventId )
+        , ( "email", Encode.string (String.trim email) )
+        , ( "name", Encode.string (String.trim name) )
+        , ( "status", encodeAttendeeStatus status )
+        , ( "plusOne", Encode.bool plusOne )
+        , ( "comment", Encode.string comment )
+        ]
+
+
+encodeAttendeeInputForRsvp : AttendeeInput -> Value
+encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -347,12 +376,22 @@ encodeAttendeeInput { eventId, email, name, status, plusOne } =
         , ( "plusOne", Encode.bool plusOne )
         ]
 
+encodeAttendeeInputForComment : AttendeeInput -> Value
+encodeAttendeeInputForComment { eventId, email, name, comment } =
+  Encode.object
+    [ ( "eventId", Encode.string eventId )
+    , ( "email", Encode.string (String.trim email) )
+    , ( "name", Encode.string (String.trim name) )
+    , ( "comment", Encode.string (String.trim comment) )
+    ]
+
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
-    D.map5 AttendeeInput
+    D.map6 AttendeeInput
         (D.field "eventId" D.string)
         (D.field "email" D.string)
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
         (D.field "plusOne" D.bool)
+        (D.field "comment" D.string)
 
