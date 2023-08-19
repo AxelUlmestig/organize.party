@@ -47,8 +47,8 @@ instance ToJSON Event
 instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, UTCTime, UTCTime) Event where
   to (id, title, description, startTime, endTime, location, googleMapsLink, createdAt, modifiedAt) = Event id title description startTime endTime location googleMapsLink [] createdAt modifiedAt []
 
-instance Injective (Text, Text, Maybe Text, Bool) Attendee where
-  to (name, status, comment, plusOne) = Attendee{ status = readStatus status, ..}
+instance Injective (Text, Text, Bool) Attendee where
+  to (name, status, plusOne) = Attendee{ status = readStatus status, ..}
 
 instance Injective (Text, Text, UTCTime) Comment where
   to (commenterName, comment, timestamp) = Comment {..}

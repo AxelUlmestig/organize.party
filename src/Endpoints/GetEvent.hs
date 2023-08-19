@@ -78,7 +78,6 @@ getAttendeesStatement =
       select
         name::text,
         status::text,
-        comment::text?,
         plus_one::bool
       from attendees
       where
