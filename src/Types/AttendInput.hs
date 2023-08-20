@@ -16,14 +16,13 @@ data AttendInput = AttendInput
                    , name    :: Text
                    , status  :: AttendeeStatus
                    , plusOne :: Bool
-                   , comment :: Maybe Text
                    }
                    deriving (Generic, Show)
 
 instance FromJSON AttendInput
 
-instance Injective AttendInput (UUID, Text, Text, Maybe Text, Text, Bool) where
-  to AttendInput{eventId, email, name, status, plusOne, comment} = (eventId, email, name, comment, writeStatus status, plusOne)
+instance Injective AttendInput (UUID, Text, Text, Text, Bool) where
+  to AttendInput{eventId, email, name, status, plusOne} = (eventId, email, name, writeStatus status, plusOne)
 
 instance Injective AttendInput (UUID, Text, Text, Bool) where
   to AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)

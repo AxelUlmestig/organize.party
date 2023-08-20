@@ -13,19 +13,11 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Shared.FormatUrls exposing (formatTextWithLinks)
 
-viewAttendees : List Attendee -> Html DisplayComment
+viewAttendees : List Attendee -> Html msg
 viewAttendees attendees =
     let
         attendeeDict =
             splitAttendees attendees
-
-        onClickBehaviour attendee =
-          case attendee.comment of
-            Nothing -> []
-            Just comment ->
-              [ Events.onClick { name = attendee.name, comment = comment }
-              , A.class "clickable"
-              ]
 
     in
     H.div []
@@ -53,7 +45,7 @@ viewAttendees attendees =
                     , H.div []
                         (List.map
                             (\attendee ->
-                                H.div (onClickBehaviour attendee)
+                                H.div []
                                     [ H.text
                                         (attendee.name
                                             ++ (if attendee.plusOne then
@@ -63,7 +55,6 @@ viewAttendees attendees =
                                                     ""
                                                )
                                         )
-                                    , renderComment attendee
                                     ]
                             )
                             attending
@@ -94,7 +85,7 @@ viewAttendees attendees =
                     , H.div []
                         (List.map
                             (\attendee ->
-                                H.div (onClickBehaviour attendee)
+                                H.div []
                                     [ H.text
                                         (attendee.name
                                             ++ (if attendee.plusOne then
@@ -104,7 +95,6 @@ viewAttendees attendees =
                                                     ""
                                                )
                                         )
-                                    , renderComment attendee
                                     ]
                             )
                             maybeAttending
@@ -122,7 +112,7 @@ viewAttendees attendees =
                 in
                 H.div []
                     [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
-                    , H.div [] (List.map (\attendee -> H.div (onClickBehaviour attendee) [ H.text attendee.name, renderComment attendee ]) notAttending)
+                    , H.div [] (List.map (\attendee -> H.div [] [ H.text attendee.name ]) notAttending)
                     ]
         ]
 
@@ -165,12 +155,3 @@ listToDict getKey =
     in
     List.foldr f Dict.empty
 
-renderComment : Attendee -> Html msg
-renderComment attendee =
-  case attendee.comment of
-    Nothing -> H.text ""
-    Just comment ->
-      H.span
-        []
-        [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.comment)
-        ]

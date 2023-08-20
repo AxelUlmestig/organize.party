@@ -2,6 +2,7 @@ module Types exposing
     ( Attendee
     , AttendeeInput
     , AttendeeStatus(..)
+    , Comment
     , EditEventInput
     , EditEventMsg(..)
     , EditEventState(..)
@@ -16,11 +17,12 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
-    , DisplayComment
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
     , encodeAttendeeInput
+    , encodeAttendeeInputForRsvp
+    , encodeAttendeeInputForComment
     , attendeeInputDecoder
     , encodeEditEventInput
     , encodeEventInput
@@ -69,18 +71,18 @@ type ViewEventState
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
-    | ViewEventAttendeeCommentModal String String
+
 
 
 type EditEventState
     = LoadingEventToEdit
-    | EditEvent String (List Attendee) (Maybe EditEventStateModal) EventEditor.EventEditorState
-    | SubmittedEdit String (List Attendee) EventEditor.EventEditorState
+    | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
+    | SubmittedEdit Event EventEditor.EventEditorState
 
 
 type EditEventStateModal
     = WrongPasswordModal
-    | EditEventAttendeeCommentModal DisplayComment
+
 
 
 type alias PageState a =
@@ -115,9 +117,10 @@ type ViewEventMsg
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
     | LoadedEvent (Result Http.Error Event)
-    | ViewEventDisplayComment DisplayComment
     | CloseModal
     | RequestLocalStorageAttendeeInput String
+    | CommentOnEvent AttendeeInput
+    | CommentedOnEvent (Result Http.Error Event)
 
 
 type EditEventMsg
@@ -125,14 +128,6 @@ type EditEventMsg
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
-    | EditEventDisplayComment DisplayComment
-
--- View comment
-
-type alias DisplayComment =
-  { name : String
-  , comment : String
-  }
 
 -- Event
 
@@ -145,7 +140,7 @@ type alias Event =
     , endTime : Maybe Time.Posix
     , location : String
     , attendees : List Attendee
-
+    , comments : List Comment
     -- , googleMapsLink : Maybe String
     }
 
@@ -202,6 +197,14 @@ type AttendeeStatus
     | MaybeComing
     | NotComing
 
+-- Comment
+
+type alias Comment =
+    { name : String
+    , comment : String
+    , timestamp : Time.Posix
+    }
+
 
 mapPageState : (a -> b) -> PageState a -> PageState b
 mapPageState f ps =
@@ -223,7 +226,7 @@ setPageState x =
 
 eventDecoder : D.Decoder Event
 eventDecoder =
-    D.map7 Event
+    D.map8 Event
         (D.field "id" D.string)
         (D.field "title" D.string)
         (D.field "description" D.string)
@@ -231,6 +234,7 @@ eventDecoder =
         (D.maybe (D.field "endTime" Iso8601.decoder))
         (D.field "location" D.string)
         (D.field "attendees" (D.list attendeeDecoder))
+        (D.field "comments" (D.list commentDecoder))
 
 
 attendeeDecoder : D.Decoder Attendee
@@ -241,6 +245,12 @@ attendeeDecoder =
         (D.maybe <| D.field "comment" D.string)
         (D.field "plusOne" D.bool)
 
+commentDecoder : D.Decoder Comment
+commentDecoder =
+    D.map3 Comment
+        (D.field "commenterName" D.string)
+        (D.field "comment" D.string)
+        (D.field "timestamp" Iso8601.decoder)
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =
@@ -315,14 +325,13 @@ emptyAttendeeInput eventId =
     { eventId = eventId
     , email = ""
     , name = ""
-    , comment = ""
     , status = Coming
     , plusOne = False
+    , comment = ""
     }
 
-
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
+encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -341,8 +350,40 @@ encodeAttendeeInput { eventId, email, name, comment, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
-        , ( "comment", if comment == "" then Encode.null else Encode.string comment )
+        , ( "comment", Encode.string comment )
         ]
+
+
+encodeAttendeeInputForRsvp : AttendeeInput -> Value
+encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
+    let
+        encodeAttendeeStatus ai =
+            case ai of
+                Coming ->
+                    Encode.string "Coming"
+
+                MaybeComing ->
+                    Encode.string "MaybeComing"
+
+                NotComing ->
+                    Encode.string "NotComing"
+    in
+    Encode.object
+        [ ( "eventId", Encode.string eventId )
+        , ( "email", Encode.string (String.trim email) )
+        , ( "name", Encode.string (String.trim name) )
+        , ( "status", encodeAttendeeStatus status )
+        , ( "plusOne", Encode.bool plusOne )
+        ]
+
+encodeAttendeeInputForComment : AttendeeInput -> Value
+encodeAttendeeInputForComment { eventId, email, name, comment } =
+  Encode.object
+    [ ( "eventId", Encode.string eventId )
+    , ( "email", Encode.string (String.trim email) )
+    , ( "name", Encode.string (String.trim name) )
+    , ( "comment", Encode.string (String.trim comment) )
+    ]
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
@@ -352,5 +393,5 @@ attendeeInputDecoder =
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
         (D.field "plusOne" D.bool)
-        (D.map (Maybe.withDefault "") <| D.maybe <| D.field "comment" D.string)
+        (D.field "comment" D.string)
 

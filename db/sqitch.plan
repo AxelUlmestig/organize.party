@@ -3,13 +3,17 @@
 
 tables/events 2022-06-04T11:43:29Z Axel Ulmestig <axel.ulmestig@gmail.com> # add events able
 tables/attendees 2022-06-04T12:03:52Z Axel Ulmestig <axel.ulmestig@gmail.com> # add attendees table
-@2022-07-31 2022-07-31T11:13:53Z Axel Ulmestig <axel.ulmestig@gmail.com> # 2022-07-31
 
+@2022-07-31 2022-07-31T11:13:53Z Axel Ulmestig <axel.ulmestig@gmail.com> # 2022-07-31
 add_event_passwords 2022-07-31T11:14:46Z Axel Ulmestig <axel.ulmestig@gmail.com> # 2022-07-31
 tables/events [tables/events@2022-07-31] 2022-07-31T16:23:13Z Axel Ulmestig <axel.ulmestig@gmail.com> # add password columns
-@rework-events 2022-09-18T14:44:09Z Axel Ulmestig <axel.ulmestig@gmail.com> # rework events
 
+@rework-events 2022-09-18T14:44:09Z Axel Ulmestig <axel.ulmestig@gmail.com> # rework events
 tables/event_data 2022-09-18T14:48:16Z Axel Ulmestig <axel.ulmestig@gmail.com> # event data
 restructure_event_table 2022-09-18T14:59:55Z Axel Ulmestig <axel.ulmestig@gmail.com> # move data from events table to event_data
 tables/events [tables/events@rework-events] 2022-09-18T14:56:53Z Axel Ulmestig <axel.ulmestig@gmail.com> # move columns to event_data
 tables/attendees [tables/attendees@rework-events] 2023-07-16T14:45:01Z root <root@f58a032cfd5d> # add comment column
+
+@comments-table 2023-08-19T11:35:07Z root <root@e225efdc65f0> # comments-table
+tables/comments 2023-08-19T09:42:54Z root <root@e225efdc65f0> # comments table
+tables/attendees [tables/attendees@comments-table] 2023-08-19T11:35:11Z root <root@e225efdc65f0> # migrate comments to separate table

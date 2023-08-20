@@ -15,16 +15,18 @@ extra-source-files:  README.md
 executable events
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Types.Event
-                     , Types.CreateEventInput
+  other-modules:       Email
+                     , Endpoints.Attend
+                     , Endpoints.Comment
+                     , Endpoints.CreateEvent
+                     , Endpoints.EditEvent
+                     , Endpoints.GetEvent
+                     , Types.AppEnv
                      , Types.Attendee
                      , Types.AttendInput
-                     , Types.AppEnv
-                     , Endpoints.CreateEvent
-                     , Endpoints.GetEvent
-                     , Endpoints.EditEvent
-                     , Endpoints.Attend
-                     , Email
+                     , Types.CommentInput
+                     , Types.CreateEventInput
+                     , Types.Event
   default-language:    Haskell2010
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:       base >= 4.0
@@ -52,6 +54,7 @@ executable events
                      , mime-mail >= 0.5 && <= 0.6
                      , network >= 3.1
                      , transformers >= 0.6
+                     , vector >= 0.13
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
                      , NamedFieldPuns
@@ -60,3 +63,4 @@ executable events
                      , FlexibleInstances
                      , FlexibleContexts
                      , RecordWildCards
+                     , OverloadedRecordDot

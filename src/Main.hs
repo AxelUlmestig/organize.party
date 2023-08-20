@@ -31,24 +31,36 @@ import           Text.Read                   (readMaybe)
 
 import qualified Email
 import qualified Endpoints.Attend
+import qualified Endpoints.Comment
 import qualified Endpoints.CreateEvent
 import qualified Endpoints.EditEvent
 import qualified Endpoints.GetEvent
 import           Types.AppEnv                (AppEnv (..), SmtpConfig (..))
-import           Types.AttendInput           (AttendInput)
 import           Types.Attendee              (Attendee)
+import           Types.AttendInput           (AttendInput)
+import           Types.CommentInput          (CommentInput)
 import           Types.CreateEventInput      (CreateEventInput)
 import           Types.Event                 (Event)
 
 localPG :: Settings
 localPG = settings "db" 5433 "postgres" "postgres" "events"
 
-type API = GetEventAPI :<|> EditEventAPI :<|> CreateEventAPI :<|> AttendeesAPI :<|> CreateEventHtml :<|> ViewEventHtml :<|> EditEventHtml :<|> Raw
+type API
+  = GetEventAPI
+  :<|> EditEventAPI
+  :<|> CreateEventAPI
+  :<|> AttendeesAPI
+  :<|> CommentAPI
+  :<|> CreateEventHtml
+  :<|> ViewEventHtml
+  :<|> EditEventHtml
+  :<|> Raw
 
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
 type GetEventAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> Get '[JSON] Event
 type EditEventAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "edit" :> ReqBody '[JSON] CreateEventInput :> Put '[JSON] Event
 type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "attend" :> ReqBody '[JSON] AttendInput :> Put '[JSON] Event
+type CommentAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "comment" :> ReqBody '[JSON] CommentInput :> Post '[JSON] Event
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
@@ -67,6 +79,7 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> Endpoints.EditEvent.editEvent
         :<|> Endpoints.CreateEvent.createEvent
         :<|> Endpoints.Attend.attend
+        :<|> Endpoints.Comment.addComment
         :<|> frontPage
         :<|> eventPage -- view event
         :<|> eventPage -- edit event
