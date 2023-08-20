@@ -27,6 +27,7 @@ import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
 import Task
+import Shared.ViewComments exposing (viewComments)
 
 copy : Dict String String
 copy = Dict.insert "password_header" "Password" <| Dict.empty
@@ -39,12 +40,12 @@ view pageState =
               [ H.text "Loading..."
               ]
 
-        SubmittedEdit _ _ _ ->
+        SubmittedEdit _ _ ->
             H.div [ A.class "center" ]
               [ H.text "Loading..."
               ]
 
-        EditEvent _ attendees maybeModal { picker, input } ->
+        EditEvent event maybeModal { picker, input } ->
             H.div []
                 [ case maybeModal of
                     Nothing ->
@@ -65,7 +66,9 @@ view pageState =
                             ]
                 , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
                 , H.map EditEventEventEditorMsg (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
-                , viewAttendees attendees
+                , viewAttendees event.attendees
+                , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
+                , viewComments event.comments
                 ]
 
 
@@ -89,7 +92,7 @@ update msg pageState =
                             , password = ""
                             }
 
-                        newState = EditEventState (EditEvent event.id event.attendees Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput })
+                        newState = EditEventState (EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput })
                     in
                     ( format newState, Cmd.none )
 
@@ -113,7 +116,7 @@ update msg pageState =
 
                 Err (Http.BadStatus 403) ->
                     case pageState.state of
-                        SubmittedEdit eventId attendees state ->
+                        SubmittedEdit event state ->
                             let eventEditorState =
                                   { picker = state.picker
                                   , timezone = pageState.timeZone
@@ -126,7 +129,7 @@ update msg pageState =
                                     , password = state.input.password
                                     }
                                   }
-                            in ( format (EditEventState (EditEvent eventId attendees (Just WrongPasswordModal) eventEditorState)), Cmd.none )
+                            in ( format (EditEventState (EditEvent event (Just WrongPasswordModal) eventEditorState)), Cmd.none )
 
                         _ ->
                             ( format Failure, Cmd.none )
@@ -136,25 +139,25 @@ update msg pageState =
 
         CloseEditEventModal ->
             case pageState.state of
-                EditEvent eventId attendees _ input ->
-                    ( format (EditEventState (EditEvent eventId attendees Nothing input)), Cmd.none )
+                EditEvent event _ input ->
+                    ( format (EditEventState (EditEvent event Nothing input)), Cmd.none )
 
                 otherState ->
                     ( format (EditEventState otherState), Cmd.none )
 
         EditEventEventEditorMsg (EventEditor.EventEditorInternalMsg internalMsg) ->
           case pageState.state of
-            EditEvent eventId attendees modal eventEditorState ->
+            EditEvent event modal eventEditorState ->
               let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
-              in ( format (EditEventState (EditEvent eventId attendees modal newEventEditorState)), Cmd.map (EditEventMsg << EditEventEventEditorMsg) newEventEditorMsg )
+              in ( format (EditEventState (EditEvent event modal newEventEditorState)), Cmd.map (EditEventMsg << EditEventEventEditorMsg) newEventEditorMsg )
 
             state -> ( format (EditEventState pageState.state), Cmd.none )
 
-        EditEventEventEditorMsg (EventEditor.EventEditorSubmit event) ->
+        EditEventEventEditorMsg (EventEditor.EventEditorSubmit _) ->
           case pageState.state of
-            EditEvent eventId attendees _ state ->
+            EditEvent event _ state ->
               let editEventInput =
-                    { id = eventId
+                    { id = event.id
                     , title = state.input.title
                     , description = state.input.description
                     , startTime = state.input.startTime
@@ -162,7 +165,7 @@ update msg pageState =
                     , location = state.input.location
                     , password = state.input.password
                     }
-              in ( format (EditEventState (SubmittedEdit eventId attendees state)), submitEdit editEventInput)
+              in ( format (EditEventState (SubmittedEdit event state)), submitEdit editEventInput)
             otherState ->
               ( format (EditEventState otherState), Cmd.none )
 
@@ -190,7 +193,7 @@ submitEdit input =
 handleSubscription : PageState EditEventState -> Sub Msg
 handleSubscription pageState =
     case pageState.state of
-        EditEvent _ _ _ eventState ->
+        EditEvent _ _ eventState ->
             Sub.map (EditEventMsg << EditEventEventEditorMsg) <| EventEditor.handleSubscription eventState
         _ ->
             Sub.none

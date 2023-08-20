@@ -135,8 +135,8 @@ update msg pageState =
                 ( Just (ViewEventR id), _ ) ->
                     packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
 
-                ( Just (EditEventR id), EditEventState (EditEvent eventId _ Nothing { input }) ) ->
-                    if eventId == id then
+                ( Just (EditEventR id), EditEventState (EditEvent event Nothing { input }) ) ->
+                    if event.id == id then
                         packageStatePageUrlAndCmd state url Cmd.none
 
                     else

@@ -76,8 +76,8 @@ type ViewEventStateModal
 
 type EditEventState
     = LoadingEventToEdit
-    | EditEvent String (List Attendee) (Maybe EditEventStateModal) EventEditor.EventEditorState
-    | SubmittedEdit String (List Attendee) EventEditor.EventEditorState
+    | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
+    | SubmittedEdit Event EventEditor.EventEditorState
 
 
 type EditEventStateModal
