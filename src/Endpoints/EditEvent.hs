@@ -17,7 +17,8 @@ import           Servant                (ServerError (..), err403, err404,
                                          err500)
 
 import           Email                  (sendEventUpdateEmail)
-import           Endpoints.GetEvent     (getAttendeesStatement)
+import           Endpoints.GetEvent     (getAttendeesStatement,
+                                         getCommentsStatement)
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..),
                                          connection)
 import           Types.CreateEventInput
@@ -53,8 +54,9 @@ session (eventId, input) = do
     IncorrectPassword -> pure Forbidden
     CorrectPassword -> do
       event <- Hasql.statement (eventId, input) updateEventDataStatement
-      attendees <- Hasql.statement (Event.id event) getAttendeesStatement
-      pure $ Success $ event { Event.attendees = attendees }
+      attendees <- Hasql.statement event.id getAttendeesStatement
+      comments <- Hasql.statement event.id getCommentsStatement
+      pure $ Success $ event { Event.attendees = attendees, Event.comments = comments }
 
 
 data EditValidityStatus

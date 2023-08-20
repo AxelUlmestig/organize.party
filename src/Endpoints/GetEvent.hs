@@ -1,4 +1,4 @@
-module Endpoints.GetEvent (getEvent, getAttendees, getAttendeesStatement) where
+module Endpoints.GetEvent (getEvent, getAttendees, getAttendeesStatement, getCommentsStatement) where
 
 import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
