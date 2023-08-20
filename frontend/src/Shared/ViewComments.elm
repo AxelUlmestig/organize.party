@@ -23,9 +23,9 @@ viewComments comments =
 
 viewComment : Comment -> Html msg
 viewComment comment =
-  H.div []
+  H.div [ A.class "comment" ]
     [ H.text comment.name
-    , H.div [ A.class "comment" ]
+    , H.div [ A.class "comment-bubble" ]
       [ formatTextWithLinks comment.comment
       ]
     ]
