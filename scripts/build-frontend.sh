@@ -24,6 +24,7 @@ if [ ! -z "$1" ]; then
 fi
 
 if [ $optimize = true ]; then
+  # ------------ Compiled JS -------------------------
   RAW_JS_FILE=deleteme.elm.js
   MIN_JS_FILE=elm.min.js
 
@@ -31,16 +32,31 @@ if [ $optimize = true ]; then
   (cd frontend; uglifyjs $RAW_JS_FILE --compress "pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | uglifyjs --mangle --output $MIN_JS_FILE)
   rm frontend/$RAW_JS_FILE
 
-  CHECKSUM=$(sha256sum frontend/$MIN_JS_FILE | cut -d " " -f1)
-  CACHE_BUST_JS_FILE=elm.min."$CHECKSUM".js
+  JS_CHECKSUM=$(sha256sum frontend/$MIN_JS_FILE | cut -d " " -f1)
+  CACHE_BUST_JS_FILE=elm.min."$JS_CHECKSUM".js
   mv frontend/$MIN_JS_FILE frontend/static/$CACHE_BUST_JS_FILE
 
   ELM_JS_FILE=$CACHE_BUST_JS_FILE
+
+  # ------------ style.css ---------------------------
+  STYLE_CSS=style.$(sha256sum frontend/static/style.css | cut -d " " -f1).css
+  cp frontend/static/style.css frontend/static/$STYLE_CSS
+
+  # ------------ expanding-textarea.css --------------
+  EXPANDING_TEXTAREA_CSS=expanding-textarea.$(sha256sum frontend/static/expanding-textarea.css | cut -d " " -f1).css
+  cp frontend/static/expanding-textarea.css frontend/static/$EXPANDING_TEXTAREA_CSS
 else
+  # ------------ Compiled JS -------------------------
   ELM_JS_FILE=elm.js
 
   (cd frontend; elm make src/Main.elm --output=$ELM_JS_FILE)
   mv frontend/$ELM_JS_FILE frontend/static/$ELM_JS_FILE
+
+  # ------------ style.css ---------------------------
+  STYLE_CSS=style.css
+
+  # ------------ expanding-textarea.css --------------
+  EXPANDING_TEXTAREA_CSS=expanding-textarea.css
 fi
 
 cat << EOF > frontend/index.html
@@ -49,9 +65,9 @@ cat << EOF > frontend/index.html
   <head>
     <script src="/$ELM_JS_FILE"></script>
 
+    <link rel="stylesheet" href="/$STYLE_CSS">
+    <link rel="stylesheet" href="/$EXPANDING_TEXTAREA_CSS">
     <link rel="stylesheet" href="/datepicker.css">
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/expanding-textarea.css">
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"

@@ -3,4 +3,6 @@ frontend/elm-stuff/
 dist-newstyle/
 frontend/index.html
 frontend/static/elm*.js
+frontend/static/style.*.css
+frontend/static/expanding-textarea.*.css
 .env
