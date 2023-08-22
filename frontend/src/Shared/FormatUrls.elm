@@ -43,12 +43,13 @@ textPieceToHtml tp =
 
 linkParser : Parser TextPiece
 linkParser =
-  succeed (\protocol link -> Link (protocol ++ link))
+  let flip f a b = f b a
+  in succeed (\protocol link -> Link (protocol ++ link))
     |= oneOf
       [ map (\_ -> "http://") (token "http://")
       , map (\_ -> "https://") (token "https://")
       ]
-    |= (getChompedString <| chompWhile (\c -> c /= ' '))
+    |= (getChompedString <| chompWhile (not << flip List.member [' ', '\n', '\t']))
 
 anyCharParser : Parser TextPiece
 anyCharParser =
