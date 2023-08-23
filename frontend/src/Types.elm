@@ -188,6 +188,7 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
+    , getNotifiedOnComments : Bool
     , comment : String
     }
 
@@ -327,11 +328,12 @@ emptyAttendeeInput eventId =
     , name = ""
     , status = Coming
     , plusOne = False
+    , getNotifiedOnComments = False
     , comment = ""
     }
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
+encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -350,12 +352,13 @@ encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         , ( "comment", Encode.string comment )
         ]
 
 
 encodeAttendeeInputForRsvp : AttendeeInput -> Value
-encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
+encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne, getNotifiedOnComments } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -374,6 +377,7 @@ encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         ]
 
 encodeAttendeeInputForComment : AttendeeInput -> Value
@@ -387,11 +391,12 @@ encodeAttendeeInputForComment { eventId, email, name, comment } =
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
-    D.map6 AttendeeInput
+    D.map7 AttendeeInput
         (D.field "eventId" D.string)
         (D.field "email" D.string)
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
         (D.field "plusOne" D.bool)
+        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "getNotifiedOnComments" D.bool)
         (D.field "comment" D.string)
 

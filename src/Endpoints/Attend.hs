@@ -66,23 +66,26 @@ attend eventId attendee@AttendInput { eventId = bodyEventId } = do
         _                                                        -> throwError err500 { errBody = "Something went wrong" }
 
 findExistingStatement :: Statement AttendInput (Maybe Attendee)
-findExistingStatement = dimap to (fmap to) [maybeStatement|
-                    select
-                      event_id::uuid,
-                      email::text,
-                      name::text,
-                      status::text,
-                      plus_one::bool,
-                      rsvp_at::timestamptz
-                    from attendees
-                    where
-                      event_id = $1::uuid
-                      and email = $2::text
-                      and name = $3::text
-                      and status = $4::text::attendee_status
-                      and plus_one = $5::bool
-                      and superseded_at is null
-                  |]
+findExistingStatement =
+  dimap to (fmap to)
+    [maybeStatement|
+      select
+        event_id::uuid,
+        email::text,
+        name::text,
+        status::text,
+        plus_one::bool,
+        rsvp_at::timestamptz
+      from attendees
+      where
+        event_id = $1::uuid
+        and email = $2::text
+        and name = $3::text
+        and status = $4::text::attendee_status
+        and plus_one = $5::bool
+        and get_notified_on_comments = $6::bool
+        and superseded_at is null
+    |]
   where
     toTuple AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
 
@@ -102,8 +105,8 @@ insertAttendeeStatement :: Statement AttendInput Attendee
 insertAttendeeStatement =
   dimap to to
     [singletonStatement|
-      insert into attendees (event_id, email, name, status, plus_one)
-      values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool)
+      insert into attendees (event_id, email, name, status, plus_one, get_notified_on_comments)
+      values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool, $6::bool)
       returning event_id::uuid, email::text, name::text, status::text, plus_one::bool, rsvp_at::timestamptz
     |]
 

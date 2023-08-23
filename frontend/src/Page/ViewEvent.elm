@@ -160,6 +160,15 @@ view pageState =
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
                     , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
+                    , H.div
+                      [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+                      [ H.text "get notified on comments? ",
+                      H.input
+                        [ A.type_ "checkbox"
+                        , A.checked attendeeInput.getNotifiedOnComments
+                        , onCheck (\gnoc -> UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc })
+                        ] []
+                      ]
                     , H.div []
                         [ H.select [ onInput onStatusUpdate ]
                             [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
