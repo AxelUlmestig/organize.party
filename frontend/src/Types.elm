@@ -188,7 +188,9 @@ type alias AttendeeInput =
     , name : String
     , status : AttendeeStatus
     , plusOne : Bool
+    , getNotifiedOnComments : Bool
     , comment : String
+    , forceNotificationOnComment : Bool
     }
 
 
@@ -327,11 +329,13 @@ emptyAttendeeInput eventId =
     , name = ""
     , status = Coming
     , plusOne = False
+    , getNotifiedOnComments = False
     , comment = ""
+    , forceNotificationOnComment = False
     }
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
+encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment, forceNotificationOnComment } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -350,12 +354,14 @@ encodeAttendeeInput { eventId, email, name, status, plusOne, comment } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         , ( "comment", Encode.string comment )
+        , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
         ]
 
 
 encodeAttendeeInputForRsvp : AttendeeInput -> Value
-encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
+encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne, getNotifiedOnComments } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -374,24 +380,28 @@ encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne } =
         , ( "name", Encode.string (String.trim name) )
         , ( "status", encodeAttendeeStatus status )
         , ( "plusOne", Encode.bool plusOne )
+        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         ]
 
 encodeAttendeeInputForComment : AttendeeInput -> Value
-encodeAttendeeInputForComment { eventId, email, name, comment } =
+encodeAttendeeInputForComment { eventId, email, name, comment, forceNotificationOnComment } =
   Encode.object
     [ ( "eventId", Encode.string eventId )
     , ( "email", Encode.string (String.trim email) )
     , ( "name", Encode.string (String.trim name) )
     , ( "comment", Encode.string (String.trim comment) )
+    , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
     ]
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
-    D.map6 AttendeeInput
+    D.map8 AttendeeInput
         (D.field "eventId" D.string)
         (D.field "email" D.string)
         (D.field "name" D.string)
         (D.field "status" attendeeStatusDecoder)
         (D.field "plusOne" D.bool)
+        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "getNotifiedOnComments" D.bool)
         (D.field "comment" D.string)
+        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
 

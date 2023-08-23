@@ -17,3 +17,7 @@ tables/attendees [tables/attendees@rework-events] 2023-07-16T14:45:01Z root <roo
 @comments-table 2023-08-19T11:35:07Z root <root@e225efdc65f0> # comments-table
 tables/comments 2023-08-19T09:42:54Z root <root@e225efdc65f0> # comments table
 tables/attendees [tables/attendees@comments-table] 2023-08-19T11:35:11Z root <root@e225efdc65f0> # migrate comments to separate table
+
+@email-notifications 2023-08-22T15:55:27Z root <root@fad30abb362e> # email-notifications
+tables/attendees [tables/attendees@email-notifications] 2023-08-22T15:55:33Z root <root@fad30abb362e> # email notification on comment
+tables/comments [tables/comments@email-notifications] 2023-08-23T18:50:33Z root <root@fad30abb362e> # email notification on comment

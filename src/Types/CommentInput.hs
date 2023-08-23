@@ -11,15 +11,17 @@ import           GHC.Generics          (Generic)
 
 data CommentInput
   = CommentInput
-    { eventId :: UUID
-    , email   :: Text
-    , name    :: Text
-    , comment :: Text
+    { eventId                    :: UUID
+    , email                      :: Text
+    , name                       :: Text
+    , comment                    :: Text
+    , forceNotificationOnComment :: Bool
     }
     deriving (Eq, Generic, Show)
 
 instance FromJSON CommentInput
 
-instance Injective CommentInput (UUID, Text, Text, Text) where
-  to CommentInput{eventId, email, name, comment} = (eventId, email, name, comment)
+instance Injective CommentInput (UUID, Text, Text, Text, Bool) where
+  to CommentInput{eventId, email, name, comment, forceNotificationOnComment} =
+    (eventId, email, name, comment, forceNotificationOnComment)
 

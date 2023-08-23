@@ -1,6 +1,7 @@
-module Email (sendEmailInvitation, sendEventUpdateEmail) where
+module Email (sendEmailInvitation, sendEventUpdateEmail, sendCommentNotifications, CommentNotificationRecipient(..)) where
 
 import qualified Data.ByteString.Lazy     as LBS
+import           Data.Foldable            (for_)
 import           Data.String.Interpolate  (__i)
 import           Data.Text
 import           Data.Text.Lazy           (fromStrict)
@@ -14,8 +15,9 @@ import           Network.Socket           (PortNumber)
 
 import           Types.AppEnv             (SmtpConfig (..))
 import           Types.Attendee           (Attendee (..))
-import           Types.Event              (Event (..))
+import           Types.CommentInput       (CommentInput (..))
 import qualified Types.Event              as Event
+import           Types.Event              (Event (..))
 
 eventToICalendarString :: Text -> Event -> LBS.ByteString
 eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
@@ -93,3 +95,43 @@ sendEventUpdateEmail SmtpConfig{server, port, login, password} event@Event{title
 
 formatICalendarTimestamp :: UTCTime -> String
 formatICalendarTimestamp = formatTime defaultTimeLocale "%Y%m%dT%k%M%SZ"
+
+data CommentNotificationRecipient =
+  CommentNotificationRecipient
+    { email         :: Text
+    , recipientName :: Text
+    , eventTitle    :: Text
+    }
+    deriving (Eq, Show)
+
+sendCommentNotifications :: SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
+sendCommentNotifications
+  SmtpConfig{server, port, login, password}
+  CommentInput{eventId, name, comment}
+  CommentNotificationRecipient{email, recipientName, eventTitle}
+  = do
+  let from       = SMTP.Address Nothing "noreply@organize.party"
+  let cc         = []
+  let bcc        = []
+  let subject    = [__i|#{name} has left a comment on #{eventTitle}|]
+  let to    = [SMTP.Address (Just recipientName) email]
+  let mail  = SMTP.simpleMail from to cc bcc subject [emailBody]
+
+  SMTP.sendMailWithLogin' server port login password mail
+  where
+    emailBody =
+      Mail.htmlPart
+        [__i|
+          <b>#{name}</b> has left a comment on <a href="https://organize.party/e/#{eventId}">#{eventTitle}</a>
+          <br>
+          <br>
+          <i>
+            <pre>#{comment}</pre>
+          </i>
+          <br>
+          <br>
+          click the link below for more details
+          <br>
+          https://organize.party/e/#{eventId}
+        |]
+
