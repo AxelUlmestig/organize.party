@@ -122,7 +122,7 @@ sendCommentNotifications
     emailBody =
       Mail.htmlPart
         [__i|
-          <b>#{name}</b> has left a comment on <b>#{eventTitle}</b>
+          <b>#{name}</b> has left a comment on <a href="https://organize.party/e/#{eventId}">#{eventTitle}</a>
           <br>
           <br>
           <i>
