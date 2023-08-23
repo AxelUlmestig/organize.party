@@ -101,6 +101,7 @@ data CommentNotificationRecipient =
     { email         :: Text
     , recipientName :: Text
     , eventTitle    :: Text
+    , forcePush     :: Bool
     }
     deriving (Eq, Show)
 
@@ -108,7 +109,7 @@ sendCommentNotifications :: SmtpConfig -> CommentInput -> CommentNotificationRec
 sendCommentNotifications
   SmtpConfig{server, port, login, password}
   CommentInput{eventId, name, comment}
-  CommentNotificationRecipient{email, recipientName, eventTitle}
+  CommentNotificationRecipient{email, recipientName, eventTitle, forcePush}
   = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let cc         = []
@@ -133,5 +134,20 @@ sendCommentNotifications
           click the link below for more details
           <br>
           https://organize.party/e/#{eventId}
+          #{unsubscribeInfo}
         |]
+      where
+        unsubscribeInfo =
+          if forcePush then
+            [__i|
+              <br>
+              <br>
+              <b>#{name}</b> chose to notify you of their comment by clicking the <i>send email notification to everyone?</i> checkbox
+            |] :: Text
+          else
+            [__i|
+              <br>
+              <br>
+              You can unsubscribe from these messages by unclicking the <i>get notified on comments?</i> checkbox and resubmitting your RSVP
+            |]
 

@@ -73,22 +73,43 @@ sendEmailUpdate commentInput = do
   where
     statement = fmap toEmailRecipient <$>
       [vectorStatement|
+        with distinct_comments as (
+          select distinct on (email)
+            email,
+            name,
+            event_id
+          from comments
+          where
+            event_id = $1::uuid
+          order by
+            email,
+            created_at desc
+        )
+
         select
-          attendees.email::text,
-          attendees.name::text,
-          event_data.title::text
-        from attendees
-        join event_data
-          on event_data.id = attendees.event_id
-          and event_data.superseded_at is null
-        where
-          attendees.event_id = $1::uuid
+          coalesce(attendees.email, distinct_comments.email)::text,
+          coalesce(attendees.name, distinct_comments.name)::text,
+          event_data.title::text,
+          (not coalesce(attendees.get_notified_on_comments, false) and $3::bool)::bool as forced
+        from event_data
+        left join attendees
+          on attendees.event_id = event_data.id
           and attendees.superseded_at is null
           and attendees.email <> $2::text
+        left join distinct_comments
+          on distinct_comments.event_id = event_data.id
+          and distinct_comments.email <> $2::text
           and (
-            attendees.get_notified_on_comments
+            attendees.email is null
+            or attendees.email = distinct_comments.email
+          )
+        where
+          event_data.id = $1::uuid
+          and event_data.superseded_at is null
+          and (
+            coalesce(attendees.get_notified_on_comments, false)
             or $3::bool
           )
       |]
       where
-        toEmailRecipient (email, recipientName, eventTitle) = CommentNotificationRecipient{..}
+        toEmailRecipient (email, recipientName, eventTitle, forcePush) = CommentNotificationRecipient{..}
