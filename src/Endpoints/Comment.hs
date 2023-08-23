@@ -54,13 +54,13 @@ insertCommentStatement :: Statement CommentInput ()
 insertCommentStatement =
   lmap to
     [resultlessStatement|
-      insert into comments (event_id, email, name, comment)
-      values ($1::uuid, $2::text, $3::text, $4::text)
+      insert into comments (event_id, email, name, comment, force_notification_on_comment)
+      values ($1::uuid, $2::text, $3::text, $4::text, $5::bool)
     |]
 
 sendEmailUpdate commentInput = do
   conn <- asks connection
-  eSubscribers <- liftIO $ Hasql.run (Hasql.statement (commentInput.eventId, commentInput.email) statement) conn
+  eSubscribers <- liftIO $ Hasql.run (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement) conn
 
   case eSubscribers of
     Left err -> do
@@ -85,7 +85,10 @@ sendEmailUpdate commentInput = do
           attendees.event_id = $1::uuid
           and attendees.superseded_at is null
           and attendees.email <> $2::text
-          and attendees.get_notified_on_comments
+          and (
+            attendees.get_notified_on_comments
+            or $3::bool
+          )
       |]
       where
         toEmailRecipient (email, recipientName, eventTitle) = CommentNotificationRecipient{..}
