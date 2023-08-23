@@ -190,6 +190,7 @@ type alias AttendeeInput =
     , plusOne : Bool
     , getNotifiedOnComments : Bool
     , comment : String
+    , forceNotificationOnComment : Bool
     }
 
 
@@ -330,10 +331,11 @@ emptyAttendeeInput eventId =
     , plusOne = False
     , getNotifiedOnComments = False
     , comment = ""
+    , forceNotificationOnComment = False
     }
 
 encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment } =
+encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment, forceNotificationOnComment } =
     let
         encodeAttendeeStatus ai =
             case ai of
@@ -354,6 +356,7 @@ encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnCommen
         , ( "plusOne", Encode.bool plusOne )
         , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         , ( "comment", Encode.string comment )
+        , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
         ]
 
 
@@ -381,17 +384,18 @@ encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne, getNotifiedO
         ]
 
 encodeAttendeeInputForComment : AttendeeInput -> Value
-encodeAttendeeInputForComment { eventId, email, name, comment } =
+encodeAttendeeInputForComment { eventId, email, name, comment, forceNotificationOnComment } =
   Encode.object
     [ ( "eventId", Encode.string eventId )
     , ( "email", Encode.string (String.trim email) )
     , ( "name", Encode.string (String.trim name) )
     , ( "comment", Encode.string (String.trim comment) )
+    , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
     ]
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
-    D.map7 AttendeeInput
+    D.map8 AttendeeInput
         (D.field "eventId" D.string)
         (D.field "email" D.string)
         (D.field "name" D.string)
@@ -399,4 +403,5 @@ attendeeInputDecoder =
         (D.field "plusOne" D.bool)
         (D.map (Maybe.withDefault False) <| D.maybe <| D.field "getNotifiedOnComments" D.bool)
         (D.field "comment" D.string)
+        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
 

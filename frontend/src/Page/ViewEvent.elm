@@ -256,7 +256,7 @@ update msg pageState =
             let localStorageObject =
                     Encode.object
                       [ ("eventId", Encode.string input.eventId)
-                      , ("attendeeInput", encodeAttendeeInput { input | comment = "" })
+                      , ("attendeeInput", encodeAttendeeInput { input | comment = "", forceNotificationOnComment = False })
                       ]
             in ( format (ViewEventState AttendEventLoading), Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ])
 
@@ -317,6 +317,15 @@ addCommentView attendeeInput =
         , placeholder = "Leave a comment"
         , styling = []
         }
+    , H.div
+      [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+      [ H.text "send email notification to everyone? "
+      , H.input
+        [ A.type_ "checkbox"
+        , A.checked attendeeInput.forceNotificationOnComment
+        , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
+        ] []
+      ]
     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
         [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
         ]
