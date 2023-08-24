@@ -85,23 +85,51 @@ cat << EOF > frontend/index.html
   </body>
 
   <script type="text/javascript">
+    // convert from storing all attendee input on the top level mapped from
+    // event ids to a more future proof structure
+    if(!localStorage.getItem('events')) {
+      const events =
+        Object
+          .keys(localStorage)
+          .map(eventId => ({[eventId]: { attendeeInput: JSON.parse(localStorage.getItem(eventId))}}))
+          .reduce((obj1, obj2) => ({...obj1, ...obj2}), {})
+
+      localStorage.clear()
+
+      localStorage.setItem('events', JSON.stringify(events))
+    }
+
     const app = Elm.Main.init({
       node: document.getElementById('myapp')
     })
 
     app.ports.writeToLocalStorage.subscribe(
-      ({ eventId, attendeeInput }) => localStorage.setItem(eventId, JSON.stringify(attendeeInput))
+      ({ eventId, attendeeInput }) => {
+        const events = JSON.parse(localStorage.getItem('events') || '{}')
+        const updatedEvent = { ...(events[eventId]), attendeeInput: attendeeInput }
+        const updatedEvents = { ...events, [eventId]: updatedEvent }
+
+        localStorage.setItem('events', JSON.stringify(updatedEvents))
+      }
     );
 
     app.ports.requestLocalStorageAttendeeInput.subscribe(
-        (eventId) => {
+      (eventId) => {
+        const events = JSON.parse(localStorage.getItem('events') || {})
+        const attendeeInput = events[eventId]?.attendeeInput
+
+        if(attendeeInput) {
           app
             .ports
             .localStorageAttendeeInputReceiver
-            .send(
-              localStorage.getItem(eventId)
-            )
+            .send(JSON.stringify(attendeeInput))
+        } else {
+          app
+            .ports
+            .localStorageAttendeeInputReceiver
+            .send(null)
         }
+      }
     );
   </script>
 </html>
