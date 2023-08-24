@@ -61,7 +61,12 @@ init _ url key =
             Task.perform identity (Task.andThen (\zone -> Task.map (CurrentTimeIs url zone) Time.now) Time.here)
 
         pageState =
-            { key = key, timeZone = Time.utc, pageUrl = url, state = Loading }
+            { key = key
+            , timeZone = Time.utc
+            , currentTime = Time.millisToPosix 0
+            , pageUrl = url
+            , state = Loading
+            }
     in
     ( pageState, getCurrentTimeCmd )
 
@@ -69,17 +74,17 @@ init _ url key =
 update : Msg -> PageState State -> ( PageState State, Cmd Msg )
 update msg pageState =
     let
-        { key, timeZone, state, pageUrl } =
+        { key, timeZone, state, pageUrl, currentTime } =
             pageState
 
-        packageStateAndCmd newZone nextState cmd =
-            ( { key = key, timeZone = newZone, state = nextState, pageUrl = pageUrl }, cmd )
+        packageStateAndCmd newZone newTime nextState cmd =
+            ( { key = key, timeZone = newZone, currentTime = newTime, state = nextState, pageUrl = pageUrl }, cmd )
 
         packageStateTimeZoneAndCmd nextState zone cmd =
-            ( { key = key, timeZone = zone, state = nextState, pageUrl = pageUrl }, cmd )
+            ( { key = key, timeZone = zone, currentTime = currentTime, state = nextState, pageUrl = pageUrl }, cmd )
 
         packageStatePageUrlAndCmd nextState url cmd =
-            ( { key = key, timeZone = timeZone, state = nextState, pageUrl = url }, cmd )
+            ( { key = key, timeZone = timeZone, currentTime = currentTime, state = nextState, pageUrl = url }, cmd )
     in
     case msg of
         DoNothing -> ( pageState, Cmd.none )
@@ -100,7 +105,7 @@ update msg pageState =
                         Nothing ->
                             ( Failure, Cmd.none )
             in
-            packageStateAndCmd zone newState newCmd
+            packageStateAndCmd zone time newState newCmd
 
         UrlRequest urlRequest ->
             case urlRequest of
@@ -156,6 +161,7 @@ update msg pageState =
                             { state = nes
                             , key = key
                             , timeZone = timeZone
+                            , currentTime = pageState.currentTime
                             , pageUrl = pageUrl
                             }
 
@@ -165,7 +171,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone state Cmd.none
+                    packageStateAndCmd timeZone currentTime state Cmd.none
 
         ViewEventMsg vem ->
             case state of
@@ -180,7 +186,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone state Cmd.none
+                    packageStateAndCmd timeZone currentTime state Cmd.none
 
         EditEventMsg eem ->
             case state of
@@ -195,7 +201,7 @@ update msg pageState =
                     packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
 
                 _ ->
-                    packageStateAndCmd timeZone state Cmd.none
+                    packageStateAndCmd timeZone currentTime state Cmd.none
 
 
 routeParser : Parser (Route -> a) a

@@ -68,7 +68,7 @@ view pageState =
                 , H.map EditEventEventEditorMsg (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
                 , viewAttendees event.attendees
                 , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
-                , viewComments event.comments
+                , viewComments pageState.currentTime event.comments
                 ]
 
 

@@ -185,7 +185,7 @@ view pageState =
                 , viewAttendees attendees
                 , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
                 , addCommentView attendeeInput
-                , viewComments comments
+                , viewComments pageState.currentTime comments
                 ]
 
 

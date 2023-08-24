@@ -88,6 +88,7 @@ type EditEventStateModal
 type alias PageState a =
     { key : Nav.Key
     , timeZone : Time.Zone
+    , currentTime : Time.Posix
     , state : a
     , pageUrl : Url
     }
@@ -212,6 +213,7 @@ mapPageState : (a -> b) -> PageState a -> PageState b
 mapPageState f ps =
     { state = f ps.state
     , timeZone = ps.timeZone
+    , currentTime = ps.currentTime
     , key = ps.key
     , pageUrl = ps.pageUrl
     }

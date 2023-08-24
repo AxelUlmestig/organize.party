@@ -52,3 +52,7 @@ body {
   word-wrap: break-word;
 }
 
+.comment-timestamp {
+  color: gray;
+}
+
