@@ -1,8 +1,13 @@
 .stack-work/
-frontend/elm-stuff/
 dist-newstyle/
+
+frontend/elm-stuff/
+
 frontend/index.html
 frontend/static/elm*.js
 frontend/static/style.*.css
 frontend/static/expanding-textarea.*.css
+
 .env
+
+db_dumps/
