@@ -7,7 +7,8 @@ set -ex
 TODAY=$(printf '%(%Y-%m-%d)T\n' -1)
 DUMP_NAME="$TODAY".dump
 DUMP_PATH=/tmp/$DUMP_NAME
-DUMP_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}")/../db_dumps" ; pwd -P )
+DUMP_DIR="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )"/../db_dumps
+mkdir -p $DUMP_DIR
 
 docker compose exec db pg_dump -f $DUMP_PATH -Fc postgres://postgres:postgres@localhost:5432/events
 docker compose cp db:$DUMP_PATH $DUMP_DIR/$DUMP_NAME
