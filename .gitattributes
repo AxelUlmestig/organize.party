@@ -1,0 +1,3 @@
+# sqitch generated files
+*@*.sql binary linguist-generated
+database/revert/**/*.sql linguist-generated
