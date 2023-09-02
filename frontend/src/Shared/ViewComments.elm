@@ -29,6 +29,7 @@ viewComment currentTime comment =
       [ A.class "profile-picture"
       , A.src (comment.gravatarUrl ++ "?s=80&d=404")
       , A.alt ""
+      , A.title "Upload an image at https://gravatar.com to get a profile picture"
       ]
       []
     , H.span [ A.class "comment-content" ]
