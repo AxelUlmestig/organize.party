@@ -93,10 +93,18 @@ getCommentsStatement =
   fmap to . Vector.toList <$>
     [vectorStatement|
       select
-        name::text,
-        comment::text,
-        created_at::timestamptz
-      from comments
+        coalesce(attendees.name, commenters.name, 'unknown')::text,
+        comments.comment::text,
+        comments.created_at::timestamptz,
+        commenters.gravatar_url::text
+      from commenters
+      join comments
+        on comments.event_id = commenters.event_id
+        and comments.email = commenters.email
+      left join attendees
+        on attendees.event_id = commenters.event_id
+        and attendees.email = commenters.email
+        and attendees.superseded_at is null
       where
-        event_id = $1::uuid
+        commenters.event_id = $1::uuid
     |]
