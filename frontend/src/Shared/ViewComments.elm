@@ -25,12 +25,20 @@ viewComments currentTime comments =
 viewComment : Time.Posix -> Comment -> Html msg
 viewComment currentTime comment =
   H.div [ A.class "comment" ]
-    [ H.text comment.name
-    , H.span
-      [ A.class "comment-timestamp" ]
-      [ H.text (formatTimestamp currentTime comment.timestamp) ]
-    , H.div [ A.class "comment-bubble" ]
-      [ formatTextWithLinks comment.comment
+    [ H.img
+      [ A.class "profile-picture"
+      , A.src "https://www.gravatar.com/avatar/22e95af044e3b0793978a9222bc7dc80.jpg?s=50&d=404"
+      , A.alt ""
+      ]
+      []
+    , H.span [ A.class "comment-content" ]
+      [ H.text comment.name
+      , H.span
+        [ A.class "comment-timestamp" ]
+        [ H.text (formatTimestamp currentTime comment.timestamp) ]
+      , H.div [ A.class "comment-bubble" ]
+        [ formatTextWithLinks comment.comment
+        ]
       ]
     ]
 
