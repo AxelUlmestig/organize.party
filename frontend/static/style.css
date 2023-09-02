@@ -46,6 +46,7 @@ body {
 }
 
 .comment-content {
+  margin: 0.5em;
 }
 
 .comment-bubble {
@@ -64,7 +65,6 @@ body {
 
 .profile-picture {
   clip-path: circle();
-  margin: 0.5em;
   object-fit: scale-down;
   max-width: fit-content;
 }
