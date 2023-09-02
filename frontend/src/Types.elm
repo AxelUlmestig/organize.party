@@ -206,6 +206,7 @@ type alias Comment =
     { name : String
     , comment : String
     , timestamp : Time.Posix
+    , gravatarUrl : String
     }
 
 
@@ -251,10 +252,11 @@ attendeeDecoder =
 
 commentDecoder : D.Decoder Comment
 commentDecoder =
-    D.map3 Comment
+    D.map4 Comment
         (D.field "commenterName" D.string)
         (D.field "comment" D.string)
         (D.field "timestamp" Iso8601.decoder)
+        (D.field "gravatarUrl" D.string)
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =

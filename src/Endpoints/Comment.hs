@@ -54,8 +54,18 @@ insertCommentStatement :: Statement CommentInput ()
 insertCommentStatement =
   lmap to
     [resultlessStatement|
-      insert into comments (event_id, email, name, comment, force_notification_on_comment)
-      values ($1::uuid, $2::text, $3::text, $4::text, $5::bool)
+      with inserted_commenter as (
+        insert into commenters (event_id, email, name, gravatar_url)
+        values ($1::uuid, $2::text, $3::text, 'https://www.gravatar.com/avatar/' || md5($2::text))
+        on conflict (event_id, email)
+        do update set
+          name = $3::text
+        returning *
+      )
+
+      insert into comments (event_id, email, comment, force_notification_on_comment)
+      select event_id, email, $4::text, $5::bool
+      from inserted_commenter
     |]
 
 sendEmailUpdate commentInput = do
@@ -74,16 +84,13 @@ sendEmailUpdate commentInput = do
     statement = fmap toEmailRecipient <$>
       [vectorStatement|
         with distinct_comments as (
-          select distinct on (email)
+          select
             email,
             name,
             event_id
-          from comments
+          from commenters
           where
             event_id = $1::uuid
-          order by
-            email,
-            created_at desc
         )
 
         select

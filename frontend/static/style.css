@@ -40,6 +40,13 @@ body {
 .comment {
   margin-top: 1em;
   margin-bottom: 1em;
+
+  display: flex;
+  flex-direction: row;
+}
+
+.comment-content {
+  margin: 0.5em;
 }
 
 .comment-bubble {
@@ -56,3 +63,8 @@ body {
   color: gray;
 }
 
+.profile-picture {
+  clip-path: circle();
+  object-fit: scale-down;
+  max-width: 50px;
+}

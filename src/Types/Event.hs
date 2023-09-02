@@ -37,6 +37,7 @@ data Comment
     { commenterName :: Text
     , comment       :: Text
     , timestamp     :: UTCTime
+    , gravatarUrl   :: Text
     }
     deriving (Generic, Eq)
 
@@ -50,5 +51,5 @@ instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, 
 instance Injective (Text, Text, Bool) Attendee where
   to (name, status, plusOne) = Attendee{ status = readStatus status, ..}
 
-instance Injective (Text, Text, UTCTime) Comment where
-  to (commenterName, comment, timestamp) = Comment {..}
+instance Injective (Text, Text, UTCTime, Text) Comment where
+  to (commenterName, comment, timestamp, gravatarUrl) = Comment {..}
