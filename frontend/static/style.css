@@ -66,4 +66,5 @@ body {
   clip-path: circle();
   margin: 0.5em;
   object-fit: scale-down;
+  max-width: fit-content;
 }

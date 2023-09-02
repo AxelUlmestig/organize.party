@@ -27,7 +27,7 @@ viewComment currentTime comment =
   H.div [ A.class "comment" ]
     [ H.img
       [ A.class "profile-picture"
-      , A.src "https://www.gravatar.com/avatar/22e95af044e3b0793978a9222bc7dc80.jpg?s=50&d=404"
+      , A.src (comment.gravatarUrl ++ "?s=50&d=404")
       , A.alt ""
       ]
       []
