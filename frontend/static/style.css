@@ -77,3 +77,22 @@ body {
   object-fit: scale-down;
   max-width: 50px;
 }
+
+.navbar {
+  border-bottom: 1px solid #e4e6eb;
+  margin-bottom: 1rem;
+  background-color: rgb(234, 235, 239);
+}
+
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.event-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}

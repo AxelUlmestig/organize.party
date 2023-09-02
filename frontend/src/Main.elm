@@ -28,6 +28,12 @@ view state =
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , Icon.css
         , H.div
+          [ A.class "navbar" ]
+          [ H.a
+            [ A.href "/", A.class "navbar-brand" ]
+            [ H.text "organize.party" ]
+          ]
+        , H.div
             [ A.class "container"
             , A.style "max-width" "700px"
             ]
