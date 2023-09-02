@@ -66,5 +66,5 @@ body {
 .profile-picture {
   clip-path: circle();
   object-fit: scale-down;
-  max-width: fit-content;
+  max-width: 50px;
 }
