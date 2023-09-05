@@ -129,7 +129,7 @@ view pageState =
                             ]
                 , H.div []
                     [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
-                        [ H.h1 [] [ H.text title ]
+                        [ H.h1 [ A.class "event-title" ] [ H.text title ]
                         , H.a [ A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.wrench) ]
                         ]
                     , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks description ]
@@ -310,7 +310,7 @@ addCommentView attendeeInput =
     , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
     , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Comment" ]
+    , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
     , expandingTextarea
         { text = attendeeInput.comment
         , onInput = (\c -> UpdateAttendeeInput { attendeeInput | comment = c })
