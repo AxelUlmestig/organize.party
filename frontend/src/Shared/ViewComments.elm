@@ -52,16 +52,22 @@ formatTimestamp currentTime timestamp =
       months = days // 31
       years = days // 365
 
+      formatTime time unit =
+        if time == 1 then
+          "1 " ++ unit ++ " ago"
+        else
+          String.fromInt time ++ " " ++ unit ++ "s ago"
+
       timeSinceComment =
         Maybe.withDefault "just now"
           << List.head
           << List.map Tuple.second
           <| List.filter (((<)0) << Tuple.first)
-            [ (years, String.fromInt years ++ " years ago")
-            , (months, String.fromInt months ++ " months ago")
-            , (days, String.fromInt days ++ " days ago")
-            , (hours, String.fromInt hours ++ " hours ago")
-            , (minutes, String.fromInt minutes ++ " minutes ago")
-            , (seconds, String.fromInt seconds ++ " seconds ago")
+            [ (years, formatTime years "year")
+            , (months, formatTime months "month")
+            , (days, formatTime days "day")
+            , (hours, formatTime hours "hour")
+            , (minutes, formatTime minutes "minute")
+            , (seconds, formatTime seconds "second")
             ]
   in " - " ++ timeSinceComment
