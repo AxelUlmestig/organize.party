@@ -38,6 +38,7 @@ borderRadius =
     A.style "border-radius" "5px"
 
 
+-- TODO: refactor these checks into something nicer
 disableUnlessValidInput { email, name } =
     let
         validEmailRegex =
@@ -50,6 +51,19 @@ disableUnlessValidInput { email, name } =
             Maybe.map (\regex -> Regex.contains regex email) mRegex
     in
     A.disabled (mContains /= Just True || name == "")
+
+disableUnlessValidCommentInput { email, name, comment } =
+    let
+        validEmailRegex =
+            "^ *[a-zA-Z0-9.!#$%&''*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)* *$"
+
+        mRegex =
+            Regex.fromString validEmailRegex
+
+        mContains =
+            Maybe.map (\regex -> Regex.contains regex email) mRegex
+    in
+    A.disabled (mContains /= Just True || name == "" || comment == "")
 
 
 fetchEvent : String -> Cmd Msg
@@ -327,6 +341,6 @@ addCommentView attendeeInput =
         ] []
       ]
     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
+        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
         ]
     ]
