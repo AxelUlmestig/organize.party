@@ -21,18 +21,20 @@ import Types exposing (..)
 import Url exposing (Url)
 import Url.Parser as P exposing ((</>), Parser, int, map, oneOf, s, string)
 import Url.Parser.Query as Q
+import Shared.Navbar exposing (navbar)
 
 view : PageState State -> Browser.Document Msg
 view state =
     Browser.Document "organize.party"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , Icon.css
-        , H.div
-          [ A.class "navbar" ]
-          [ H.a
-            [ A.href "/", A.class "navbar-brand" ]
-            [ H.text "organize.party" ]
-          ]
+        , navbar
+        -- , H.div
+        --   [ A.class "navbar" ]
+        --   [ H.a
+        --     [ A.href "/", A.class "navbar-brand" ]
+        --     [ H.text "organize.party" ]
+        --   ]
         , H.div
             [ A.class "container"
             , A.style "max-width" "700px"
