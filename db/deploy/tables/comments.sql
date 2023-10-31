@@ -13,6 +13,7 @@ BEGIN;
 
     foreign key (event_id, email)
       references commenters(event_id, email)
+      on update cascade
   );
 
   create index if not exists idx_comments_event_id
@@ -48,7 +49,7 @@ BEGIN;
     reset client_min_messages;
 
     create trigger sync_commenters_attendees_names
-    before insert or update
+    before insert
     on comments
     for each row
     execute function trig_sync_commenters_attendees_names();

@@ -6,7 +6,7 @@ import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
 import           Data.Profunctor        (dimap, lmap)
-import           Data.Text              (pack)
+import qualified Data.Text              as Text
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
 import           Email                  (CommentNotificationRecipient (..),
@@ -27,14 +27,16 @@ import qualified Email
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import qualified Types.Attendee         as Attendee
 import           Types.Attendee         (Attendee, writeStatus)
-import qualified Types.CommentInput     as VP
+import qualified Types.CommentInput     as CommentInput
 import           Types.CommentInput     (CommentInput (..))
 import           Types.Event            (Event)
 
 
 addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event
-addComment eventId commentInput@CommentInput { eventId = bodyEventId } = do
-  when (eventId /= bodyEventId) $
+addComment eventId commentInput' = do
+  let commentInput = CommentInput.emailToLowerCase commentInput'
+
+  when (eventId /= commentInput.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
   conn <- asks connection

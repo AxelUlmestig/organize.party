@@ -6,7 +6,7 @@ import           Control.Monad.Except   (MonadError (throwError))
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
 import           Data.Profunctor        (dimap, lmap)
-import           Data.Text              (pack)
+import qualified Data.Text              as Text
 import           Data.Types.Injective   (to)
 import           Data.UUID              (UUID)
 import           Email                  (sendEmailInvitation)
@@ -32,8 +32,10 @@ import           Types.Event            (Event)
 
 
 attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
-attend eventId attendee@AttendInput { eventId = bodyEventId } = do
-  when (eventId /= bodyEventId) $
+attend eventId attendee' = do
+  let attendee = attendee' { email = Text.toLower attendee'.email }
+
+  when (eventId /= attendee.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
   let session = do
