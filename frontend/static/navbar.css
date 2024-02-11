@@ -23,28 +23,6 @@ body {
   margin: auto;
 }
 
-.btn {
-  display: inline-block;
-  padding: 0.5em 1.5em;
-  text-decoration: none;
-  border-radius: 50px;
-  cursor: pointer;
-  outline: none;
-  margin-top: 1em;
-  text-transform: uppercase;
-  font-weight: small;
-}
-
-.btn-primary {
-  color: #fff;
-  background: #16a083;
-}
-
-.btn-primary:hover {
-  background: #117964;
-  transition: background 0.3s ease-in-out;
-}
-
 /* ............/navbar/............ *
 
 /* desktop mode............/// */
@@ -101,7 +79,16 @@ body {
 .logo {
   order: 1;
   font-size: 2.3rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.logo a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.logo a:hover{
+    color: initial;
 }
 
 /* ............//// Showcase styling ////......... */
@@ -522,6 +509,7 @@ body {
     flex-direction: column;
     margin-left: -40px;
     padding-left: 50px;
+    padding-right: 1rem;
     transition: transform 0.5s ease-in-out;
     box-shadow: 5px 0px 10px 0px #aaa;
   }
@@ -533,6 +521,7 @@ body {
   }
 
   .logo {
+    margin-bottom: 1.5rem;
     position: absolute;
     top: 5px;
     right: 15px;
@@ -613,6 +602,7 @@ body {
   }
 
   .logo {
+    margin-bottom: 1.5rem;
     position: absolute;
     top: 06px;
     right: 15px;

@@ -17,6 +17,6 @@ navbar =
           [ H.li [] [ H.a [ A.href "/" ] [ H.text "Create a new event" ] ]
           , H.li [] [ H.a [ A.href "/about" ] [ H.text "About" ] ]
           ]
-        , H.h1 [ A.class "logo" ] [ H.text "organize.party" ]
+        , H.h1 [ A.class "logo" ] [ H.a [ A.href "/" ] [ H.text "organize.party" ] ]
         ]
       ]

@@ -74,31 +74,6 @@ body {
   max-width: 50px;
 }
 
-/*
-.navbar {
-  border-bottom: 1px solid #e4e6eb;
-  margin-bottom: 1rem;
-  background-color: rgb(234, 235, 239);
-}
-
-.navbar {
-  box-shadow: 0px 5px 10px 0px #aaa;
-  position: fixed;
-  width: 100%;
-  background: #fff;
-  color: #000;
-  opacity: 0.85;
-  height: 50px;
-  z-index: 12;
-}
-
-.navbar-brand {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-left: 0.5rem;
-}
-*/
-
 .event-title {
   font-size: 2rem;
   font-weight: bold;

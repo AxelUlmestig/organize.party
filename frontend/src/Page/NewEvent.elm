@@ -40,7 +40,7 @@ view pageState =
 
         NewEvent { picker, input } ->
             H.div []
-              [ H.h1 [ A.class "mb-3" ] [ H.text "Create an event" ]
+              [ H.h1 [ A.style "margin-top" "1rem" , A.class "mb-3" ] [ H.text "Create an event" ]
               , H.map CreateEventEventEditorMsg <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
               ]
 

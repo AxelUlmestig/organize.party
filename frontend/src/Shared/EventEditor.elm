@@ -105,7 +105,7 @@ view copy { picker, input, timezone } =
             , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> EventEditorInternalMsg (UpdateEventInput picker { input | password = pw })) ] []
             ]
           ]
-      , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+      , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
           [ H.button [ A.style "background-color" "#1c2c3b", onClick (EventEditorSubmit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
           ]
       ]
