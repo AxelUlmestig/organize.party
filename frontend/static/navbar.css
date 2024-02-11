@@ -60,7 +60,7 @@
 }
 
 .menu-items a:hover {
-  color: #117964;
+  color: black;
   transition: color 0.3s ease-in-out;
 }
 
