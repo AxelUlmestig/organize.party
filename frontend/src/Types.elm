@@ -6,6 +6,8 @@ module Types exposing
     , EditEventInput
     , EditEventMsg(..)
     , EditEventState(..)
+    , AboutState
+    , AboutMsg
     , EditEventStateModal(..)
     , Event
     , EventInput
@@ -54,6 +56,7 @@ type State
     | NewEventState NewEventState
     | ViewEventState ViewEventState
     | EditEventState EditEventState
+    | AboutState AboutState
 
 
 type NewEventState
@@ -83,6 +86,7 @@ type EditEventState
 type EditEventStateModal
     = WrongPasswordModal
 
+type alias AboutState = ()
 
 
 type alias PageState a =
@@ -105,6 +109,7 @@ type Msg
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
+    | AboutMsg AboutMsg
     | DoNothing
 
 
@@ -129,6 +134,9 @@ type EditEventMsg
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
+
+type alias AboutMsg
+    = ()
 
 -- Event
 

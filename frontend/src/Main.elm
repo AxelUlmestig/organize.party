@@ -14,6 +14,7 @@ import Json.Encode as Encode exposing (Value)
 import Page.EditEvent as EditEvent
 import Page.NewEvent as NewEvent
 import Page.ViewEvent as ViewEvent
+import Page.About as About
 import SingleDatePicker as DP
 import Task as Task
 import Time as Time
@@ -29,12 +30,6 @@ view state =
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , Icon.css
         , navbar
-        -- , H.div
-        --   [ A.class "navbar" ]
-        --   [ H.a
-        --     [ A.href "/", A.class "navbar-brand" ]
-        --     [ H.text "organize.party" ]
-        --   ]
         , H.div
             [ A.class "container"
             , A.style "max-width" "700px"
@@ -58,6 +53,9 @@ view state =
 
                 EditEventState x ->
                     H.map EditEventMsg <| EditEvent.view (mapPageState (always x) state)
+
+                AboutState x ->
+                  H.map AboutMsg <| About.view (mapPageState (always x) state)
             ]
         ]
 
@@ -110,6 +108,9 @@ update msg pageState =
                         Just (EditEventR id) ->
                             ( EditEventState LoadingEventToEdit, EditEvent.fetchEvent id )
 
+                        Just AboutR ->
+                            ( AboutState (), Cmd.none )
+
                         Nothing ->
                             ( Failure, Cmd.none )
             in
@@ -157,6 +158,9 @@ update msg pageState =
 
                 ( Just (EditEventR id), _ ) ->
                     packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
+
+                ( Just AboutR, _ ) ->
+                    packageStatePageUrlAndCmd (AboutState ()) url Cmd.none
 
                 ( Nothing, _ ) ->
                     packageStatePageUrlAndCmd Failure url Cmd.none
@@ -211,6 +215,21 @@ update msg pageState =
                 _ ->
                     packageStateAndCmd timeZone currentTime state Cmd.none
 
+        AboutMsg am ->
+          case state of
+            AboutState aboutState ->
+              let
+                aboutPageState =
+                  mapPageState (always aboutState) pageState
+
+                ( newState, newCmd ) =
+                  About.update am aboutPageState
+              in
+              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+
+            _ ->
+              packageStateAndCmd timeZone currentTime state Cmd.none
+
 
 routeParser : Parser (Route -> a) a
 routeParser =
@@ -218,6 +237,7 @@ routeParser =
         [ P.map NewEventR P.top
         , P.map ViewEventR (s "e" </> string)
         , P.map EditEventR (s "e" </> string </> s "edit")
+        , P.map AboutR (s "about")
         ]
 
 
@@ -225,6 +245,7 @@ type Route
     = NewEventR
     | ViewEventR String
     | EditEventR String
+    | AboutR
 
 
 subscriptions : PageState State -> Sub Msg
@@ -239,6 +260,8 @@ subscriptions model =
         ViewEventState state ->
             ViewEvent.handleSubscription (setPageState state model)
 
+        AboutState state ->
+            About.handleSubscription (setPageState state model)
         _ ->
             Sub.none
 

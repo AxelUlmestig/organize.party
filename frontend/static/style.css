@@ -82,3 +82,8 @@ body {
   margin-bottom: 0.5rem;
 }
 
+@media (max-width: 768px) {
+  .section-separator, h5 {
+    font-size: 2rem !important;
+  }
+}
