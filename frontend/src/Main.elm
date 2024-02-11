@@ -22,14 +22,15 @@ import Types exposing (..)
 import Url exposing (Url)
 import Url.Parser as P exposing ((</>), Parser, int, map, oneOf, s, string)
 import Url.Parser.Query as Q
-import Shared.Navbar exposing (navbar)
+import Shared.Navbar as Navbar
+import Html
 
 view : PageState State -> Browser.Document Msg
 view state =
     Browser.Document "organize.party"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
         , Icon.css
-        , navbar
+        , Html.map NavbarMsg (Navbar.view state.navbarState)
         , H.div
             [ A.class "container"
             , A.style "max-width" "700px"
@@ -72,6 +73,7 @@ init _ url key =
             , currentTime = Time.millisToPosix 0
             , pageUrl = url
             , state = Loading
+            , navbarState = Navbar.init
             }
     in
     ( pageState, getCurrentTimeCmd )
@@ -80,20 +82,24 @@ init _ url key =
 update : Msg -> PageState State -> ( PageState State, Cmd Msg )
 update msg pageState =
     let
-        { key, timeZone, state, pageUrl, currentTime } =
+        { key, timeZone, state, pageUrl, currentTime, navbarState } =
             pageState
 
         packageStateAndCmd newZone newTime nextState cmd =
-            ( { key = key, timeZone = newZone, currentTime = newTime, state = nextState, pageUrl = pageUrl }, cmd )
+            ( { key = key, timeZone = newZone, currentTime = newTime, state = nextState, pageUrl = pageUrl, navbarState = navbarState }, cmd )
 
         packageStateTimeZoneAndCmd nextState zone cmd =
-            ( { key = key, timeZone = zone, currentTime = currentTime, state = nextState, pageUrl = pageUrl }, cmd )
+            ( { key = key, timeZone = zone, currentTime = currentTime, state = nextState, pageUrl = pageUrl, navbarState = navbarState }, cmd )
 
         packageStatePageUrlAndCmd nextState url cmd =
-            ( { key = key, timeZone = timeZone, currentTime = currentTime, state = nextState, pageUrl = url }, cmd )
+            ( { key = key, timeZone = timeZone, currentTime = currentTime, state = nextState, pageUrl = url, navbarState = navbarState }, cmd )
     in
     case msg of
         DoNothing -> ( pageState, Cmd.none )
+
+        NavbarMsg navbarMsg ->
+            let (newState, newCmd) = Navbar.update navbarMsg navbarState
+            in ({ pageState | navbarState = newState }, Cmd.map NavbarMsg newCmd)
 
         CurrentTimeIs url zone time ->
             let
@@ -175,6 +181,7 @@ update msg pageState =
                             , timeZone = timeZone
                             , currentTime = pageState.currentTime
                             , pageUrl = pageUrl
+                            , navbarState = navbarState
                             }
 
                         ( newState, newCmd ) =
@@ -275,3 +282,8 @@ main =
         , onUrlRequest = UrlRequest
         , onUrlChange = UrlChange
         }
+
+handleNavbarUpdateResults : PageState State -> ( NavbarState, Cmd NavbarMsg ) -> ( PageState State, Cmd Msg )
+handleNavbarUpdateResults pageState ( navbarState, cmd ) =
+    ( { pageState | navbarState = navbarState }, Cmd.map NavbarMsg cmd )
+

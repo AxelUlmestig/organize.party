@@ -19,6 +19,8 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
+    , NavbarState(..)
+    , NavbarMsg(..)
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -82,6 +84,10 @@ type EditEventState
     | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
     | SubmittedEdit Event EventEditor.EventEditorState
 
+type NavbarState
+    = NavbarOpen
+    | NavbarClosed
+
 
 type EditEventStateModal
     = WrongPasswordModal
@@ -95,6 +101,7 @@ type alias PageState a =
     , currentTime : Time.Posix
     , state : a
     , pageUrl : Url
+    , navbarState : NavbarState
     }
 
 
@@ -110,6 +117,7 @@ type Msg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
     | AboutMsg AboutMsg
+    | NavbarMsg NavbarMsg
     | DoNothing
 
 
@@ -137,6 +145,10 @@ type EditEventMsg
 
 type alias AboutMsg
     = ()
+
+type NavbarMsg
+    = CloseNavbar
+    | OpenNavbar
 
 -- Event
 
@@ -225,6 +237,7 @@ mapPageState f ps =
     , currentTime = ps.currentTime
     , key = ps.key
     , pageUrl = ps.pageUrl
+    , navbarState = ps.navbarState
     }
 
 
