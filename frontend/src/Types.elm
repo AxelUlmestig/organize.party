@@ -6,6 +6,8 @@ module Types exposing
     , EditEventInput
     , EditEventMsg(..)
     , EditEventState(..)
+    , AboutState
+    , AboutMsg
     , EditEventStateModal(..)
     , Event
     , EventInput
@@ -17,6 +19,8 @@ module Types exposing
     , ViewEventMsg(..)
     , ViewEventState(..)
     , ViewEventStateModal(..)
+    , NavbarState(..)
+    , NavbarMsg(..)
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -54,6 +58,7 @@ type State
     | NewEventState NewEventState
     | ViewEventState ViewEventState
     | EditEventState EditEventState
+    | AboutState AboutState
 
 
 type NewEventState
@@ -79,10 +84,15 @@ type EditEventState
     | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
     | SubmittedEdit Event EventEditor.EventEditorState
 
+type NavbarState
+    = NavbarOpen
+    | NavbarClosed
+
 
 type EditEventStateModal
     = WrongPasswordModal
 
+type alias AboutState = ()
 
 
 type alias PageState a =
@@ -91,6 +101,7 @@ type alias PageState a =
     , currentTime : Time.Posix
     , state : a
     , pageUrl : Url
+    , navbarState : NavbarState
     }
 
 
@@ -105,6 +116,8 @@ type Msg
     | NewEventMsg NewEventMsg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
+    | AboutMsg AboutMsg
+    | NavbarMsg NavbarMsg
     | DoNothing
 
 
@@ -129,6 +142,13 @@ type EditEventMsg
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
+
+type alias AboutMsg
+    = ()
+
+type NavbarMsg
+    = CloseNavbar
+    | OpenNavbar
 
 -- Event
 
@@ -217,6 +237,7 @@ mapPageState f ps =
     , currentTime = ps.currentTime
     , key = ps.key
     , pageUrl = ps.pageUrl
+    , navbarState = ps.navbarState
     }
 
 

@@ -37,10 +37,6 @@ body {
     position: absolute;
 }
 
-.event-title {
-  margin-top: 0.5rem;
-}
-
 .submit-comment-button {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
@@ -76,4 +72,18 @@ body {
   clip-path: circle();
   object-fit: scale-down;
   max-width: 50px;
+}
+
+.event-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .section-separator, h5 {
+    font-size: 1.5rem !important;
+  }
 }

@@ -68,6 +68,8 @@ cat << EOF > frontend/index.html
     <link rel="stylesheet" href="/$STYLE_CSS">
     <link rel="stylesheet" href="/$EXPANDING_TEXTAREA_CSS">
     <link rel="stylesheet" href="/datepicker.css">
+    <link rel="stylesheet" href="/navbar.css">
+    <link rel="stylesheet" href="/about.css">
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
