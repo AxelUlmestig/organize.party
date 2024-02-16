@@ -10,7 +10,7 @@ copyright:           2021 Author name here
 category:            Web
 build-type:          Simple
 cabal-version:       >=1.10
-extra-source-files:  README.md
+-- extra-source-files:  README.md
 
 executable events
   hs-source-dirs:      src

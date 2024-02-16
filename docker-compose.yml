@@ -21,9 +21,21 @@ services:
     working_dir: /repo
 
   server:
+    image: axelulmestig/organize.party
     ports:
       - "8081:8081"
     build: .
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    env_file: .env
+
+  production:
+    image: axelulmestig/organize.party:latest
+    ports:
+      - "8081:8081"
     depends_on:
       - db
     environment:
