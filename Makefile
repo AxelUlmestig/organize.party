@@ -22,6 +22,12 @@ update-server-container:
 	docker image prune -f
 	docker compose exec db sqitch --chdir db deploy
 
+.PHONY: deploy-production
+deploy-production:
+	docker compose up -d db
+	docker compose exec db sqitch --chdir db deploy
+	docker compose up --force-recreate -d production
+
 .PHONY: backup-db
 backup-db:
 	./scripts/backup-database.sh
