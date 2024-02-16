@@ -33,7 +33,7 @@ services:
     env_file: .env
 
   production:
-    image: axelulmestig/organize.party:latest
+    image: axelulmestig/organize.party:0.1
     ports:
       - "8081:8081"
     depends_on:
