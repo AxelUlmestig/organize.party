@@ -52,8 +52,10 @@ services:
       - "host.docker.internal:host-gateway"
     restart: always
     volumes:
-      - ./nginx:/etc/nginx/
+      # - ./nginx:/etc/nginx/
+      - ./nginx:/etc/nginx/conf.d/
       - ./certbot/www/:/var/www/certbot/:ro
+      - ./certbot/conf/live/:/etc/nginx/ssl/live/:ro
 
   certbot:
     image: certbot/certbot:latest
