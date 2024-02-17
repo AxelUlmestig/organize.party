@@ -38,10 +38,21 @@ services:
       - "8081:8081"
     depends_on:
       - db
+      - nginx
     environment:
       DB_HOST: db
       DB_PORT: 5432
     env_file: .env
+
+  nginx:
+    image: nginx:latest
+    userns_mode: host
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    volumes:
+      - ./nginx:/etc/nginx/
 
 volumes:
   dbdata:
