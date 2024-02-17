@@ -54,5 +54,11 @@ services:
     volumes:
       - ./nginx:/etc/nginx/
 
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./certbot/www/:/var/www/certbot/:rw
+      - ./certbot/conf/:/etc/letsencrypt/:rw
+
 volumes:
   dbdata:
