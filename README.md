@@ -23,9 +23,21 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib libpq-dev
 `make deploy-production`, this will run it on your local machine with the
 latest pushed image from dockerhub.
 
+Set up daily database backups, `crontab -e` and add:
+```
+0 3 * * * cd /home/admin/organize.party && make backup-db
+```
+
 ## Set up SSL with Let's Encrypt
 1. `make deploy-production`
 1. `docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d organize.party`
+1. Schedule monthly renewal of the certificate:
+    `crontab -e` and add (make sure to update the path to work with your setup):
+    ```
+    0 0 1 * * cd /home/admin/organize.party && docker compose run --rm certbot renew
+    ```
 
 It should now be possible to view https://organize.party with full
 SSL protection.
+
+
