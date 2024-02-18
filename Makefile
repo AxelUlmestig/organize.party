@@ -1,6 +1,7 @@
 .PHONY: start-dev-backend
 start-dev-backend:
 	docker compose up -d db
+	docker compose exec db sqitch --chdir db deploy
 	DB_HOST=localhost DB_PORT=5433 SMTP_SERVER=localhost SMTP_PORT=1111 SMTP_LOGIN=user SMTP_PASSWORD=password cabal run
 
 .PHONY: build-frontend
