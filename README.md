@@ -24,11 +24,8 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib libpq-dev
 latest pushed image from dockerhub.
 
 ## Set up SSL with Let's Encrypt
-1. edit `nginx/nginx.conf` and comment out the `server` section that listens on port 443
 1. `make deploy-production`
 1. `docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d organize.party`
-1. restore `nginx/nginx.conf`
-1. `docker compose up --force-recreate nginx`
 
 It should now be possible to view https://organize.party with full
 SSL protection.
