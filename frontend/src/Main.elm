@@ -15,6 +15,8 @@ import Page.EditEvent as EditEvent
 import Page.NewEvent as NewEvent
 import Page.ViewEvent as ViewEvent
 import Page.About as About
+import Page.NewForgetMeRequest as NewForgetMeRequest
+import Page.ForgetMeRequest as ForgetMeRequest
 import SingleDatePicker as DP
 import Task as Task
 import Time as Time
@@ -57,6 +59,12 @@ view state =
 
                 AboutState x ->
                   H.map AboutMsg <| About.view (mapPageState (always x) state)
+
+                NewForgetMeRequestState x ->
+                  H.map NewForgetMeRequestMsg <| NewForgetMeRequest.view (mapPageState (always x) state)
+
+                ForgetMeRequestState x ->
+                  H.map ForgetMeRequestMsg <| ForgetMeRequest.view (mapPageState (always x) state)
             ]
         ]
 
@@ -117,6 +125,12 @@ update msg pageState =
                         Just AboutR ->
                             ( AboutState (), Cmd.none )
 
+                        Just NewForgetMeRequestR ->
+                            ( NewForgetMeRequestState (NewForgetMeRequestInputEmail ""), Cmd.none )
+
+                        Just (ForgetMeRequestR requestId) ->
+                            ( ForgetMeRequestState (ForgetMeRequestConfirmation requestId), Cmd.none )
+
                         Nothing ->
                             ( Failure, Cmd.none )
             in
@@ -167,6 +181,12 @@ update msg pageState =
 
                 ( Just AboutR, _ ) ->
                     packageStatePageUrlAndCmd (AboutState ()) url Cmd.none
+
+                ( Just NewForgetMeRequestR, _ ) ->
+                    packageStatePageUrlAndCmd (NewForgetMeRequestState (NewForgetMeRequestInputEmail "")) url Cmd.none
+
+                ( Just (ForgetMeRequestR requestId), _ ) ->
+                    packageStatePageUrlAndCmd (ForgetMeRequestState (ForgetMeRequestConfirmation requestId)) url Cmd.none
 
                 ( Nothing, _ ) ->
                     packageStatePageUrlAndCmd Failure url Cmd.none
@@ -237,6 +257,36 @@ update msg pageState =
             _ ->
               packageStateAndCmd timeZone currentTime state Cmd.none
 
+        NewForgetMeRequestMsg nfmrm ->
+          case state of
+            NewForgetMeRequestState newForgetMeRequestState ->
+              let
+                newForgetMeRequestPageState =
+                  mapPageState (always newForgetMeRequestState) pageState
+
+                ( newState, newCmd ) =
+                  NewForgetMeRequest.update nfmrm newForgetMeRequestPageState
+              in
+              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+
+            _ ->
+              packageStateAndCmd timeZone currentTime state Cmd.none
+
+        ForgetMeRequestMsg fmrm ->
+          case state of
+            ForgetMeRequestState forgetMeRequestState ->
+              let
+                forgetMeRequestPageState =
+                  mapPageState (always forgetMeRequestState) pageState
+
+                ( newState, newCmd ) =
+                  ForgetMeRequest.update fmrm forgetMeRequestPageState
+              in
+              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+
+            _ ->
+              packageStateAndCmd timeZone currentTime state Cmd.none
+
 
 routeParser : Parser (Route -> a) a
 routeParser =
@@ -245,6 +295,8 @@ routeParser =
         , P.map ViewEventR (s "e" </> string)
         , P.map EditEventR (s "e" </> string </> s "edit")
         , P.map AboutR (s "about")
+        , P.map NewForgetMeRequestR (s "forgetme")
+        , P.map ForgetMeRequestR (s "forgetme" </> string)
         ]
 
 
@@ -253,6 +305,8 @@ type Route
     | ViewEventR String
     | EditEventR String
     | AboutR
+    | NewForgetMeRequestR
+    | ForgetMeRequestR String
 
 
 subscriptions : PageState State -> Sub Msg

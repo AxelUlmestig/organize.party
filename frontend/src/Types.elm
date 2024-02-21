@@ -8,6 +8,10 @@ module Types exposing
     , EditEventState(..)
     , AboutState
     , AboutMsg
+    , NewForgetMeRequestState(..)
+    , NewForgetMeRequestMsg(..)
+    , ForgetMeRequestState(..)
+    , ForgetMeRequestMsg(..)
     , EditEventStateModal(..)
     , Event
     , EventInput
@@ -59,6 +63,8 @@ type State
     | ViewEventState ViewEventState
     | EditEventState EditEventState
     | AboutState AboutState
+    | NewForgetMeRequestState NewForgetMeRequestState
+    | ForgetMeRequestState ForgetMeRequestState
 
 
 type NewEventState
@@ -94,6 +100,15 @@ type EditEventStateModal
 
 type alias AboutState = ()
 
+type NewForgetMeRequestState
+    = NewForgetMeRequestInputEmail String
+    | NewForgetMeRequestLoading
+    | NewForgetMeRequestSuccess String
+
+type ForgetMeRequestState
+    = ForgetMeRequestLoading
+    | ForgetMeRequestConfirmation String
+    | ForgetMeRequestSuccess Time.Posix
 
 type alias PageState a =
     { key : Nav.Key
@@ -117,6 +132,8 @@ type Msg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
     | AboutMsg AboutMsg
+    | NewForgetMeRequestMsg NewForgetMeRequestMsg
+    | ForgetMeRequestMsg ForgetMeRequestMsg
     | NavbarMsg NavbarMsg
     | DoNothing
 
@@ -145,6 +162,14 @@ type EditEventMsg
 
 type alias AboutMsg
     = ()
+
+type NewForgetMeRequestMsg
+    = SubmitNewForgetMetRequest String
+    | SubmittedNewForgetMetRequest String (Result Http.Error ())
+
+type ForgetMeRequestMsg
+    = SubmitForgetMeRequest String
+    | SubmittedForgetMeRequest Time.Posix
 
 type NavbarMsg
     = CloseNavbar

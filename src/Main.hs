@@ -65,6 +65,8 @@ type API
   :<|> ViewEventHtml
   :<|> EditEventHtml
   :<|> AboutHtml
+  :<|> ForgetMeEventHtml
+  :<|> ViewForgetMeEventHtml
   :<|> Raw
 
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
@@ -73,14 +75,16 @@ type EditEventAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "edi
 type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "attend" :> ReqBody '[JSON] AttendInput :> Put '[JSON] Event
 type CommentAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "comment" :> ReqBody '[JSON] CommentInput :> Post '[JSON] Event
 
+type InitForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> ReqBody '[JSON] InitForgetMeInput :> Put '[JSON] InitForgetMeResult
+type ViewForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
+type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
+
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 type EditEventHtml = "e" :> Capture "event_id" UUID :> "edit" :> Get '[HTML] RawHtml
 type AboutHtml = "about" :> Get '[HTML] RawHtml
-
-type InitForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> ReqBody '[JSON] InitForgetMeInput :> Put '[JSON] InitForgetMeResult
-type ViewForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
-type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
+type ForgetMeEventHtml = "forgetme" :> Get '[HTML] RawHtml
+type ViewForgetMeEventHtml = "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[HTML] RawHtml
 
 type MyHandler = ReaderT AppEnv Handler
 
@@ -103,6 +107,8 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> eventPage -- view event
         :<|> eventPage -- edit event
         :<|> frontPage -- about
+        :<|> frontPage -- forget me
+        :<|> eventPage -- forget me id
         :<|> serveDirectoryWebApp "frontend/static"
       where
         frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
