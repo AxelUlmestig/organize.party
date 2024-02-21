@@ -57,6 +57,12 @@ services:
       - ./certbot/www/:/var/www/certbot/:ro
       - ./certbot/conf/:/etc/nginx/ssl/:ro
 
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
   certbot:
     image: certbot/certbot:latest
     depends_on:

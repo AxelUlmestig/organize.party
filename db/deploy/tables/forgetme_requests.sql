@@ -13,7 +13,7 @@ BEGIN;
     -- once the request is fulfilled, the email is removed and the deleted_at
     -- is set
     constraint deleted_at_or_email_required
-      check (deleted_at is null <> email is null)
+      check ((deleted_at is null) <> (email is null))
   );
 
   create index if not exists forgetme_requests_email_idx
