@@ -2,6 +2,7 @@ module Types.ForgetMeRequest (
   InitForgetMeInput(..),
   InitForgetMeResult(..),
   ForgetMeRequest(..),
+  ExecuteForgetMeResult(..),
 ) where
 
 import           Data.Aeson
@@ -50,5 +51,17 @@ instance ToJSON ForgetMeRequest where
       [ "id"        .= forgetMeRequestId
       , "email"     .= forgetMeRequestEmail
       , "deletedAt" .= forgetMeRequestDeletedAt
+      ]
+
+newtype ExecuteForgetMeResult
+  = ExecuteForgetMeResult
+    { forgetMeResultDeletedAt :: UTCTime
+    }
+    deriving (Eq, Generic, Show)
+
+instance ToJSON ExecuteForgetMeResult where
+  toJSON ExecuteForgetMeResult{forgetMeResultDeletedAt} =
+    object
+      [ "deletedAt" .= forgetMeResultDeletedAt
       ]
 

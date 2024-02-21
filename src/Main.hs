@@ -5,47 +5,49 @@
 
 module Main where
 
-import           Control.Monad.IO.Class        (liftIO)
-import           Control.Monad.Trans.Reader    (ReaderT (..))
-import qualified Data.ByteString               as BS
-import qualified Data.ByteString.Lazy          as LBS
-import           Data.ByteString.UTF8          as BSU
-import           Data.Int                      (Int64)
-import           Data.Text                     (Text, pack)
-import           Data.UUID                     (UUID)
-import           Hasql.Connection              (Connection, Settings, acquire,
-                                                settings)
-import qualified Hasql.Session                 as Hasql
-import           Hasql.Statement               (Statement)
-import           Hasql.TH                      (maybeStatement,
-                                                resultlessStatement,
-                                                singletonStatement)
-import           Network.HTTP.Media            ((//), (/:))
-import           Network.Wai.Handler.Warp      (run)
-import           Network.Wai.Middleware.Cors   (simpleCors)
+import           Control.Monad.IO.Class           (liftIO)
+import           Control.Monad.Trans.Reader       (ReaderT (..))
+import qualified Data.ByteString                  as BS
+import qualified Data.ByteString.Lazy             as LBS
+import           Data.ByteString.UTF8             as BSU
+import           Data.Int                         (Int64)
+import           Data.Text                        (Text, pack)
+import           Data.UUID                        (UUID)
+import           Hasql.Connection                 (Connection, Settings,
+                                                   acquire, settings)
+import qualified Hasql.Session                    as Hasql
+import           Hasql.Statement                  (Statement)
+import           Hasql.TH                         (maybeStatement,
+                                                   resultlessStatement,
+                                                   singletonStatement)
+import           Network.HTTP.Media               ((//), (/:))
+import           Network.Wai.Handler.Warp         (run)
+import           Network.Wai.Middleware.Cors      (simpleCors)
 import           Servant
 import           Servant.API
-import           System.Environment            (lookupEnv)
-import           System.Exit                   (die)
-import           Text.Read                     (readMaybe)
+import           System.Environment               (lookupEnv)
+import           System.Exit                      (die)
+import           Text.Read                        (readMaybe)
 
 import qualified Email
 import qualified Endpoints.Attend
 import qualified Endpoints.Comment
 import qualified Endpoints.CreateEvent
 import qualified Endpoints.EditEvent
+import qualified Endpoints.ExecuteForgetMeRequest
 import qualified Endpoints.GetEvent
 import qualified Endpoints.InitForgetMeRequest
 import qualified Endpoints.ViewForgetMeRequest
-import           Types.AppEnv                  (AppEnv (..), SmtpConfig (..))
-import           Types.Attendee                (Attendee)
-import           Types.AttendInput             (AttendInput)
-import           Types.CommentInput            (CommentInput)
-import           Types.CreateEventInput        (CreateEventInput)
-import           Types.Event                   (Event)
-import           Types.ForgetMeRequest         (ForgetMeRequest (..),
-                                                InitForgetMeInput (..),
-                                                InitForgetMeResult (..))
+import           Types.AppEnv                     (AppEnv (..), SmtpConfig (..))
+import           Types.Attendee                   (Attendee)
+import           Types.AttendInput                (AttendInput)
+import           Types.CommentInput               (CommentInput)
+import           Types.CreateEventInput           (CreateEventInput)
+import           Types.Event                      (Event)
+import           Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
+                                                   ForgetMeRequest (..),
+                                                   InitForgetMeInput (..),
+                                                   InitForgetMeResult (..))
 
 localPG :: Settings
 localPG = settings "db" 5433 "postgres" "postgres" "events"
@@ -58,6 +60,7 @@ type API
   :<|> CommentAPI
   :<|> InitForgetMeRequestApi
   :<|> ViewForgetMeRequestApi
+  :<|> ExecuteForgetMeRequestApi
   :<|> CreateEventHtml
   :<|> ViewEventHtml
   :<|> EditEventHtml
@@ -77,6 +80,7 @@ type AboutHtml = "about" :> Get '[HTML] RawHtml
 
 type InitForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> ReqBody '[JSON] InitForgetMeInput :> Put '[JSON] InitForgetMeResult
 type ViewForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
+type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
 
 type MyHandler = ReaderT AppEnv Handler
 
@@ -94,6 +98,7 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> Endpoints.Comment.addComment
         :<|> Endpoints.InitForgetMeRequest.initForgetMe
         :<|> Endpoints.ViewForgetMeRequest.viewForgetMeRequest
+        :<|> Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
         :<|> frontPage
         :<|> eventPage -- view event
         :<|> eventPage -- edit event

@@ -23,6 +23,7 @@ executable events
                      , Endpoints.GetEvent
                      , Endpoints.InitForgetMeRequest
                      , Endpoints.ViewForgetMeRequest
+                     , Endpoints.ExecuteForgetMeRequest
                      , Types.AppEnv
                      , Types.Attendee
                      , Types.AttendInput

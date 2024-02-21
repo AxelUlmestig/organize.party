@@ -7,6 +7,7 @@ BEGIN;
     email email not null,
     name text,
     gravatar_url text not null,
+    deleted_at timestamptz,
 
     primary key (event_id, email)
   );
@@ -16,22 +17,7 @@ BEGIN;
 
   -- 👇 Alterations below 👇
 
-  with
-    unique_comment_names as (
-      select distinct on (event_id, email)
-        event_id,
-        email,
-        name
-      from comments
-      order by event_id, email, created_at desc
-    )
-
-  insert into commenters
-  select
-    event_id,
-    email,
-    name,
-    'https://www.gravatar.com/avatar/' || md5(email)
-  from unique_comment_names;
+  alter table commenters
+    add column if not exists created_at timestamptz;
 
 COMMIT;

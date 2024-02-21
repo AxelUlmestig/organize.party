@@ -93,6 +93,7 @@ sendEmailUpdate commentInput = do
           from commenters
           where
             event_id = $1::uuid
+            and deleted_at is null
         )
 
         select
