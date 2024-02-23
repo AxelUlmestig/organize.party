@@ -35,6 +35,8 @@ module Types exposing
     , encodeEditEventInput
     , encodeEventInput
     , eventDecoder
+    , encodeNewForgetMeRequest
+    , newForgetMeRequestResponseDecoder
     , mapPageState
     , setPageState
     )
@@ -101,7 +103,7 @@ type EditEventStateModal
 type alias AboutState = ()
 
 type NewForgetMeRequestState
-    = NewForgetMeRequestInputEmail String
+    = NewForgetMeRequestInputtingEmail String
     | NewForgetMeRequestLoading
     | NewForgetMeRequestSuccess String
 
@@ -164,8 +166,9 @@ type alias AboutMsg
     = ()
 
 type NewForgetMeRequestMsg
-    = SubmitNewForgetMetRequest String
-    | SubmittedNewForgetMetRequest String (Result Http.Error ())
+    = UpdateNewForgetMeRequestEmail String
+    | SubmitNewForgetMetRequest String
+    | SubmittedNewForgetMetRequest (Result Http.Error String)
 
 type ForgetMeRequestMsg
     = SubmitForgetMeRequest String
@@ -455,3 +458,10 @@ attendeeInputDecoder =
         (D.field "comment" D.string)
         (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
 
+encodeNewForgetMeRequest : String -> Value
+encodeNewForgetMeRequest email =
+    Encode.object
+        [ ( "email", Encode.string email ) ]
+
+newForgetMeRequestResponseDecoder : D.Decoder String
+newForgetMeRequestResponseDecoder = D.field "email" D.string

@@ -16,7 +16,7 @@ BEGIN;
       check ((deleted_at is null) <> (email is null))
   );
 
-  create index if not exists forgetme_requests_email_idx
+  create unique index if not exists forgetme_requests_email_idx
     on forgetme_requests (email);
 
 COMMIT;

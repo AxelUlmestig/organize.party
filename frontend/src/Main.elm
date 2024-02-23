@@ -40,12 +40,12 @@ view state =
             [ case state.state of
                 Loading ->
                     H.div [ A.class "center" ]
-                      [ H.text "Loading"
+                      [ H.text "Loading..."
                       ]
 
                 Failure ->
                     H.div [ A.class "center" ]
-                      [ H.text "Error"
+                      [ H.text "Something went wrong, please try again later."
                       ]
 
                 ViewEventState viewEventState ->
@@ -126,7 +126,7 @@ update msg pageState =
                             ( AboutState (), Cmd.none )
 
                         Just NewForgetMeRequestR ->
-                            ( NewForgetMeRequestState (NewForgetMeRequestInputEmail ""), Cmd.none )
+                            ( NewForgetMeRequestState (NewForgetMeRequestInputtingEmail ""), Cmd.none )
 
                         Just (ForgetMeRequestR requestId) ->
                             ( ForgetMeRequestState (ForgetMeRequestConfirmation requestId), Cmd.none )
@@ -183,7 +183,7 @@ update msg pageState =
                     packageStatePageUrlAndCmd (AboutState ()) url Cmd.none
 
                 ( Just NewForgetMeRequestR, _ ) ->
-                    packageStatePageUrlAndCmd (NewForgetMeRequestState (NewForgetMeRequestInputEmail "")) url Cmd.none
+                    packageStatePageUrlAndCmd (NewForgetMeRequestState (NewForgetMeRequestInputtingEmail "")) url Cmd.none
 
                 ( Just (ForgetMeRequestR requestId), _ ) ->
                     packageStatePageUrlAndCmd (ForgetMeRequestState (ForgetMeRequestConfirmation requestId)) url Cmd.none

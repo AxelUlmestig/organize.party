@@ -340,7 +340,7 @@ addCommentView attendeeInput =
         , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
         ] []
       ]
-    , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
+    , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
         [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
         ]
     ]

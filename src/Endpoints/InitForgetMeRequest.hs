@@ -54,10 +54,15 @@ initForgetMe InitForgetMeInput{email} = do
           values ($1::text)
           on conflict (email)
           do nothing
+          returning email
         )
 
-        select
-          email::text
+        select email::text
+        from inserted
+
+        union
+
+        select email::text
         from forgetme_requests
         where email = $1::text
      |]
