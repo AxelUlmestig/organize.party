@@ -129,7 +129,7 @@ update msg pageState =
                             ( NewForgetMeRequestState (NewForgetMeRequestInputtingEmail ""), Cmd.none )
 
                         Just (ForgetMeRequestR requestId) ->
-                            ( ForgetMeRequestState (ForgetMeRequestConfirmation requestId), Cmd.none )
+                            ( ForgetMeRequestState ForgetMeRequestLoading, (ForgetMeRequest.fetchForgetMeRequest requestId) )
 
                         Nothing ->
                             ( Failure, Cmd.none )
@@ -186,7 +186,7 @@ update msg pageState =
                     packageStatePageUrlAndCmd (NewForgetMeRequestState (NewForgetMeRequestInputtingEmail "")) url Cmd.none
 
                 ( Just (ForgetMeRequestR requestId), _ ) ->
-                    packageStatePageUrlAndCmd (ForgetMeRequestState (ForgetMeRequestConfirmation requestId)) url Cmd.none
+                    packageStatePageUrlAndCmd (ForgetMeRequestState ForgetMeRequestLoading) url (ForgetMeRequest.fetchForgetMeRequest requestId)
 
                 ( Nothing, _ ) ->
                     packageStatePageUrlAndCmd Failure url Cmd.none

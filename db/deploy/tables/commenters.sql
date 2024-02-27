@@ -18,6 +18,6 @@ BEGIN;
   -- 👇 Alterations below 👇
 
   alter table commenters
-    add column if not exists created_at timestamptz;
+    add column if not exists deleted_at timestamptz;
 
 COMMIT;

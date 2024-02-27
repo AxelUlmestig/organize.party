@@ -6,6 +6,7 @@ BEGIN;
     event_id uuid not null references events(id),
     email email not null,
     created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     comment text not null,
     force_notification_on_comment bool not null default false,
 
@@ -57,6 +58,6 @@ BEGIN;
   -- 👇 Alterations below 👇
 
   alter table comments
-    drop column if exists name;
+    add column if not exists deleted_at timestamptz;
 
 COMMIT;

@@ -12,6 +12,7 @@ module Types exposing
     , NewForgetMeRequestMsg(..)
     , ForgetMeRequestState(..)
     , ForgetMeRequestMsg(..)
+    , ForgetMeRequest
     , EditEventStateModal(..)
     , Event
     , EventInput
@@ -37,6 +38,7 @@ module Types exposing
     , eventDecoder
     , encodeNewForgetMeRequest
     , newForgetMeRequestResponseDecoder
+    , forgetMeRequestDecoder
     , mapPageState
     , setPageState
     )
@@ -109,8 +111,7 @@ type NewForgetMeRequestState
 
 type ForgetMeRequestState
     = ForgetMeRequestLoading
-    | ForgetMeRequestConfirmation String
-    | ForgetMeRequestSuccess Time.Posix
+    | ViewForgetMeRequest ForgetMeRequest
 
 type alias PageState a =
     { key : Nav.Key
@@ -171,7 +172,8 @@ type NewForgetMeRequestMsg
     | SubmittedNewForgetMetRequest (Result Http.Error String)
 
 type ForgetMeRequestMsg
-    = SubmitForgetMeRequest String
+    = LoadedForgetMeRequest (Result Http.Error ForgetMeRequest)
+    | SubmitForgetMeRequest String
     | SubmittedForgetMeRequest Time.Posix
 
 type NavbarMsg
@@ -255,6 +257,14 @@ type alias Comment =
     , comment : String
     , timestamp : Time.Posix
     , gravatarUrl : String
+    }
+
+-- ForgetMeRequest
+
+type alias ForgetMeRequest =
+    { id : String
+    , email : Maybe String
+    , deletedAt : Maybe Time.Posix
     }
 
 
@@ -465,3 +475,10 @@ encodeNewForgetMeRequest email =
 
 newForgetMeRequestResponseDecoder : D.Decoder String
 newForgetMeRequestResponseDecoder = D.field "email" D.string
+
+forgetMeRequestDecoder : D.Decoder ForgetMeRequest
+forgetMeRequestDecoder =
+  D.map3 ForgetMeRequest
+    (D.field "id" D.string)
+    (D.maybe <| D.field "email" D.string)
+    (D.maybe <| D.field "deletedAt" Iso8601.decoder)

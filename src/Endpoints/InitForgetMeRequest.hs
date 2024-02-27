@@ -39,7 +39,10 @@ initForgetMe InitForgetMeInput{email} = do
   conn <- asks connection
   queryResult <- liftIO $ Hasql.run (Hasql.statement email statement) conn
   case queryResult of
-    Right email -> do
+    Right (forgetMeRequestId, email) -> do
+      smtpConf <- asks smtpConfig
+      void . liftIO . forkIO $ Email.sendForgetMeConfirmation smtpConf forgetMeRequestId email
+
       pure $ InitForgetMeResult
         { initForgetMeResultEmail = email
         }
@@ -54,15 +57,17 @@ initForgetMe InitForgetMeInput{email} = do
           values ($1::text)
           on conflict (email)
           do nothing
-          returning email
+          returning
+            id,
+            email
         )
 
-        select email::text
+        select id::uuid, email::text
         from inserted
 
         union
 
-        select email::text
+        select id::uuid, email::text
         from forgetme_requests
         where email = $1::text
      |]

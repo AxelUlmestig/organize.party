@@ -25,16 +25,19 @@ instance FromJSON InitForgetMeInput
 instance Injective InitForgetMeInput Text where
   to InitForgetMeInput{email} = email
 
-newtype InitForgetMeResult
+data InitForgetMeResult
   = InitForgetMeResult
-    { initForgetMeResultEmail :: Text
+    { initForgetMeResultId    :: UUID
+    , initForgetMeResultEmail :: Text
     }
     deriving (Eq, Generic, Show)
 
 instance ToJSON InitForgetMeResult where
   toJSON InitForgetMeResult{initForgetMeResultEmail} =
     object
-      [ "email" .= initForgetMeResultEmail
+      [ "id"        .= (Nothing :: Maybe UUID)
+      , "email"     .= initForgetMeResultEmail
+      , "deletedAt" .= (Nothing :: Maybe UTCTime)
       ]
 
 data ForgetMeRequest
@@ -53,15 +56,18 @@ instance ToJSON ForgetMeRequest where
       , "deletedAt" .= forgetMeRequestDeletedAt
       ]
 
-newtype ExecuteForgetMeResult
+data ExecuteForgetMeResult
   = ExecuteForgetMeResult
-    { forgetMeResultDeletedAt :: UTCTime
+    { forgetMeResultId        :: UUID
+    , forgetMeResultDeletedAt :: UTCTime
     }
     deriving (Eq, Generic, Show)
 
 instance ToJSON ExecuteForgetMeResult where
-  toJSON ExecuteForgetMeResult{forgetMeResultDeletedAt} =
+  toJSON ExecuteForgetMeResult{forgetMeResultId, forgetMeResultDeletedAt} =
     object
-      [ "deletedAt" .= forgetMeResultDeletedAt
+      [ "id"        .= forgetMeResultId
+      , "email"     .= (Nothing :: Maybe Text)
+      , "deletedAt" .= forgetMeResultDeletedAt
       ]
 

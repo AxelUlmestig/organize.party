@@ -16,6 +16,7 @@ BEGIN;
 
   -- 👇 Alterations below 👇
 
+  /*
   with
     unique_comment_names as (
       select distinct on (event_id, email)
@@ -33,5 +34,6 @@ BEGIN;
     name,
     'https://www.gravatar.com/avatar/' || md5(email)
   from unique_comment_names;
+  */
 
 COMMIT;

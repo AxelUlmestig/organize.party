@@ -29,3 +29,4 @@ tables/forgetme_requests 2024-02-20T17:54:24Z root <root@bb969f6e668d> # table t
 
 @forgetme-feature 2024-02-21T18:24:16Z root <root@bb969f6e668d> # forget me feature
 tables/commenters [tables/commenters@forgetme-feature] 2024-02-21T18:24:36Z root <root@bb969f6e668d> # add deleted_at column
+tables/comments [tables/comments@forgetme-feature] 2024-02-27T20:24:33Z root <root@3e47792cd030> # add deleted_at column

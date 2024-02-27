@@ -42,7 +42,7 @@ executeForgetMeRequest forgetMeRequestId = do
     Right Nothing -> do
       throwError err404 { errBody = "forget me request not found" }
     Right (Just deletedAt) -> do
-      pure $ ExecuteForgetMeResult deletedAt
+      pure $ ExecuteForgetMeResult forgetMeRequestId deletedAt
     Left err -> do
       liftIO $ print err
       throwError err500 { errBody = "Something went wrong" }
@@ -62,19 +62,19 @@ executeForgetMeRequest forgetMeRequestId = do
         Nothing -> pure Nothing
         Just (Nothing, Just deletedAt) -> pure $ Just deletedAt
         Just (Just email, _) -> do
-          Hasql.statement email
+          Hasql.statement (email, forgetMeRequestId)
             [resultlessStatement|
-              update comments
-              set
-                message = 'comment deleted by user'
+              update comments set
+                comment = 'comment deleted by user',
+                deleted_at = now(),
+                email = 'deleted-' || $2::uuid::text || '@organize.party'
               where
                 email = $1::text
             |]
 
           Hasql.statement (email, forgetMeRequestId)
             [resultlessStatement|
-              update commenters
-              set
+              update commenters set
                 name = 'deleted user',
                 deleted_at = now(),
                 gravatar_url = '',
