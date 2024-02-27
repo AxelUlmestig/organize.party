@@ -18,7 +18,7 @@ view pageState =
     ViewForgetMeRequest { id, email, deletedAt } ->
       case (email, deletedAt) of
         (Just emailValue, _) ->
-          H.div []
+          H.div [ A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
             [ H.text "Are you sure that you want to purge all references to "
             , H.b [] [ H.text emailValue ]
             , H.text " from the database?"
@@ -33,7 +33,7 @@ view pageState =
             ]
         (_, Just deletedAtValue) ->
           H.div [ A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-            [ H.text "The request to forget you was processed on "
+            [ H.text "The request to forget you was successfully processed on "
             , H.b []
               [ H.text (viewEventDate pageState.timeZone deletedAtValue)
               , H.text " "
@@ -67,7 +67,7 @@ update msg pageState =
         let httpRequest =
               Http.request
                   { method = "DELETE"
-                  , url = "/api/v1/forgetme/" ++ forgetMeRequestId
+                  , url = "/api/v1/forget-me/" ++ forgetMeRequestId
                   , headers = []
                   , body = Http.emptyBody
                   , expect = Http.expectJson (ForgetMeRequestMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
@@ -80,7 +80,7 @@ update msg pageState =
 fetchForgetMeRequest : String -> Cmd Msg
 fetchForgetMeRequest id =
     Http.get
-        { url = "/api/v1/forgetme/" ++ id
+        { url = "/api/v1/forget-me/" ++ id
         , expect = Http.expectJson (ForgetMeRequestMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
         }
 

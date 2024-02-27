@@ -75,16 +75,16 @@ type EditEventAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "edi
 type AttendeesAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "attend" :> ReqBody '[JSON] AttendInput :> Put '[JSON] Event
 type CommentAPI = "api" :> "v1" :> "events" :> Capture "event_id" UUID :> "comment" :> ReqBody '[JSON] CommentInput :> Post '[JSON] Event
 
-type InitForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> ReqBody '[JSON] InitForgetMeInput :> Put '[JSON] InitForgetMeResult
-type ViewForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
-type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forgetme" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
+type InitForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> ReqBody '[JSON] InitForgetMeInput :> Put '[JSON] InitForgetMeResult
+type ViewForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
+type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 type EditEventHtml = "e" :> Capture "event_id" UUID :> "edit" :> Get '[HTML] RawHtml
 type AboutHtml = "about" :> Get '[HTML] RawHtml
-type ForgetMeEventHtml = "forgetme" :> Get '[HTML] RawHtml
-type ViewForgetMeEventHtml = "forgetme" :> Capture "forgetme_request_id" UUID :> Get '[HTML] RawHtml
+type ForgetMeEventHtml = "forget-me" :> Get '[HTML] RawHtml
+type ViewForgetMeEventHtml = "forget-me" :> Capture "forgetme_request_id" UUID :> Get '[HTML] RawHtml
 
 type MyHandler = ReaderT AppEnv Handler
 

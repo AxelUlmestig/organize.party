@@ -95,7 +95,7 @@ submitForgetMeRequest email =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "/api/v1/forgetme/"
+        , url = "/api/v1/forget-me/"
         , expect = Http.expectJson (NewForgetMeRequestMsg << SubmittedNewForgetMetRequest) newForgetMeRequestResponseDecoder
         , body = Http.jsonBody (encodeNewForgetMeRequest email)
         , timeout = Nothing

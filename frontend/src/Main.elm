@@ -295,8 +295,8 @@ routeParser =
         , P.map ViewEventR (s "e" </> string)
         , P.map EditEventR (s "e" </> string </> s "edit")
         , P.map AboutR (s "about")
-        , P.map NewForgetMeRequestR (s "forgetme")
-        , P.map ForgetMeRequestR (s "forgetme" </> string)
+        , P.map NewForgetMeRequestR (s "forget-me")
+        , P.map ForgetMeRequestR (s "forget-me" </> string)
         ]
 
 
