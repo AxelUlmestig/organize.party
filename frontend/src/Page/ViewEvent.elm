@@ -117,8 +117,8 @@ view pageState =
                         H.span [] []
 
                     Just modal ->
-                        H.div [ A.class "modal" ]
-                            [ H.div [ A.class "modal_window" ]
+                        H.div [ A.class "modal-background" ]
+                            [ H.div [ A.class "modal-window" ]
                                 [ case modal of
                                     InviteGuestsInfoModal ->
                                         H.div []
@@ -143,15 +143,15 @@ view pageState =
                             ]
                 , H.div []
                     [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
-                        [ H.span [ A.class "event-title" ] [ H.text title ]
+                        [ H.span [ A.attribute "data-testid" "view-event-title", A.class "event-title" ] [ H.text title ]
                         , H.a [ A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.pencil) ]
                         ]
-                    , H.div [ A.style "white-space" "pre-wrap" ] [ formatTextWithLinks description ]
+                    , H.div [ A.attribute "data-testid" "view-event-description", A.style "white-space" "pre-wrap" ] [ formatTextWithLinks description ]
                     , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
                         [ H.div []
                             [ H.div [ A.style "margin-bottom" "1rem" ]
                                 [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.locationDot)
-                                , H.text location
+                                , H.span [ A.attribute "data-testid" "view-event-location" ] [ H.text location ]
                                 ]
                             , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
                                 [ H.span [ A.style "flex" "1" ]
@@ -170,10 +170,10 @@ view pageState =
                 , H.div []
                     [ H.b [] [ H.text "Are you attending?" ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-                    , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
                     , H.div
                       [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
                       [ H.text "get notified on comments? ",
@@ -184,14 +184,14 @@ view pageState =
                         ] []
                       ]
                     , H.div []
-                        [ H.select [ onInput onStatusUpdate ]
+                        [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
                             [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
                             , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
                             , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
                             ]
                         ]
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (AttendMsg attendeeInput), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (AttendMsg attendeeInput), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
                     ]
                 , H.br [] []

@@ -64,7 +64,7 @@ view copy { picker, input, timezone } =
   H.div []
       [ sectionSeparator "What"
       , H.div [] [ H.text "Event name" ]
-      , H.div [] [ H.input [ A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> EventEditorInternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+      , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> EventEditorInternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
       , H.div [] [ H.text "Description" ]
       , expandingTextarea
           { text = input.description
@@ -92,7 +92,7 @@ view copy { picker, input, timezone } =
           [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
             [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                 [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-            , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> EventEditorInternalMsg (UpdateEventInput picker { input | location = l })) ] []
+            , H.input [ A.attribute "data-testid" "event-editor-event-location", A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> EventEditorInternalMsg (UpdateEventInput picker { input | location = l })) ] []
             ]
           ]
       , sectionSeparator (Maybe.withDefault "Password For Future Edits" <| Dict.get "password_header" copy)
@@ -102,11 +102,11 @@ view copy { picker, input, timezone } =
           [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
             [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                 [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-            , H.input [ A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> EventEditorInternalMsg (UpdateEventInput picker { input | password = pw })) ] []
+            , H.input [ A.attribute "data-testid" "event-editor-event-password",  A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> EventEditorInternalMsg (UpdateEventInput picker { input | password = pw })) ] []
             ]
           ]
       , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-          [ H.button [ A.style "background-color" "#1c2c3b", onClick (EventEditorSubmit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
+          [ H.button [ A.attribute "data-testid" "event-editor-event-submit-button", A.style "background-color" "#1c2c3b", onClick (EventEditorSubmit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
           ]
       ]
 

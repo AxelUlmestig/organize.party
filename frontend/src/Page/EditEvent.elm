@@ -52,8 +52,8 @@ view pageState =
                         H.span [] []
 
                     Just modal ->
-                        H.div [ A.class "modal" ]
-                            [ H.div [ A.class "modal_window" ]
+                        H.div [ A.class "modal-background" ]
+                            [ H.div [ A.class "modal-window" ]
                                 [ case modal of
                                     WrongPasswordModal ->
                                         H.div []

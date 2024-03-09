@@ -23,7 +23,7 @@ viewAttendees attendees =
     H.div []
         [ case Dict.get "Coming" attendeeDict of
             Nothing ->
-                H.h3 [] [ H.text "Attending: 0" ]
+                H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ] [ H.text "Attending: 0" ]
 
             Just attending ->
                 let
@@ -31,7 +31,7 @@ viewAttendees attendees =
                         countAttendees attending
                 in
                 H.div []
-                    [ H.h3 []
+                    [ H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ]
                         [ H.text
                             ("Attending: " ++ String.fromInt comingCount
                                 ++ (if plusOnesCount == 0 then
@@ -71,7 +71,7 @@ viewAttendees attendees =
                         countAttendees maybeAttending
                 in
                 H.div []
-                    [ H.h3 []
+                    [ H.h3 [ A.attribute "data-testid" "view-attendees-maybe-attending-number" ]
                         [ H.text
                             ("Maybe Attending: " ++ String.fromInt maybeComingCount
                                 ++ (if plusOnesCount == 0 then
