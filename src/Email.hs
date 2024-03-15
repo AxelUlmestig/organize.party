@@ -179,7 +179,7 @@ sendForgetMeConfirmation SmtpConfig{server, port, login, password} forgetMeReque
 
           If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
           <br>
-          <a href="https://organize.party/forgetme/#{forgetMeRequestId}">https://organize.party/forgetme/#{forgetMeRequestId}</a>
+          <a href="https://organize.party/forget-me/#{forgetMeRequestId}">https://organize.party/forget-me/#{forgetMeRequestId}</a>
           <br>
           <br>
           It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
