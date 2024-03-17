@@ -13,6 +13,8 @@ test('can create event', async ({ page, request }) => {
   const eventPassword = 'correct password'
   const organizerEmail = `${crypto.randomUUID()}@organize.party`
   const organizerName = 'Orgo McNizer'
+  const attendeeEmail = `${crypto.randomUUID()}@organize.party`
+  const attendeeName = 'Atti McEndee'
   const comment = 'This seems like a nice party'
   const deletedCommentText = 'Comment deleted by user'
 
@@ -35,11 +37,23 @@ test('can create event', async ({ page, request }) => {
   await expect(page.getByTestId('view-event-location')).toHaveText(firstEventLocation)
   await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 0")
 
-  // attend the event
+  // attend the event with the attendee
+  await page.getByTestId('view-event-attendee-name').fill(attendeeName)
+  await page.getByTestId('view-event-attendee-email').fill(attendeeEmail)
+  await page.getByRole('button', { name: /submit/i }).click();
+  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 1")
+  await expect(page.getByText(attendeeName)).toBeVisible()
+
+  await getEmailContents(request, attendeeEmail, /\/e\/[0-9\-a-f]+/)
+
+  // Click Ok button on info modal
+  await page.getByRole('button', { name: /ok/i }).click();
+
+  // attend the event with the organizer
   await page.getByTestId('view-event-attendee-name').fill(organizerName)
   await page.getByTestId('view-event-attendee-email').fill(organizerEmail)
   await page.getByRole('button', { name: /submit/i }).click();
-  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 1")
+  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 2")
   await expect(page.getByText(organizerName)).toBeVisible()
 
   const eventPath = await getEmailContents(request, organizerEmail, /\/e\/[0-9\-a-f]+/)
@@ -56,7 +70,7 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /ok/i }).click();
 
   // Verify that the attendee list is updated
-  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 0")
+  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 1")
   // Clicking checkbox is super flaky...
   // await expect(page.getByTestId('view-attendees-maybe-attending-number')).toHaveText("Maybe Attending: 1 (+1)")
   await expect(page.getByTestId('view-attendees-maybe-attending-number')).toHaveText(/Maybe Attending: 1.*/i)
@@ -100,12 +114,15 @@ test('can create event', async ({ page, request }) => {
   await page.goto(newEventUrl + forgetMePath)
   await page.getByRole('button', { name: /yes, forget me/i }).click();
 
-  // return to the event page and verify that the attendee is deleted
+  // return to the event page and verify that the organizer is deleted
   await page.goto(newEventUrl + eventPath)
   await expect(page.getByText(deletedCommentText)).toHaveText(deletedCommentText)
   await expect(page.getByText(organizerName)).toHaveCount(0);
-  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 0")
+  await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 1")
   await expect(page.getByText('Maybe Attending:')).toHaveCount(0);
+
+  // verify that the attendee is still present
+  await expect(page.getByText(attendeeName)).toHaveCount(1);
 })
 
 const getEmailContents = async (request, recipientEmail, regex) => {
