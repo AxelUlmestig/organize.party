@@ -107,7 +107,7 @@ getCommentsStatement =
         on comments.attendee_id = attendees.id
       join attendee_data
         on attendee_data.attendee_id = attendees.id
-        and attendee_data.superseded_at is not null
+        and attendee_data.superseded_at is null
       where
         attendees.event_id = $1::uuid
     |]
