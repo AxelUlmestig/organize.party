@@ -33,10 +33,10 @@ RUN curl -L -o elm.gz https://github.com/elm/compiler/releases/download/0.19.1/b
 RUN npm install uglify-js -g
 
 COPY frontend/ /events/frontend/
-COPY Makefile /events/Makefile
 COPY scripts /events/scripts
 
-RUN make build-frontend
+RUN rm frontend/index.html || true
+RUN ./scripts/build-frontend.sh --optimize
 
 # create image with executables
 FROM run
