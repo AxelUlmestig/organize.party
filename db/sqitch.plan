@@ -29,6 +29,7 @@ tables/forgetme_requests 2024-02-20T17:54:24Z root <root@bb969f6e668d> # table t
 
 @forgetme-feature 2024-02-21T18:24:16Z root <root@bb969f6e668d> # forget me feature
 tables/attendees [tables/attendees@forgetme-feature] 2024-03-15T20:12:18Z root <root@16d8f255e692> # refactor comments
+tables/attendee_data 2024-03-17T16:08:18Z root <root@e9ba0b5924e3> # attendee_data table
 functions/add_attendee_data 2024-03-16T22:55:22Z root <root@e99888ad9c0f> # add_attendee_data function
 tables/comments [tables/comments@forgetme-feature] 2024-02-27T20:24:33Z root <root@3e47792cd030> # add deleted_at column
 tables/commenters [tables/commenters@forgetme-feature] 2024-02-21T18:24:36Z root <root@bb969f6e668d> # drop obsolete table

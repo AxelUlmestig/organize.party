@@ -41,8 +41,4 @@ create unique index if not exists unique_attendee_idx
 
 -- 👇 Alterations below 👇
 
-alter table attendees
-  add column if not exists
-  get_notified_on_comments bool not null default false;
-
 commit;

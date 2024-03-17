@@ -28,7 +28,7 @@ create table if not exists attendees (
   id bigint not null generated always as identity,
   event_id uuid not null references events (id),
   email email,
-  gravatar_url text,
+  gravatar_url text generated always as ('https://www.gravatar.com/avatar/' || md5(email)) stored,
   deleted_at timestamptz,
 
   primary key (id)

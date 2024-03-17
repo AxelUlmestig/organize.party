@@ -57,7 +57,4 @@ BEGIN;
 
   -- 👇 Alterations below 👇
 
-  alter table comments
-    add column if not exists deleted_at timestamptz;
-
 COMMIT;

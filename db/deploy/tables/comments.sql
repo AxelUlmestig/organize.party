@@ -7,10 +7,11 @@ BEGIN;
     attendee_id bigint not null,
     created_at timestamptz not null default now(),
     deleted_at timestamptz,
-    comment text,
+    comment text not null,
     force_notification_on_comment bool not null default false,
 
     check (deleted_at is null <> comment is null),
+    check ((deleted_at is null) or (comment = 'Comment deleted by user')),
 
     foreign key (event_id, attendee_id)
       references attendees(event_id, id)
@@ -48,7 +49,6 @@ BEGIN;
 
   alter table comments
     drop column if exists email,
-    alter column comment drop not null,
     alter column attendee_id set not null,
     add constraint no_comment_when_deleted check ((deleted_at is null) or (comment = 'Comment deleted by user')),
     add foreign key (attendee_id) references attendees(id) on delete cascade;
