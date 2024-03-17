@@ -256,7 +256,7 @@ type alias Comment =
     { name : String
     , comment : String
     , timestamp : Time.Posix
-    , gravatarUrl : String
+    , gravatarUrl : Maybe String
     }
 
 -- ForgetMeRequest
@@ -315,7 +315,7 @@ commentDecoder =
         (D.field "commenterName" D.string)
         (D.field "comment" D.string)
         (D.field "timestamp" Iso8601.decoder)
-        (D.field "gravatarUrl" D.string)
+        (D.maybe (D.field "gravatarUrl" D.string))
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =

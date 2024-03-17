@@ -12,7 +12,7 @@ test('can create event', async ({ page, request }) => {
   const organizerEmail = `${crypto.randomUUID()}@organize.party`
   const organizerName = 'Orgo McNizer'
   const comment = 'This seems like a nice party'
-  const deletedCommentText = 'comment deleted by user'
+  const deletedCommentText = 'Comment deleted by user'
 
   await page.goto(newEventUrl)
 
