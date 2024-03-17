@@ -21,6 +21,7 @@ view state =
             ]
         , H.ul [ A.class "menu-items" ]
           [ H.li [] [ H.a [ A.href "/", onClick CloseNavbar ] [ H.text "Create a new event" ] ]
+          , H.li [] [ H.a [ A.href "/forget-me", onClick CloseNavbar ] [ H.text "Forget Me" ] ]
           , H.li [] [ H.a [ A.href "/about", onClick CloseNavbar ] [ H.text "About" ] ]
           ]
         , H.h1 [ A.class "logo" ] [ H.a [ A.href "/" ] [ H.text "organize.party" ] ]

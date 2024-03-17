@@ -33,7 +33,7 @@ services:
     env_file: .env
 
   production:
-    image: axelulmestig/organize.party:0.1
+    image: axelulmestig/organize.party:0.2
     ports:
       - "8081:8081"
     depends_on:
@@ -56,6 +56,12 @@ services:
       - ./nginx/mime.types:/etc/nginx/mime.types
       - ./certbot/www/:/var/www/certbot/:ro
       - ./certbot/conf/:/etc/nginx/ssl/:ro
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
   certbot:
     image: certbot/certbot:latest

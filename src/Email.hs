@@ -1,4 +1,10 @@
-module Email (sendEmailInvitation, sendEventUpdateEmail, sendCommentNotifications, CommentNotificationRecipient(..)) where
+module Email (
+  sendEmailInvitation,
+  sendEventUpdateEmail,
+  sendCommentNotifications,
+  CommentNotificationRecipient(..),
+  sendForgetMeConfirmation,
+) where
 
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.Foldable            (for_)
@@ -9,6 +15,7 @@ import qualified Data.Text.Lazy           as LT
 import           Data.Time.Clock          (UTCTime)
 import           Data.Time.Format         (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601 (iso8601Show)
+import           Data.UUID
 import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
 import           Network.Socket           (PortNumber)
@@ -150,4 +157,31 @@ sendCommentNotifications
               <br>
               You can unsubscribe from these messages by unclicking the <i>get notified on comments?</i> checkbox and resubmitting your RSVP
             |]
+
+
+sendForgetMeConfirmation :: SmtpConfig -> UUID -> Text -> IO ()
+sendForgetMeConfirmation SmtpConfig{server, port, login, password} forgetMeRequestId email = do
+  let from       = SMTP.Address Nothing "noreply@organize.party"
+  let to         = [SMTP.Address Nothing email]
+  let cc         = []
+  let bcc        = []
+  let subject    = title
+
+  let mail = SMTP.simpleMail from to cc bcc "Forget me request" [body]
+
+  SMTP.sendMailWithLogin' server port login password mail
+  where
+    body =
+      Mail.htmlPart
+        [__i|
+          A request to delete your data has been received. If you did not make
+          this request, please ignore this email.
+
+          If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
+          <br>
+          <a href="https://organize.party/forget-me/#{forgetMeRequestId}">https://organize.party/forget-me/#{forgetMeRequestId}</a>
+          <br>
+          <br>
+          It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
+        |]
 

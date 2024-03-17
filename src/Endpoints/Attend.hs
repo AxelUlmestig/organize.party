@@ -44,9 +44,7 @@ attend eventId attendee' = do
 
         insertedAttendee@Attendee.Attendee{Attendee.status} <- case mExistingAttendee of
             Just existingAttendee -> pure existingAttendee
-            Nothing -> do
-              Hasql.statement attendee obsoleteOldAttendeeStatement
-              Hasql.statement attendee insertAttendeeStatement
+            Nothing -> Hasql.statement attendee insertAttendeeStatement
 
         pure (insertedAttendee, not emailSentAlready && status /= Attendee.NotComing)
 
@@ -72,44 +70,46 @@ findExistingStatement =
   dimap to (fmap to)
     [maybeStatement|
       select
+        attendees.event_id::uuid,
+        attendees.email::text,
+        attendee_data.name::text,
+        attendee_data.status::text,
+        attendee_data.plus_one::bool,
+        attendee_data.rsvp_at::timestamptz
+      from attendee_data
+      join attendees
+        on attendees.id = attendee_data.attendee_id
+      where
+        attendees.event_id = $1::uuid
+        and attendees.email = $2::text
+        and attendee_data.name = $3::text
+        and attendee_data.status = $4::text::attendee_status
+        and attendee_data.plus_one = $5::bool
+        and attendee_data.get_notified_on_comments = $6::bool
+        and attendee_data.superseded_at is null
+    |]
+  where
+    toTuple AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
+
+insertAttendeeStatement :: Statement AttendInput Attendee
+insertAttendeeStatement =
+  dimap to to
+    [singletonStatement|
+      select
         event_id::uuid,
         email::text,
         name::text,
         status::text,
         plus_one::bool,
         rsvp_at::timestamptz
-      from attendees
-      where
-        event_id = $1::uuid
-        and email = $2::text
-        and name = $3::text
-        and status = $4::text::attendee_status
-        and plus_one = $5::bool
-        and get_notified_on_comments = $6::bool
-        and superseded_at is null
-    |]
-  where
-    toTuple AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
-
-obsoleteOldAttendeeStatement :: Statement AttendInput ()
-obsoleteOldAttendeeStatement =
-  lmap to
-    [resultlessStatement|
-      update attendees
-      set superseded_at = now()
-      where
-        superseded_at is null
-        and event_id = $1::uuid
-        and email = $2::text
-    |]
-
-insertAttendeeStatement :: Statement AttendInput Attendee
-insertAttendeeStatement =
-  dimap to to
-    [singletonStatement|
-      insert into attendees (event_id, email, name, status, plus_one, get_notified_on_comments)
-      values ($1::uuid, $2::text, $3::text, lower($4::text)::attendee_status, $5::bool, $6::bool)
-      returning event_id::uuid, email::text, name::text, status::text, plus_one::bool, rsvp_at::timestamptz
+      from add_attendee_data(
+        event_id_ => $1::uuid,
+        email_ => $2::text,
+        name_ => $3::text,
+        status_ => $4::text::attendee_status,
+        plus_one_ => $5::bool,
+        get_notified_on_comments_ => $6::bool
+      ) as attendee_id
     |]
 
 emailSentAlreadyStatement :: Statement AttendInput Bool
@@ -117,10 +117,15 @@ emailSentAlreadyStatement = lmap (\AttendInput{eventId, email} -> (eventId, emai
   [singletonStatement|
     select exists (
       select 1
-      from attendees
+      from attendee_data
       where
-        event_id = $1::uuid
-        and email = $2::text
-        and status in ('coming', 'maybe_coming')
+        status in ('coming', 'maybe_coming')
+        and attendee_id in (
+          select id
+          from attendees
+          where
+            event_id = $1::uuid
+            and email = $2::text
+        )
     )::bool
   |]

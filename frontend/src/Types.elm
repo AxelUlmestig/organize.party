@@ -8,6 +8,11 @@ module Types exposing
     , EditEventState(..)
     , AboutState
     , AboutMsg
+    , NewForgetMeRequestState(..)
+    , NewForgetMeRequestMsg(..)
+    , ForgetMeRequestState(..)
+    , ForgetMeRequestMsg(..)
+    , ForgetMeRequest
     , EditEventStateModal(..)
     , Event
     , EventInput
@@ -31,6 +36,9 @@ module Types exposing
     , encodeEditEventInput
     , encodeEventInput
     , eventDecoder
+    , encodeNewForgetMeRequest
+    , newForgetMeRequestResponseDecoder
+    , forgetMeRequestDecoder
     , mapPageState
     , setPageState
     )
@@ -59,6 +67,8 @@ type State
     | ViewEventState ViewEventState
     | EditEventState EditEventState
     | AboutState AboutState
+    | NewForgetMeRequestState NewForgetMeRequestState
+    | ForgetMeRequestState ForgetMeRequestState
 
 
 type NewEventState
@@ -94,6 +104,14 @@ type EditEventStateModal
 
 type alias AboutState = ()
 
+type NewForgetMeRequestState
+    = NewForgetMeRequestInputtingEmail String
+    | NewForgetMeRequestLoading
+    | NewForgetMeRequestSuccess String
+
+type ForgetMeRequestState
+    = ForgetMeRequestLoading
+    | ViewForgetMeRequest ForgetMeRequest
 
 type alias PageState a =
     { key : Nav.Key
@@ -117,6 +135,8 @@ type Msg
     | ViewEventMsg ViewEventMsg
     | EditEventMsg EditEventMsg
     | AboutMsg AboutMsg
+    | NewForgetMeRequestMsg NewForgetMeRequestMsg
+    | ForgetMeRequestMsg ForgetMeRequestMsg
     | NavbarMsg NavbarMsg
     | DoNothing
 
@@ -145,6 +165,16 @@ type EditEventMsg
 
 type alias AboutMsg
     = ()
+
+type NewForgetMeRequestMsg
+    = UpdateNewForgetMeRequestEmail String
+    | SubmitNewForgetMetRequest String
+    | SubmittedNewForgetMetRequest (Result Http.Error String)
+
+type ForgetMeRequestMsg
+    = LoadedForgetMeRequest (Result Http.Error ForgetMeRequest)
+    | SubmitForgetMeRequest String
+    | SubmittedForgetMeRequest Time.Posix
 
 type NavbarMsg
     = CloseNavbar
@@ -226,7 +256,15 @@ type alias Comment =
     { name : String
     , comment : String
     , timestamp : Time.Posix
-    , gravatarUrl : String
+    , gravatarUrl : Maybe String
+    }
+
+-- ForgetMeRequest
+
+type alias ForgetMeRequest =
+    { id : String
+    , email : Maybe String
+    , deletedAt : Maybe Time.Posix
     }
 
 
@@ -277,7 +315,7 @@ commentDecoder =
         (D.field "commenterName" D.string)
         (D.field "comment" D.string)
         (D.field "timestamp" Iso8601.decoder)
-        (D.field "gravatarUrl" D.string)
+        (D.maybe (D.field "gravatarUrl" D.string))
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =
@@ -430,3 +468,17 @@ attendeeInputDecoder =
         (D.field "comment" D.string)
         (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
 
+encodeNewForgetMeRequest : String -> Value
+encodeNewForgetMeRequest email =
+    Encode.object
+        [ ( "email", Encode.string email ) ]
+
+newForgetMeRequestResponseDecoder : D.Decoder String
+newForgetMeRequestResponseDecoder = D.field "email" D.string
+
+forgetMeRequestDecoder : D.Decoder ForgetMeRequest
+forgetMeRequestDecoder =
+  D.map3 ForgetMeRequest
+    (D.field "id" D.string)
+    (D.maybe <| D.field "email" D.string)
+    (D.maybe <| D.field "deletedAt" Iso8601.decoder)

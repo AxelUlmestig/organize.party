@@ -1,22 +1,23 @@
 module Endpoints.GetEvent (getEvent, getAttendees, getAttendeesStatement, getCommentsStatement) where
 
-import           Control.Monad.Except   (MonadError (throwError))
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Reader   (MonadReader, asks)
-import           Data.Types.Injective   (to)
-import           Data.UUID              (UUID)
-import           Hasql.Connection       (Connection)
-import           Hasql.Session          (CommandError (ResultError),
-                                         QueryError (QueryError),
-                                         ResultError (UnexpectedAmountOfRows))
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (maybeStatement, vectorStatement)
-import           Servant                (ServerError (..), err404, err500)
+import           Control.Monad.Except    (MonadError (throwError))
+import           Control.Monad.IO.Class  (MonadIO, liftIO)
+import           Control.Monad.Reader    (MonadReader, asks)
+import           Data.String.Interpolate (i)
+import           Data.Types.Injective    (to)
+import           Data.UUID               (UUID)
+import           Hasql.Connection        (Connection)
+import           Hasql.Session           (CommandError (ResultError),
+                                          QueryError (QueryError),
+                                          ResultError (UnexpectedAmountOfRows))
+import qualified Hasql.Session           as Hasql
+import           Hasql.Statement         (Statement)
+import           Hasql.TH                (maybeStatement, vectorStatement)
+import           Servant                 (ServerError (..), err404, err500)
 
-import qualified Data.Vector            as Vector
+import qualified Data.Vector             as Vector
 import           Types.AppEnv
-import           Types.Event            (Attendee, Comment (..), Event (..))
+import           Types.Event             (Attendee, Comment (..), Event (..))
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
@@ -35,7 +36,7 @@ getEvent eventId = do
       Right (Just event)  -> getAttendees event
       Right Nothing       -> throwError err404 { errBody = "Event not found" }
       Left err            -> do
-        liftIO $ print err
+        liftIO $ putStrLn [i|Something went wrong when getting event: #{err}|]
         throwError err500 { errBody = "Something went wrong" }
 
 
@@ -67,7 +68,7 @@ getAttendees event@Event{Types.Event.id} = do
   eAttendees <- liftIO $ Hasql.run (Hasql.statement id getAttendeesStatement) conn
   case eAttendees of
     Left err -> do
-      liftIO $ print err
+      liftIO $ putStrLn [i|Something went wrong when getting event attendees: #{err}|]
       throwError err500 { errBody = "Something went wrong" }
     Right attendees -> return $ event { attendees = attendees }
 
@@ -76,16 +77,20 @@ getAttendeesStatement =
   fmap to . Vector.toList <$>
     [vectorStatement|
       select
-        name::text,
-        status::text,
-        plus_one::bool
+        attendee_data.name::text,
+        attendee_data.status::text,
+        attendee_data.plus_one::bool
       from attendees
+      join attendee_data
+        on attendee_data.attendee_id = attendees.id
+        and attendee_data.superseded_at is null
+        and attendee_data.status is not null
       where
-        event_id = $1::uuid
-        and superseded_at is null
+        attendees.event_id = $1::uuid
+        and attendees.deleted_at is null
       order by
-        status,
-        rsvp_at desc
+        attendee_data.status,
+        attendee_data.rsvp_at desc
     |]
 
 getCommentsStatement :: Statement UUID [Comment]
@@ -93,18 +98,16 @@ getCommentsStatement =
   fmap to . Vector.toList <$>
     [vectorStatement|
       select
-        coalesce(attendees.name, commenters.name, 'unknown')::text,
+        attendee_data.name::text,
         comments.comment::text,
         comments.created_at::timestamptz,
-        commenters.gravatar_url::text
-      from commenters
+        attendees.gravatar_url::text?
+      from attendees
       join comments
-        on comments.event_id = commenters.event_id
-        and comments.email = commenters.email
-      left join attendees
-        on attendees.event_id = commenters.event_id
-        and attendees.email = commenters.email
-        and attendees.superseded_at is null
+        on comments.attendee_id = attendees.id
+      join attendee_data
+        on attendee_data.attendee_id = attendees.id
+        and attendee_data.superseded_at is null
       where
-        commenters.event_id = $1::uuid
+        attendees.event_id = $1::uuid
     |]

@@ -11,7 +11,7 @@ body {
   color: #1c2c3b !important;
 }
 
-.modal {
+.modal-background {
   position: fixed;
   top: 0;
   left: 0;
@@ -21,9 +21,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1;
 }
 
-.modal_window {
+.modal-window {
   position: relative;
   background-color: white;
   padding: 4em 2em;
@@ -86,4 +87,8 @@ body {
   .section-separator, h5 {
     font-size: 1.5rem !important;
   }
+}
+
+.rounded-corners {
+  border-radius: 4px;
 }

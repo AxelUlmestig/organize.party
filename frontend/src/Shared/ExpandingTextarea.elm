@@ -12,6 +12,7 @@ expandingTextarea { text, onInput, placeholder, styling } =
         [ Events.onInput onInput
         , Attributes.placeholder placeholder
         , Attributes.class "padded-input"
+        , Attributes.attribute "data-testid" "expanding-text-area"
         ] [ Html.text text ]
     , div
         [ Attributes.class "padded-input"

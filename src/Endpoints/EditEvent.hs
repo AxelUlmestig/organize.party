@@ -1,29 +1,30 @@
 module Endpoints.EditEvent (editEvent) where
 
-import           Control.Concurrent     (forkIO)
-import           Control.Monad          (forM_)
-import           Control.Monad.Except   (MonadError (..))
-import           Control.Monad.IO.Class (MonadIO (liftIO))
-import           Control.Monad.Reader   (MonadReader, asks)
-import           Data.Profunctor        (dimap)
-import           Data.Text              (Text)
-import           Data.Types.Isomorphic  (to)
-import           Data.UUID              (UUID)
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (maybeStatement, resultlessStatement,
-                                         singletonStatement, vectorStatement)
-import           Servant                (ServerError (..), err403, err404,
-                                         err500)
+import           Control.Concurrent      (forkIO)
+import           Control.Monad           (forM_)
+import           Control.Monad.Except    (MonadError (..))
+import           Control.Monad.IO.Class  (MonadIO (liftIO))
+import           Control.Monad.Reader    (MonadReader, asks)
+import           Data.Profunctor         (dimap)
+import           Data.String.Interpolate (i)
+import           Data.Text               (Text)
+import           Data.Types.Isomorphic   (to)
+import           Data.UUID               (UUID)
+import qualified Hasql.Session           as Hasql
+import           Hasql.Statement         (Statement)
+import           Hasql.TH                (maybeStatement, resultlessStatement,
+                                          singletonStatement, vectorStatement)
+import           Servant                 (ServerError (..), err403, err404,
+                                          err500)
 
-import           Email                  (sendEventUpdateEmail)
-import           Endpoints.GetEvent     (getAttendeesStatement,
-                                         getCommentsStatement)
-import           Types.AppEnv           (AppEnv (..), SmtpConfig (..),
-                                         connection)
+import           Email                   (sendEventUpdateEmail)
+import           Endpoints.GetEvent      (getAttendeesStatement,
+                                          getCommentsStatement)
+import           Types.AppEnv            (AppEnv (..), SmtpConfig (..),
+                                          connection)
 import           Types.CreateEventInput
-import qualified Types.Event            as Event
-import           Types.Event            (Event)
+import qualified Types.Event             as Event
+import           Types.Event             (Event)
 
 data EditResult
   = Success Event
@@ -143,7 +144,7 @@ sendEmailUpdate event = do
 
   case eAttendees of
     Left err -> do
-      liftIO $ print err
+      liftIO $ putStrLn [i|Somethin went wrong when sending emails on event update: #{err}|]
       throwError err500 { errBody = "Something went wrong" }
     Right attendees -> do
       smtpConf <- asks smtpConfig
@@ -153,15 +154,17 @@ sendEmailUpdate event = do
     statement = fmap to <$>
       [vectorStatement|
         select
-          event_id::uuid,
-          email::text,
-          name::text,
-          status::text,
-          plus_one::bool,
-          rsvp_at::timestamptz
+          attendees.event_id::uuid,
+          attendees.email::text,
+          attendee_data.name::text,
+          attendee_data.status::text,
+          attendee_data.plus_one::bool,
+          attendee_data.rsvp_at::timestamptz
         from attendees
+        join attendee_data
+          on attendee_data.attendee_id = attendees.id
+          and attendee_data.superseded_at is null
         where
-          event_id = $1::uuid
-          and superseded_at is null
-          and status in ('coming', 'maybe_coming')
+          attendees.event_id = $1::uuid
+          and attendee_data.status in ('coming', 'maybe_coming')
       |]
