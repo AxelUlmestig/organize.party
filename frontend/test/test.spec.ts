@@ -6,8 +6,10 @@ const newEventUrl = 'http://localhost:8081'
 
 test('can create event', async ({ page, request }) => {
   const eventName = `Test event ${Math.floor(100 * Math.random()) + 1}`
-  const eventDescription = 'Much party, such fun'
-  const eventLocation = 'Super cool location'
+  const firstEventDescription = 'Much party, such fun'
+  const secondEventDescription = 'More party, such fun'
+  const firstEventLocation = 'Super cool location'
+  const secondEventLocation = 'Even cooler location'
   const eventPassword = 'correct password'
   const organizerEmail = `${crypto.randomUUID()}@organize.party`
   const organizerName = 'Orgo McNizer'
@@ -19,8 +21,8 @@ test('can create event', async ({ page, request }) => {
   // create new event
   // TODO: figure out how to set time
   await page.getByTestId('event-editor-event-name').fill(eventName)
-  await page.getByTestId('expanding-text-area').fill(eventDescription)
-  await page.getByTestId('event-editor-event-location').fill(eventLocation)
+  await page.getByTestId('expanding-text-area').fill(firstEventDescription)
+  await page.getByTestId('event-editor-event-location').fill(firstEventLocation)
   await page.getByTestId('event-editor-event-password').fill(eventPassword)
   await page.getByRole('button', { name: /submit/i }).click();
 
@@ -29,8 +31,8 @@ test('can create event', async ({ page, request }) => {
 
   // verify that the new event have the assigned properties
   await expect(page.getByTestId('view-event-title')).toHaveText(eventName)
-  await expect(page.getByTestId('view-event-description')).toHaveText(eventDescription)
-  await expect(page.getByTestId('view-event-location')).toHaveText(eventLocation)
+  await expect(page.getByTestId('view-event-description')).toHaveText(firstEventDescription)
+  await expect(page.getByTestId('view-event-location')).toHaveText(firstEventLocation)
   await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 0")
 
   // attend the event
@@ -65,6 +67,23 @@ test('can create event', async ({ page, request }) => {
 
   // verify comment
   await expect(page.getByText(comment)).toHaveText(comment)
+
+  // edit event
+  await page.getByTestId('edit-event').click()
+  await page.getByTestId('event-editor-event-location').fill(secondEventLocation)
+  await page.getByTestId('expanding-text-area').fill(secondEventDescription)
+  await page.getByRole('button', { name: /submit/i }).click();
+
+  // submit wrong password first
+  await expect(page.getByText('Error: incorrect password')).toHaveCount(1);
+  await page.getByRole('button', { name: /ok/i }).click();
+
+  // try with correct password
+  await page.getByTestId('event-editor-event-password').fill(eventPassword)
+  await page.getByRole('button', { name: /submit/i }).click();
+
+  await expect(page.getByTestId('view-event-location')).toHaveText(secondEventLocation)
+  await getEmailContents(request, organizerEmail, new RegExp(secondEventDescription))
 
   // forget me
   await page.getByRole('link', { name: 'Forget Me' }).click()
