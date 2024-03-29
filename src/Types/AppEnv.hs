@@ -6,6 +6,7 @@ import           Network.Socket   (PortNumber)
 data AppEnv = AppEnv
   { connection :: Connection
   , smtpConfig :: SmtpConfig
+  , hostUrl    :: String
   }
 
 

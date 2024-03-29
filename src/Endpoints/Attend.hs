@@ -57,7 +57,8 @@ attend eventId attendee' = do
 
       when shouldSendEmail $ do
         smtpConf <- asks smtpConfig
-        void . liftIO . forkIO $ sendEmailInvitation smtpConf event attendee
+        hostUrl' <- asks hostUrl
+        void . liftIO . forkIO $ sendEmailInvitation hostUrl' smtpConf event attendee
       pure event
     Left err -> do
       liftIO $ print err

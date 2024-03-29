@@ -148,8 +148,9 @@ sendEmailUpdate event = do
       throwError err500 { errBody = "Something went wrong" }
     Right attendees -> do
       smtpConf <- asks smtpConfig
+      hostUrl' <- asks hostUrl
       liftIO $ forM_ attendees $ \attendee' -> do
-        forkIO $ sendEventUpdateEmail smtpConf event attendee'
+        forkIO $ sendEventUpdateEmail hostUrl' smtpConf event attendee'
   where
     statement = fmap to <$>
       [vectorStatement|

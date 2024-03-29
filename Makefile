@@ -3,7 +3,7 @@ start-dev-backend:
 	docker compose up -d db
 	docker compose exec db sqitch --chdir db deploy
 	docker compose up -d mailhog
-	DB_HOST=localhost DB_PORT=5433 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run
+	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=5433 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run
 
 .PHONY: build-frontend
 build-frontend:

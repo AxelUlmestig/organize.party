@@ -28,6 +28,7 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      HOST_URL: "http://localhost:8081"
     env_file: .env
 
   production:
@@ -40,6 +41,7 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      HOST_URL: "https://organize.party"
     env_file: .env
 
   nginx:

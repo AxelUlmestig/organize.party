@@ -49,9 +49,6 @@ import           Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
                                                    InitForgetMeInput (..),
                                                    InitForgetMeResult (..))
 
-localPG :: Settings
-localPG = settings "db" 5433 "postgres" "postgres" "events"
-
 type API
   = GetEventAPI
   :<|> EditEventAPI
@@ -137,16 +134,22 @@ getSmtpConfig = do
     password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
     pure SmtpConfig {server, port, login, password}
 
+getHostUrl :: IO (Either String String)
+getHostUrl = do
+  mHostUrl <- lookupEnv "HOST_URL"
+  pure $ maybeToEither "Error: Missing env variable HOST_URL" mHostUrl
+
 main :: IO ()
 main = do
   dbSettings <- getDbSettings >>= either die pure
   smtpConfig <- getSmtpConfig >>= either die pure
+  hostUrl <- getHostUrl >>= either die pure
   eConnection <- acquire dbSettings
   case eConnection of
     Left err -> print err
     Right connection -> do
       putStrLn "listening on port 8081..."
-      run 8081 $ app AppEnv { connection, smtpConfig }
+      run 8081 $ app AppEnv { connection, smtpConfig, hostUrl }
 
 -- type shenanigans to enable serving raw html
 

@@ -81,8 +81,9 @@ sendEmailUpdate commentInput = do
       throwError err500 { errBody = "Something went wrong" }
     Right subscribers -> do
       smtpConf <- asks smtpConfig
+      hostUrl' <- asks hostUrl
       liftIO $ forM_ subscribers $ \subscriber -> do
-        forkIO $ Email.sendCommentNotifications smtpConf commentInput subscriber
+        forkIO $ Email.sendCommentNotifications hostUrl' smtpConf commentInput subscriber
   where
     statement = fmap toEmailRecipient <$>
       [vectorStatement|

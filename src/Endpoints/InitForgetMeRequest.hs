@@ -41,7 +41,8 @@ initForgetMe InitForgetMeInput{email} = do
   case queryResult of
     Right (forgetMeRequestId, email) -> do
       smtpConf <- asks smtpConfig
-      void . liftIO . forkIO $ Email.sendForgetMeConfirmation smtpConf forgetMeRequestId email
+      hostUrl' <- asks hostUrl
+      void . liftIO . forkIO $ Email.sendForgetMeConfirmation hostUrl' smtpConf forgetMeRequestId email
 
       pure $ InitForgetMeResult
         { initForgetMeResultEmail = email

@@ -58,7 +58,7 @@ test('can create event', async ({ page, request }) => {
   await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 2")
   await expect(page.getByText(organizerName)).toBeVisible()
 
-  const eventPath = await getEmailContents(request, organizerEmail, /\/e\/[0-9\-a-f]+/)
+  const eventUrl = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/e\/[0-9\-a-f]+/)
 
   // Click Ok button on info modal
   await page.getByRole('button', { name: /ok/i }).click()
@@ -123,14 +123,14 @@ test('can create event', async ({ page, request }) => {
   let remainingAttempts = 10
   const getEmailIntervalMs = 100
 
-  const forgetMePath = await getEmailContents(request, organizerEmail, /\/forget-me\/[0-9\-a-f]+/)
+  const forgetMeUrl = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/forget-me\/[0-9\-a-f]+/)
 
   // execute delete request
-  await page.goto(newEventUrl + forgetMePath)
+  await page.goto(forgetMeUrl)
   await page.getByRole('button', { name: /yes, forget me/i }).click()
 
   // return to the event page and verify that the organizer is deleted
-  await page.goto(newEventUrl + eventPath)
+  await page.goto(eventUrl)
   await expect(page.getByText(deletedCommentText)).toHaveText(deletedCommentText)
   await expect(page.getByText(organizerName)).toHaveCount(0)
   await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 1")
@@ -178,7 +178,7 @@ const getEmailContents = async (request, recipientEmail, regex) => {
     remainingAttempts--
   }
 
-  throw console.error('Did not get a forget me email')
+  throw console.error('Did not find expected email')
 }
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))

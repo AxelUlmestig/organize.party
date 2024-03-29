@@ -26,8 +26,8 @@ import           Types.CommentInput       (CommentInput (..))
 import qualified Types.Event              as Event
 import           Types.Event              (Event (..))
 
-eventToICalendarString :: Text -> Event -> LBS.ByteString
-eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
+eventToICalendarString :: String -> Text -> Event -> LBS.ByteString
+eventToICalendarString hostUrl email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
   [__i|
     BEGIN:VCALENDAR
 
@@ -46,7 +46,7 @@ eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, tit
     DTSTART:#{formatICalendarTimestamp startTime}
     #{maybe "" (("DTEND:" <>) . formatICalendarTimestamp) endTime}
     SUMMARY:#{title}
-    DESCRIPTION:#{LT.replace "\n" "\\n" (formatDescription event)}
+    DESCRIPTION:#{LT.replace "\n" "\\n" (formatDescription hostUrl event)}
     CREATED:#{formatICalendarTimestamp createdAt}
     LAST-MODIFIED:#{formatICalendarTimestamp modifiedAt}
     LOCATION:#{location}
@@ -63,37 +63,37 @@ eventToICalendarString email event@Event{Event.id = eid, startTime, endTime, tit
     END:VCALENDAR
   |]
 
-formatDescription :: Event -> LT.Text
-formatDescription Event{description, Event.id = eid} =
+formatDescription :: String -> Event -> LT.Text
+formatDescription hostUrl Event{description, Event.id = eid} =
   [__i|
     #{description}
 
-    https://organize.party/e/#{eid}
+    #{hostUrl}/e/#{eid}
   |]
 
-sendEmailInvitation :: SmtpConfig -> Event -> Attendee -> IO ()
-sendEmailInvitation SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
+sendEmailInvitation ::  String -> SmtpConfig ->Event -> Attendee -> IO ()
+sendEmailInvitation hostUrl SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let to         = [SMTP.Address (Just name) email]
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = Mail.plainPart (formatDescription event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString email event
+  let body       = Mail.plainPart (formatDescription hostUrl event)
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString hostUrl email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
   SMTP.sendMailWithLogin' server port login password mail
 
-sendEventUpdateEmail :: SmtpConfig -> Event -> Attendee -> IO ()
-sendEventUpdateEmail SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
+sendEventUpdateEmail :: String -> SmtpConfig -> Event -> Attendee -> IO ()
+sendEventUpdateEmail hostUrl SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let to         = [SMTP.Address (Just name) email]
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = Mail.plainPart (formatDescription event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString email event
+  let body       = Mail.plainPart (formatDescription hostUrl event)
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString hostUrl email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
@@ -112,8 +112,9 @@ data CommentNotificationRecipient =
     }
     deriving (Eq, Show)
 
-sendCommentNotifications :: SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
+sendCommentNotifications :: String -> SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
 sendCommentNotifications
+  hostUrl
   SmtpConfig{server, port, login, password}
   CommentInput{eventId, name, comment}
   CommentNotificationRecipient{email, recipientName, eventTitle, forcePush}
@@ -130,7 +131,7 @@ sendCommentNotifications
     emailBody =
       Mail.htmlPart
         [__i|
-          <b>#{name}</b> has left a comment on <a href="https://organize.party/e/#{eventId}">#{eventTitle}</a>
+          <b>#{name}</b> has left a comment on <a href="#{hostUrl}/e/#{eventId}">#{eventTitle}</a>
           <br>
           <br>
           <i>
@@ -140,7 +141,7 @@ sendCommentNotifications
           <br>
           click the link below for more details
           <br>
-          https://organize.party/e/#{eventId}
+          #{hostUrl}/e/#{eventId}
           #{unsubscribeInfo}
         |]
       where
@@ -159,8 +160,8 @@ sendCommentNotifications
             |]
 
 
-sendForgetMeConfirmation :: SmtpConfig -> UUID -> Text -> IO ()
-sendForgetMeConfirmation SmtpConfig{server, port, login, password} forgetMeRequestId email = do
+sendForgetMeConfirmation :: String -> SmtpConfig -> UUID -> Text -> IO ()
+sendForgetMeConfirmation hostUrl SmtpConfig{server, port, login, password} forgetMeRequestId email = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let to         = [SMTP.Address Nothing email]
   let cc         = []
@@ -179,7 +180,7 @@ sendForgetMeConfirmation SmtpConfig{server, port, login, password} forgetMeReque
 
           If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
           <br>
-          <a href="https://organize.party/forget-me/#{forgetMeRequestId}">https://organize.party/forget-me/#{forgetMeRequestId}</a>
+          <a href="#{hostUrl}/forget-me/#{forgetMeRequestId}">#{hostUrl}/forget-me/#{forgetMeRequestId}</a>
           <br>
           <br>
           It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
