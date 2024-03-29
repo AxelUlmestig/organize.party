@@ -1,4 +1,11 @@
-module Page.NewEvent exposing (handleSubscription, update, view)
+module Page.NewEvent exposing (
+    handleSubscription,
+    update,
+    view,
+    init,
+    NewEventState(..),
+    NewEventMsg(..)
+  )
 
 import Browser
 import Browser.Navigation as Nav
@@ -26,65 +33,85 @@ import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
 
+type NewEventState
+    = NewEvent EventEditor.EventEditorState
+    | Loading
+    | Failure
+
+type NewEventMsg
+    = NewEventInternalMsg NewEventInternalMsg
+    | CreatedEvent Event
+
+type NewEventInternalMsg
+    = CreateEventEventEditorMsg EventEditor.EventEditorMsg
+    | InternalCreatedEvent (Result Http.Error Event)
+
+
 borderRadius =
     A.style "border-radius" "5px"
 
+init : Time.Zone -> Time.Posix -> ( NewEventState, Cmd NewEventMsg )
+init timezone time =
+  ( NewEvent { timezone = timezone, picker = DP.init, input = emptyEventInput time }, Cmd.none )
 
-view : PageState NewEventState -> Html NewEventMsg
+view : PageState navbarState NewEventState -> Html NewEventMsg
 view pageState =
     case pageState.state of
-        NewEventLoading ->
+        Loading ->
             H.div [ A.class "center" ]
-              [ H.text "Loading..."
+              [ H.text "Creating event..."
+              ]
+
+        Failure ->
+            H.div [ A.class "center" ]
+              [ H.text "Something went wrong, please try again later"
               ]
 
         NewEvent { picker, input } ->
             H.div []
               [ H.h1 [ A.style "margin-top" "1rem" , A.class "mb-3" ] [ H.text "Create an event" ]
-              , H.map CreateEventEventEditorMsg <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
+              , H.map (NewEventInternalMsg << CreateEventEventEditorMsg) <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
               ]
 
 
-update : NewEventMsg -> PageState NewEventState -> ( PageState State, Cmd Msg )
+update : NewEventInternalMsg -> PageState navbarState NewEventState -> ( PageState navbarState NewEventState, Cmd NewEventMsg )
 update msg pageState =
-    let
-        format =
-            \x -> mapPageState (always x) pageState
-    in
     case msg of
         CreateEventEventEditorMsg (EventEditor.EventEditorInternalMsg internalMsg) ->
           case pageState.state of
             NewEvent eventEditorState ->
               let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
-              in ( format (NewEventState (NewEvent newEventEditorState)), Cmd.map (NewEventMsg << CreateEventEventEditorMsg) newEventEditorMsg )
+              in ( setPageState (NewEvent newEventEditorState) pageState, Cmd.map (NewEventInternalMsg << CreateEventEventEditorMsg) newEventEditorMsg )
 
-            state -> ( format (NewEventState pageState.state), Cmd.none )
+            state -> ( pageState, Cmd.none )
 
         CreateEventEventEditorMsg (EventEditor.EventEditorSubmit event) ->
-            ( format (NewEventState NewEventLoading), createNewEvent event )
+            let cmd =
+                  Http.post
+                      { url = "/api/v1/events"
+                      , expect = Http.expectJson (NewEventInternalMsg << InternalCreatedEvent) eventDecoder
+                      , body = Http.jsonBody (encodeEventInput event)
+                      }
+            in ( setPageState Loading pageState, cmd )
 
-        CreatedEvent result ->
+        InternalCreatedEvent result ->
             case result of
                 Ok event ->
-                    ( format (ViewEventState (ViewEvent (Just InviteGuestsInfoModal) event (emptyAttendeeInput event.id))), Nav.pushUrl pageState.key ("/e/" ++ event.id) )
+                    ( pageState, wrapCmd (CreatedEvent event) )
 
                 Err _ ->
-                    ( format Failure, Cmd.none )
+                    ( setPageState Failure pageState, Cmd.none )
 
 
-createNewEvent : EventInput -> Cmd Msg
-createNewEvent input =
-    Http.post
-        { url = "/api/v1/events"
-        , expect = Http.expectJson (NewEventMsg << CreatedEvent) eventDecoder
-        , body = Http.jsonBody (encodeEventInput input)
-        }
 
-
-handleSubscription : PageState NewEventState -> Sub Msg
+handleSubscription : PageState navbarState NewEventState -> Sub NewEventMsg
 handleSubscription pageState =
     case pageState.state of
         NewEvent eventState ->
-            Sub.map (NewEventMsg << CreateEventEventEditorMsg) <| EventEditor.handleSubscription eventState
+            Sub.map (NewEventInternalMsg << CreateEventEventEditorMsg) <| EventEditor.handleSubscription eventState
         _ ->
             Sub.none
+
+
+wrapCmd : msg -> Cmd msg
+wrapCmd msg = Task.perform (always msg) (Task.succeed ())

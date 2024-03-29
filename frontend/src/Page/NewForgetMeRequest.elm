@@ -1,16 +1,37 @@
 module Page.NewForgetMeRequest exposing (
     view,
-    update
+    update,
+    init,
+    NewForgetMeRequestState,
+    NewForgetMeRequestMsg(..)
   )
 
 import Types exposing (..)
+import Json.Encode as Encode exposing (Value)
 import Html as H exposing (Html)
 import Http exposing (Error(..))
 import Regex
 import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 
-view : PageState NewForgetMeRequestState -> Html NewForgetMeRequestMsg
+type NewForgetMeRequestState
+    = NewForgetMeRequestInputtingEmail String
+    | NewForgetMeRequestSuccess String
+    | Loading
+    | Failure
+
+type NewForgetMeRequestMsg
+    = NewForgetMeRequestInternalMsg NewForgetMeRequestInternalMsg
+
+type NewForgetMeRequestInternalMsg
+    = UpdateEmail String
+    | SubmitRequest String
+    | SubmittedRequest (Result Http.Error String)
+
+init : ( NewForgetMeRequestState, Cmd NewForgetMeRequestMsg )
+init = ( NewForgetMeRequestInputtingEmail "", Cmd.none )
+
+view : PageState navbarState NewForgetMeRequestState -> Html NewForgetMeRequestMsg
 view pageState =
   case pageState.state of
     NewForgetMeRequestInputtingEmail emailAddress ->
@@ -24,7 +45,7 @@ view pageState =
             , A.attribute "type" "email"
             , A.attribute "autocomplete" "email"
             , A.value emailAddress
-            , onInput UpdateNewForgetMeRequestEmail
+            , onInput (NewForgetMeRequestInternalMsg << UpdateEmail)
             , A.placeholder "Your email"
             ] []
           ]
@@ -36,15 +57,10 @@ view pageState =
               , A.style "margin-top" "1rem"
               , A.style "margin-bottom" "1rem"
               , disableUnlessValidEmail emailAddress
-              , onClick (SubmitNewForgetMetRequest emailAddress)
+              , onClick (NewForgetMeRequestInternalMsg <| SubmitRequest emailAddress)
               ]
               [ H.text "Submit" ]
             ]
-        ]
-
-    NewForgetMeRequestLoading ->
-      H.div [ A.class "center" ]
-        [ H.text "Loading..."
         ]
 
     NewForgetMeRequestSuccess email ->
@@ -54,8 +70,18 @@ view pageState =
               [ H.text ("An email has been sent to " ++ email ++ ". Please check your inbox and click the link to confirm the request.") ]
             ]
 
+    Loading ->
+      H.div [ A.class "center" ]
+        [ H.text "Loading..."
+        ]
 
-update : NewForgetMeRequestMsg -> PageState NewForgetMeRequestState -> (PageState State, Cmd Msg)
+    Failure ->
+      H.div [ A.class "center" ]
+        [ H.text "Something went wrong, please try again later"
+        ]
+
+
+update : NewForgetMeRequestInternalMsg -> PageState navbarState NewForgetMeRequestState -> (PageState navbarState NewForgetMeRequestState, Cmd NewForgetMeRequestMsg)
 update msg pageState =
     let
         format =
@@ -65,14 +91,14 @@ update msg pageState =
             pageState
     in
     case msg of
-      UpdateNewForgetMeRequestEmail email -> ( format (NewForgetMeRequestState (NewForgetMeRequestInputtingEmail email)), Cmd.none )
+      UpdateEmail email -> ( format (NewForgetMeRequestInputtingEmail email), Cmd.none )
 
-      SubmitNewForgetMetRequest email -> ( format (NewForgetMeRequestState NewForgetMeRequestLoading), submitForgetMeRequest email )
+      SubmitRequest email -> ( format Loading, submitForgetMeRequest email )
 
-      SubmittedNewForgetMetRequest httpResult ->
+      SubmittedRequest httpResult ->
         case httpResult of
           Ok email ->
-            ( format (NewForgetMeRequestState (NewForgetMeRequestSuccess email)), Cmd.none )
+            ( format (NewForgetMeRequestSuccess email), Cmd.none )
           Err _ ->
             ( format Failure, Cmd.none )
 
@@ -90,15 +116,19 @@ disableUnlessValidEmail email =
     in
     A.disabled (mContains /= Just True)
 
-submitForgetMeRequest : String -> Cmd Msg
+submitForgetMeRequest : String -> Cmd NewForgetMeRequestMsg
 submitForgetMeRequest email =
     Http.request
         { method = "PUT"
         , headers = []
         , url = "/api/v1/forget-me/"
-        , expect = Http.expectJson (NewForgetMeRequestMsg << SubmittedNewForgetMetRequest) newForgetMeRequestResponseDecoder
+        , expect = Http.expectJson (NewForgetMeRequestInternalMsg << SubmittedRequest) newForgetMeRequestResponseDecoder
         , body = Http.jsonBody (encodeNewForgetMeRequest email)
         , timeout = Nothing
         , tracker = Nothing
         }
 
+encodeNewForgetMeRequest : String -> Value
+encodeNewForgetMeRequest email =
+    Encode.object
+        [ ( "email", Encode.string email ) ]

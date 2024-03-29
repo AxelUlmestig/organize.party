@@ -1,4 +1,11 @@
-module Page.About exposing (handleSubscription, update, view)
+module Page.About exposing (
+    handleSubscription,
+    update,
+    view,
+    init,
+    AboutMsg(..),
+    AboutState
+  )
 
 import Browser
 import Browser.Navigation as Nav
@@ -16,7 +23,7 @@ import Iso8601 as Iso8601
 import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Time as Time
-import Types exposing (..)
+import Types exposing (PageState)
 import Util exposing (viewEventDate, viewEventTime)
 import Browser.Dom as Dom
 import Task
@@ -25,12 +32,15 @@ import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
+import Shared.Void exposing (Void, absurd)
 
 borderRadius =
     A.style "border-radius" "5px"
 
+init : ( AboutState, Cmd AboutMsg )
+init = ( (), Cmd.none )
 
-view : PageState AboutState -> Html AboutMsg
+view : PageState navbarState AboutState -> Html AboutMsg
 view pageState =
     case pageState.state of
         () ->
@@ -56,16 +66,14 @@ view pageState =
 
 
 
-update : AboutMsg -> PageState AboutState -> ( PageState State, Cmd Msg )
-update msg pageState =
-    let
-        format =
-            \x -> mapPageState (always x) pageState
-    in
-    case msg of
-        () -> ( format (AboutState ()), Cmd.none)
+update : AboutInternalMsg -> PageState navbarState AboutState -> ( PageState navbarState AboutState, Cmd AboutMsg )
+update = absurd
 
-
-
-handleSubscription : PageState AboutState -> Sub Msg
+handleSubscription : PageState navbarState AboutState -> Sub AboutMsg
 handleSubscription pageState = Sub.none
+
+type AboutMsg
+  = AboutInternalMsg AboutInternalMsg
+
+type alias AboutInternalMsg = Void
+type alias AboutState = ()

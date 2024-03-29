@@ -1,7 +1,9 @@
 module Page.ForgetMeRequest exposing (
     view,
     update,
-    fetchForgetMeRequest
+    init,
+    ForgetMeRequestState,
+    ForgetMeRequestMsg(..)
   )
 
 import Types exposing (..)
@@ -11,8 +13,37 @@ import Html.Events exposing (on, onCheck, onClick, onInput)
 import Maybe
 import Http
 import Util exposing (viewEventDate, viewEventTime)
+import Time as Time
 
-view : PageState ForgetMeRequestState -> Html ForgetMeRequestMsg
+type alias ForgetMeRequest =
+    { id : String
+    , email : Maybe String
+    , deletedAt : Maybe Time.Posix
+    }
+
+type ForgetMeRequestState
+    = Loading
+    | Failure
+    | ViewForgetMeRequest ForgetMeRequest
+
+type ForgetMeRequestMsg
+    = ForgetMeRequestInternalMsg ForgetMeRequestInternalMsg
+
+type ForgetMeRequestInternalMsg
+    = LoadedForgetMeRequest (Result Http.Error ForgetMeRequest)
+    | SubmitForgetMeRequest String
+    | SubmittedForgetMeRequest Time.Posix
+
+init : String -> ( ForgetMeRequestState, Cmd ForgetMeRequestMsg )
+init forgetMeRequestId = 
+    let cmd = 
+          Http.get
+              { url = "/api/v1/forget-me/" ++ forgetMeRequestId
+              , expect = Http.expectJson (ForgetMeRequestInternalMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
+              }
+    in ( Loading, cmd )
+
+view : PageState navbarState ForgetMeRequestState -> Html ForgetMeRequestMsg
 view pageState =
   case pageState.state of
     ViewForgetMeRequest { id, email, deletedAt } ->
@@ -24,7 +55,7 @@ view pageState =
             , H.text " from the database?"
             , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
               [ H.button
-                [ onClick (SubmitForgetMeRequest id)
+                [ onClick (ForgetMeRequestInternalMsg <| SubmitForgetMeRequest id)
                 , A.style "background-color" "#1c2c3b"
                 , A.class "btn btn-primary"
                 ]
@@ -42,12 +73,18 @@ view pageState =
             , H.text ". Any data you have provided since then is still in the database."
             ]
         _ -> H.div [] []
-    ForgetMeRequestLoading ->
+
+    Loading ->
       H.div [ A.class "center" ]
         [ H.text "Loading..."
         ]
 
-update : ForgetMeRequestMsg -> PageState ForgetMeRequestState -> (PageState State, Cmd Msg)
+    Failure ->
+      H.div [ A.class "center" ]
+        [ H.text "Something went wrong, please try again later"
+        ]
+
+update : ForgetMeRequestInternalMsg -> PageState navbarState ForgetMeRequestState -> (PageState navbarState ForgetMeRequestState, Cmd ForgetMeRequestMsg)
 update msg pageState =
     let
         format =
@@ -60,7 +97,7 @@ update msg pageState =
       LoadedForgetMeRequest result ->
         case result of
           Ok forgetMeRequest ->
-            ( format (ForgetMeRequestState (ViewForgetMeRequest forgetMeRequest)), Cmd.none )
+            ( format (ViewForgetMeRequest forgetMeRequest), Cmd.none )
           Err _ ->
             ( format Failure, Cmd.none )
       SubmitForgetMeRequest forgetMeRequestId ->
@@ -70,17 +107,10 @@ update msg pageState =
                   , url = "/api/v1/forget-me/" ++ forgetMeRequestId
                   , headers = []
                   , body = Http.emptyBody
-                  , expect = Http.expectJson (ForgetMeRequestMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
+                  , expect = Http.expectJson (ForgetMeRequestInternalMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
                   , timeout = Nothing
                   , tracker = Nothing
                   }
-        in (format (ForgetMeRequestState ForgetMeRequestLoading), httpRequest )
-      _ -> ( format (ForgetMeRequestState pageState.state), Cmd.none )
-
-fetchForgetMeRequest : String -> Cmd Msg
-fetchForgetMeRequest id =
-    Http.get
-        { url = "/api/v1/forget-me/" ++ id
-        , expect = Http.expectJson (ForgetMeRequestMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
-        }
+        in (format Loading, httpRequest )
+      _ -> ( pageState, Cmd.none )
 

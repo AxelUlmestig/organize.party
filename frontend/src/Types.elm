@@ -3,29 +3,29 @@ module Types exposing
     , AttendeeInput
     , AttendeeStatus(..)
     , Comment
-    , EditEventInput
-    , EditEventMsg(..)
-    , EditEventState(..)
-    , AboutState
-    , AboutMsg
-    , NewForgetMeRequestState(..)
-    , NewForgetMeRequestMsg(..)
-    , ForgetMeRequestState(..)
-    , ForgetMeRequestMsg(..)
-    , ForgetMeRequest
-    , EditEventStateModal(..)
+    -- , EditEventInput
+    -- , EditEventMsg(..)
+    -- , EditEventState(..)
+    -- , AboutState
+    -- , AboutMsg
+    -- , NewForgetMeRequestState(..)
+    -- , NewForgetMeRequestMsg(..)
+    -- , ForgetMeRequestState(..)
+    -- , ForgetMeRequestMsg(..)
+    -- , ForgetMeRequest
+    -- , EditEventStateModal(..)
     , Event
     , EventInput
-    , Msg(..)
-    , NewEventMsg(..)
-    , NewEventState(..)
+    -- , Msg(..)
+    -- , NewEventMsg(..)
+    -- , NewEventState(..)
     , PageState
-    , State(..)
-    , ViewEventMsg(..)
-    , ViewEventState(..)
-    , ViewEventStateModal(..)
-    , NavbarState(..)
-    , NavbarMsg(..)
+    -- , State(..)
+    -- , ViewEventMsg(..)
+    -- , ViewEventState(..)
+    -- , ViewEventStateModal(..)
+    -- , NavbarState(..)
+    -- , NavbarMsg(..)
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -33,7 +33,7 @@ module Types exposing
     , encodeAttendeeInputForRsvp
     , encodeAttendeeInputForComment
     , attendeeInputDecoder
-    , encodeEditEventInput
+    -- , encodeEditEventInput
     , encodeEventInput
     , eventDecoder
     , encodeNewForgetMeRequest
@@ -60,6 +60,7 @@ import Maybe
 -- State
 
 
+{-
 type State
     = Loading
     | Failure
@@ -69,7 +70,7 @@ type State
     | AboutState AboutState
     | NewForgetMeRequestState NewForgetMeRequestState
     | ForgetMeRequestState ForgetMeRequestState
-
+-}
 
 type NewEventState
     = NewEvent EventEditor.EventEditorState
@@ -89,18 +90,22 @@ type ViewEventStateModal
 
 
 
+{-
 type EditEventState
     = LoadingEventToEdit
     | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
     | SubmittedEdit Event EventEditor.EventEditorState
+-}
 
 type NavbarState
     = NavbarOpen
     | NavbarClosed
 
 
+{-
 type EditEventStateModal
     = WrongPasswordModal
+-}
 
 type alias AboutState = ()
 
@@ -113,13 +118,13 @@ type ForgetMeRequestState
     = ForgetMeRequestLoading
     | ViewForgetMeRequest ForgetMeRequest
 
-type alias PageState a =
+type alias PageState navbarState a =
     { key : Nav.Key
     , timeZone : Time.Zone
     , currentTime : Time.Posix
     , state : a
     , pageUrl : Url
-    , navbarState : NavbarState
+    , navbarState : navbarState
     }
 
 
@@ -127,6 +132,7 @@ type alias PageState a =
 -- Msg
 
 
+{-
 type Msg
     = UrlRequest Browser.UrlRequest
     | UrlChange Url
@@ -139,7 +145,7 @@ type Msg
     | ForgetMeRequestMsg ForgetMeRequestMsg
     | NavbarMsg NavbarMsg
     | DoNothing
-
+-}
 
 type NewEventMsg
     = CreateEventEventEditorMsg EventEditor.EventEditorMsg
@@ -157,11 +163,13 @@ type ViewEventMsg
     | CommentedOnEvent (Result Http.Error Event)
 
 
+{-
 type EditEventMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditedEvent (Result Http.Error Event)
     | CloseEditEventModal
     | EditEventEventEditorMsg EventEditor.EventEditorMsg
+-}
 
 type alias AboutMsg
     = ()
@@ -208,6 +216,7 @@ type alias EventInput =
     }
 
 
+{-
 type alias EditEventInput =
     { id : String
     , title : String
@@ -219,6 +228,7 @@ type alias EditEventInput =
     -- , googleMapsLink : Maybe String
     , password : String
     }
+-}
 
 
 
@@ -268,7 +278,7 @@ type alias ForgetMeRequest =
     }
 
 
-mapPageState : (a -> b) -> PageState a -> PageState b
+mapPageState : (a -> b) -> PageState navbarState a -> PageState navbarState b
 mapPageState f ps =
     { state = f ps.state
     , timeZone = ps.timeZone
@@ -279,7 +289,7 @@ mapPageState f ps =
     }
 
 
-setPageState : a -> PageState b -> PageState a
+setPageState : a -> PageState navbarState b -> PageState navbarState a
 setPageState x =
     mapPageState (\_ -> x)
 
@@ -373,6 +383,7 @@ encodeEventInput { title, description, location, startTime, endTime, password } 
         ]
 
 
+{-
 encodeEditEventInput : EditEventInput -> Value
 encodeEditEventInput { title, description, location, startTime, endTime, password } =
     Encode.object
@@ -383,6 +394,7 @@ encodeEditEventInput { title, description, location, startTime, endTime, passwor
         , ( "endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime )
         , ( "password", Encode.string password )
         ]
+-}
 
 
 emptyAttendeeInput : String -> AttendeeInput

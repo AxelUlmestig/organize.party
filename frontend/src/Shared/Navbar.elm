@@ -1,9 +1,23 @@
-module Shared.Navbar exposing (view, update, init)
+module Shared.Navbar exposing (
+    view,
+    update,
+    init,
+    NavbarState,
+    NavbarMsg(..)
+  )
 
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Types exposing (..)
 import Html.Events exposing (on, onCheck, onClick, onInput)
+
+type NavbarState
+    = NavbarOpen
+    | NavbarClosed
+
+type NavbarMsg
+    = CloseNavbar
+    | OpenNavbar
 
 view : NavbarState -> Html NavbarMsg
 view state =
