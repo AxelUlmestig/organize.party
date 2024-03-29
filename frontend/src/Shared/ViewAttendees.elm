@@ -1,24 +1,24 @@
 module Shared.ViewAttendees exposing (viewAttendees)
 
 import Dict exposing (Dict)
-import Html as H exposing (Html)
-import Html.Attributes as A
-import Html.Events as Events
-import Types exposing (..)
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
 import FontAwesome.Layering as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
+import Html as H exposing (Html)
+import Html.Attributes as A
+import Html.Events as Events
 import Shared.FormatUrls exposing (formatTextWithLinks)
+import Types exposing (..)
+
 
 viewAttendees : List Attendee -> Html msg
 viewAttendees attendees =
     let
         attendeeDict =
             splitAttendees attendees
-
     in
     H.div []
         [ case Dict.get "Coming" attendeeDict of
@@ -33,7 +33,8 @@ viewAttendees attendees =
                 H.div []
                     [ H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ]
                         [ H.text
-                            ("Attending: " ++ String.fromInt comingCount
+                            ("Attending: "
+                                ++ String.fromInt comingCount
                                 ++ (if plusOnesCount == 0 then
                                         ""
 
@@ -73,7 +74,8 @@ viewAttendees attendees =
                 H.div []
                     [ H.h3 [ A.attribute "data-testid" "view-attendees-maybe-attending-number" ]
                         [ H.text
-                            ("Maybe Attending: " ++ String.fromInt maybeComingCount
+                            ("Maybe Attending: "
+                                ++ String.fromInt maybeComingCount
                                 ++ (if plusOnesCount == 0 then
                                         ""
 
@@ -154,4 +156,3 @@ listToDict getKey =
             Dict.update (getKey x) (updateExisting x)
     in
     List.foldr f Dict.empty
-

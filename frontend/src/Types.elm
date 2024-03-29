@@ -5,30 +5,30 @@ module Types exposing
     , Comment
     , Event
     , EventInput
+    , attendeeInputDecoder
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
     , encodeAttendeeInput
-    , encodeAttendeeInputForRsvp
     , encodeAttendeeInputForComment
-    , attendeeInputDecoder
+    , encodeAttendeeInputForRsvp
     , encodeEventInput
-    , eventDecoder
     , encodeNewForgetMeRequest
-    , newForgetMeRequestResponseDecoder
+    , eventDecoder
     , forgetMeRequestDecoder
+    , newForgetMeRequestResponseDecoder
     )
 
 import Browser
 import Browser.Navigation as Nav
 import Http
-import Iso8601 as Iso8601
+import Iso8601
 import Json.Decode as D
 import Json.Encode as Encode exposing (Value)
-import SingleDatePicker as DP
-import Time as Time
-import Url exposing (Url)
 import Maybe
+import SingleDatePicker as DP
+import Time
+import Url exposing (Url)
 
 
 type alias Event =
@@ -40,8 +40,10 @@ type alias Event =
     , location : String
     , attendees : List Attendee
     , comments : List Comment
+
     -- , googleMapsLink : Maybe String
     }
+
 
 type alias EventInput =
     { title : String
@@ -53,6 +55,7 @@ type alias EventInput =
     -- , googleMapsLink : Maybe String
     , password : String
     }
+
 
 type alias Attendee =
     { name : String
@@ -79,7 +82,10 @@ type AttendeeStatus
     | MaybeComing
     | NotComing
 
+
+
 -- Comment
+
 
 type alias Comment =
     { name : String
@@ -88,7 +94,10 @@ type alias Comment =
     , gravatarUrl : Maybe String
     }
 
+
+
 -- ForgetMeRequest
+
 
 type alias ForgetMeRequest =
     { id : String
@@ -98,9 +107,8 @@ type alias ForgetMeRequest =
 
 
 
-
-
 -- encoders and decoders
+
 
 eventDecoder : D.Decoder Event
 eventDecoder =
@@ -123,6 +131,7 @@ attendeeDecoder =
         (D.maybe <| D.field "comment" D.string)
         (D.field "plusOne" D.bool)
 
+
 commentDecoder : D.Decoder Comment
 commentDecoder =
     D.map4 Comment
@@ -130,6 +139,7 @@ commentDecoder =
         (D.field "comment" D.string)
         (D.field "timestamp" Iso8601.decoder)
         (D.maybe (D.field "gravatarUrl" D.string))
+
 
 attendeeStatusDecoder : D.Decoder AttendeeStatus
 attendeeStatusDecoder =
@@ -199,6 +209,7 @@ emptyAttendeeInput eventId =
     , forceNotificationOnComment = False
     }
 
+
 encodeAttendeeInput : AttendeeInput -> Value
 encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment, forceNotificationOnComment } =
     let
@@ -248,15 +259,17 @@ encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne, getNotifiedO
         , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
         ]
 
+
 encodeAttendeeInputForComment : AttendeeInput -> Value
 encodeAttendeeInputForComment { eventId, email, name, comment, forceNotificationOnComment } =
-  Encode.object
-    [ ( "eventId", Encode.string eventId )
-    , ( "email", Encode.string (String.trim email) )
-    , ( "name", Encode.string (String.trim name) )
-    , ( "comment", Encode.string (String.trim comment) )
-    , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
-    ]
+    Encode.object
+        [ ( "eventId", Encode.string eventId )
+        , ( "email", Encode.string (String.trim email) )
+        , ( "name", Encode.string (String.trim name) )
+        , ( "comment", Encode.string (String.trim comment) )
+        , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
+        ]
+
 
 attendeeInputDecoder : D.Decoder AttendeeInput
 attendeeInputDecoder =
@@ -270,17 +283,21 @@ attendeeInputDecoder =
         (D.field "comment" D.string)
         (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
 
+
 encodeNewForgetMeRequest : String -> Value
 encodeNewForgetMeRequest email =
     Encode.object
         [ ( "email", Encode.string email ) ]
 
+
 newForgetMeRequestResponseDecoder : D.Decoder String
-newForgetMeRequestResponseDecoder = D.field "email" D.string
+newForgetMeRequestResponseDecoder =
+    D.field "email" D.string
+
 
 forgetMeRequestDecoder : D.Decoder ForgetMeRequest
 forgetMeRequestDecoder =
-  D.map3 ForgetMeRequest
-    (D.field "id" D.string)
-    (D.maybe <| D.field "email" D.string)
-    (D.maybe <| D.field "deletedAt" Iso8601.decoder)
+    D.map3 ForgetMeRequest
+        (D.field "id" D.string)
+        (D.maybe <| D.field "email" D.string)
+        (D.maybe <| D.field "deletedAt" Iso8601.decoder)

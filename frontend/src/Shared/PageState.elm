@@ -1,13 +1,14 @@
 module Shared.PageState exposing
     ( PageState
+    , bimapPsCmd
     , mapPageState
     , setPageState
-    , bimapPsCmd
     )
 
-import Time as Time
 import Browser.Navigation as Nav
+import Time
 import Url exposing (Url)
+
 
 type alias PageState navbarState a =
     { key : Nav.Key
@@ -17,6 +18,7 @@ type alias PageState navbarState a =
     , pageUrl : Url
     , navbarState : navbarState
     }
+
 
 mapPageState : (a -> b) -> PageState navbarState a -> PageState navbarState b
 mapPageState f ps =
@@ -28,8 +30,12 @@ mapPageState f ps =
     , navbarState = ps.navbarState
     }
 
-setPageState : a -> PageState navbarState b -> PageState navbarState a
-setPageState = mapPageState << always
 
-bimapPsCmd : (s1 -> s2) -> (cmd1 -> cmd2) -> (PageState navbarState s1, Cmd cmd1) -> (PageState navbarState s2, Cmd cmd2)
-bimapPsCmd f g (pageState, cmd) = (mapPageState f pageState, Cmd.map g cmd)
+setPageState : a -> PageState navbarState b -> PageState navbarState a
+setPageState =
+    mapPageState << always
+
+
+bimapPsCmd : (s1 -> s2) -> (cmd1 -> cmd2) -> ( PageState navbarState s1, Cmd cmd1 ) -> ( PageState navbarState s2, Cmd cmd2 )
+bimapPsCmd f g ( pageState, cmd ) =
+    ( mapPageState f pageState, Cmd.map g cmd )

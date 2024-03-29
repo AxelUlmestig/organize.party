@@ -1,17 +1,17 @@
-port module Page.ViewEvent exposing (
-    update,
-    view,
-    handleSubscription,
-    init,
-    ViewEventInput(..),
-    ViewEventMsg(..),
-    ViewEventState
-  )
+port module Page.ViewEvent exposing
+    ( ViewEventInput(..)
+    , ViewEventMsg(..)
+    , ViewEventState
+    , handleSubscription
+    , init
+    , update
+    , view
+    )
 
 import Basics.Extra exposing (uncurry)
 import Browser
 import Browser.Navigation as Nav
-import Date as Date
+import Date
 import DurationDatePicker as DP
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
@@ -23,21 +23,21 @@ import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 import Http exposing (Error(..))
-import Iso8601 as Iso8601
-import Json.Decode as D
+import Iso8601
+import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import List.Extra
 import Regex
+import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Shared.FormatUrls exposing (formatTextWithLinks)
+import Shared.PageState exposing (PageState, setPageState)
 import Shared.ViewAttendees exposing (viewAttendees)
 import Shared.ViewComments exposing (viewComments)
-import Time as Time
+import Time
 import Tuple
 import Types exposing (..)
 import Util exposing (viewEventDate, viewEventTime)
-import Shared.FormatUrls exposing (formatTextWithLinks)
-import Shared.ExpandingTextarea exposing (expandingTextarea)
-import Json.Decode as Decode
-import Shared.PageState exposing (PageState, setPageState)
+
 
 type ViewEventState
     = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
@@ -46,9 +46,11 @@ type ViewEventState
     | EventNotFound
     | Error
 
+
 type ViewEventMsg
     = InternalMsg InternalMsg
     | ViewEditEventPage String
+
 
 type InternalMsg
     = UpdateAttendeeInput AttendeeInput
@@ -61,37 +63,59 @@ type InternalMsg
     | CommentedOnEvent (Result Http.Error Event)
     | DoNothing
 
+
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
+
 
 type ViewEventInput
     = ViewEventFromEvent Event
     | ViewEventFromId String
 
+
 port writeToLocalStorage : Value -> Cmd msg
+
+
 port requestLocalStorageAttendeeInput : String -> Cmd msg
+
+
 port localStorageAttendeeInputReceiver : (Maybe String -> msg) -> Sub msg
+
 
 init : ViewEventInput -> Bool -> ( ViewEventState, Cmd ViewEventMsg )
 init viewEventInput newlyCreated =
     case viewEventInput of
-      ViewEventFromId eventId ->
-        let fetchEvent =
-              Http.get
-                  { url = "/api/v1/events/" ++ eventId
-                  , expect = Http.expectJson (InternalMsg << LoadedEvent) eventDecoder
-                  }
-        in ( LoadingEvent, fetchEvent )
-      ViewEventFromEvent event ->
-        let modal = if newlyCreated then Just InviteGuestsInfoModal else Nothing
-        in ( ViewEvent modal event (emptyAttendeeInput event.id), Cmd.none )
+        ViewEventFromId eventId ->
+            let
+                fetchEvent =
+                    Http.get
+                        { url = "/api/v1/events/" ++ eventId
+                        , expect = Http.expectJson (InternalMsg << LoadedEvent) eventDecoder
+                        }
+            in
+            ( LoadingEvent, fetchEvent )
+
+        ViewEventFromEvent event ->
+            let
+                modal =
+                    if newlyCreated then
+                        Just InviteGuestsInfoModal
+
+                    else
+                        Nothing
+            in
+            ( ViewEvent modal event (emptyAttendeeInput event.id), Cmd.none )
+
 
 borderRadius =
     A.style "border-radius" "5px"
 
 
+
 -- TODO: refactor these checks into something nicer
+
+
 disableUnlessValidInput { email, name } =
     let
         validEmailRegex =
@@ -104,6 +128,7 @@ disableUnlessValidInput { email, name } =
             Maybe.map (\regex -> Regex.contains regex email) mRegex
     in
     A.disabled (mContains /= Just True || name == "")
+
 
 disableUnlessValidCommentInput { email, name, comment } =
     let
@@ -124,23 +149,23 @@ view pageState =
     case pageState.state of
         AttendEventLoading ->
             H.div [ A.class "center" ]
-              [ H.text "Loading event..."
-              ]
+                [ H.text "Loading event..."
+                ]
 
         LoadingEvent ->
             H.div [ A.class "center" ]
-              [ H.text "Loading event..."
-              ]
+                [ H.text "Loading event..."
+                ]
 
         EventNotFound ->
             H.div [ A.class "center" ]
-              [ H.text "Event not found, please verify the URL"
-              ]
+                [ H.text "Event not found, please verify the URL"
+                ]
 
         Error ->
             H.div [ A.class "center" ]
-              [ H.text "Something went wrong, please try again later"
-              ]
+                [ H.text "Something went wrong, please try again later"
+                ]
 
         ViewEvent maybeModal event attendeeInput ->
             let
@@ -149,18 +174,18 @@ view pageState =
 
                 onStatusUpdate newStatus =
                     InternalMsg <|
-                      case newStatus of
-                          "Coming" ->
-                              UpdateAttendeeInput { attendeeInput | status = Coming }
+                        case newStatus of
+                            "Coming" ->
+                                UpdateAttendeeInput { attendeeInput | status = Coming }
 
-                          "Maybe Coming" ->
-                              UpdateAttendeeInput { attendeeInput | status = MaybeComing }
+                            "Maybe Coming" ->
+                                UpdateAttendeeInput { attendeeInput | status = MaybeComing }
 
-                          "Not Coming" ->
-                              UpdateAttendeeInput { attendeeInput | status = NotComing }
+                            "Not Coming" ->
+                                UpdateAttendeeInput { attendeeInput | status = NotComing }
 
-                          _ ->
-                              UpdateAttendeeInput attendeeInput
+                            _ ->
+                                UpdateAttendeeInput attendeeInput
             in
             H.div []
                 [ case maybeModal of
@@ -226,14 +251,15 @@ view pageState =
                     , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
                     , H.div
-                      [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-                      [ H.text "get notified on comments? ",
-                      H.input
-                        [ A.type_ "checkbox"
-                        , A.checked attendeeInput.getNotifiedOnComments
-                        , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
-                        ] []
-                      ]
+                        [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+                        [ H.text "get notified on comments? "
+                        , H.input
+                            [ A.type_ "checkbox"
+                            , A.checked attendeeInput.getNotifiedOnComments
+                            , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
+                            ]
+                            []
+                        ]
                     , H.div []
                         [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
                             [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
@@ -243,14 +269,14 @@ view pageState =
                         ]
                     , H.div [ A.class "button-wrapper" ]
                         [ H.button
-                          [ A.attribute "data-testid" "view-event-submit-attendee"
-                          , disableUnlessValidInput attendeeInput
-                          , onClick (InternalMsg (AttendMsg attendeeInput))
-                          , A.class "submit-button"
-                          ]
-                          [ H.text "Submit"
-                          ]
-                         ]
+                            [ A.attribute "data-testid" "view-event-submit-attendee"
+                            , disableUnlessValidInput attendeeInput
+                            , onClick (InternalMsg (AttendMsg attendeeInput))
+                            , A.class "submit-button"
+                            ]
+                            [ H.text "Submit"
+                            ]
+                        ]
                     ]
                 , H.br [] []
                 , H.br [] []
@@ -264,7 +290,9 @@ view pageState =
 update : InternalMsg -> PageState navbarState ViewEventState -> ( PageState navbarState ViewEventState, Cmd ViewEventMsg )
 update msg pageState =
     case msg of
-        DoNothing -> ( pageState, Cmd.none )
+        DoNothing ->
+            ( pageState, Cmd.none )
+
         AttendedEvent result ->
             case result of
                 Ok attendedEvent ->
@@ -276,13 +304,17 @@ update msg pageState =
         UpdateAttendeeInput input ->
             case pageState.state of
                 ViewEvent modal event _ ->
-                    let newState = setPageState (ViewEvent modal event input) pageState
+                    let
+                        newState =
+                            setPageState (ViewEvent modal event input) pageState
+
                         localStorageObject =
-                          Encode.object
-                            [ ("eventId", Encode.string input.eventId)
-                            , ("attendeeInput", encodeAttendeeInput input)
-                            ]
-                    in ( newState, writeToLocalStorage localStorageObject )
+                            Encode.object
+                                [ ( "eventId", Encode.string input.eventId )
+                                , ( "attendeeInput", encodeAttendeeInput input )
+                                ]
+                    in
+                    ( newState, writeToLocalStorage localStorageObject )
 
                 _ ->
                     ( pageState, Cmd.none )
@@ -314,12 +346,14 @@ update msg pageState =
 
         CommentOnEvent input ->
             -- can't think of a less messy way to delete the comment from the input state
-            let localStorageObject =
+            let
+                localStorageObject =
                     Encode.object
-                      [ ("eventId", Encode.string input.eventId)
-                      , ("attendeeInput", encodeAttendeeInput { input | comment = "", forceNotificationOnComment = False })
-                      ]
-            in ( setPageState AttendEventLoading pageState, Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ])
+                        [ ( "eventId", Encode.string input.eventId )
+                        , ( "attendeeInput", encodeAttendeeInput { input | comment = "", forceNotificationOnComment = False } )
+                        ]
+            in
+            ( setPageState AttendEventLoading pageState, Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ] )
 
         CommentedOnEvent result ->
             case result of
@@ -332,10 +366,15 @@ update msg pageState =
 
 handleSubscription : PageState navbarState ViewEventState -> Sub ViewEventMsg
 handleSubscription _ =
-  localStorageAttendeeInputReceiver
-    <| \mJsonString -> case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
-      Just (Ok attendeeInput) -> InternalMsg <| UpdateAttendeeInput attendeeInput
-      _ -> InternalMsg DoNothing
+    localStorageAttendeeInputReceiver <|
+        \mJsonString ->
+            case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
+                Just (Ok attendeeInput) ->
+                    InternalMsg <| UpdateAttendeeInput attendeeInput
+
+                _ ->
+                    InternalMsg DoNothing
+
 
 attendEvent : AttendeeInput -> Cmd ViewEventMsg
 attendEvent input =
@@ -349,6 +388,7 @@ attendEvent input =
         , tracker = Nothing
         }
 
+
 commentOnEvent : AttendeeInput -> Cmd ViewEventMsg
 commentOnEvent input =
     Http.request
@@ -361,32 +401,33 @@ commentOnEvent input =
         , tracker = Nothing
         }
 
+
 addCommentView : AttendeeInput -> Html ViewEventMsg
 addCommentView attendeeInput =
-  H.map InternalMsg <|
-    H.div []
-      [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-      , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
-      , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-      , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-      , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
-      , expandingTextarea
-          { text = attendeeInput.comment
-          , onInput = (\c -> UpdateAttendeeInput { attendeeInput | comment = c })
-          , placeholder = "Leave a comment"
-          , styling = []
-          }
-      , H.div
-        [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-        [ H.text "send email notification to everyone? "
-        , H.input
-          [ A.type_ "checkbox"
-          , A.checked attendeeInput.forceNotificationOnComment
-          , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
-          ] []
-        ]
-      , H.div [ A.class "button-wrapper" ]
-          [ H.button [ A.class "submit-button", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput) ] [ H.text "Comment" ]
-          ]
-      ]
-
+    H.map InternalMsg <|
+        H.div []
+            [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
+            , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
+            , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
+            , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+            , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
+            , expandingTextarea
+                { text = attendeeInput.comment
+                , onInput = \c -> UpdateAttendeeInput { attendeeInput | comment = c }
+                , placeholder = "Leave a comment"
+                , styling = []
+                }
+            , H.div
+                [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+                [ H.text "send email notification to everyone? "
+                , H.input
+                    [ A.type_ "checkbox"
+                    , A.checked attendeeInput.forceNotificationOnComment
+                    , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
+                    ]
+                    []
+                ]
+            , H.div [ A.class "button-wrapper" ]
+                [ H.button [ A.class "submit-button", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput) ] [ H.text "Comment" ]
+                ]
+            ]

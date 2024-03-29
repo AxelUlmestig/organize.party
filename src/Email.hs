@@ -71,7 +71,7 @@ formatDescription hostUrl Event{description, Event.id = eid} =
     #{hostUrl}/e/#{eid}
   |]
 
-sendEmailInvitation ::  String -> SmtpConfig ->Event -> Attendee -> IO ()
+sendEmailInvitation ::  String -> SmtpConfig -> Event -> Attendee -> IO ()
 sendEmailInvitation hostUrl SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let to         = [SMTP.Address (Just name) email]

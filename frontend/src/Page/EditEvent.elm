@@ -1,14 +1,16 @@
-module Page.EditEvent exposing (
-    init,
-    handleSubscription,
-    update,
-    view,
-    State,
-    Msg(..)
-  )
+module Page.EditEvent exposing
+    ( Msg(..)
+    , State
+    , handleSubscription
+    , init
+    , update
+    , view
+    )
 
 import Browser
+import Browser.Dom as Dom
 import Browser.Navigation as Nav
+import Dict exposing (Dict)
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
@@ -19,25 +21,23 @@ import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 import Http
-import Shared.SectionSeparator exposing (sectionSeparator)
-import Shared.ViewAttendees exposing (viewAttendees)
-import SingleDatePicker as DP
-import Time as Time
-import Types exposing (..)
-import Util exposing (viewEventDate, viewEventTime)
-import Browser.Dom as Dom
-import Task
+import Iso8601
+import Json.Encode as Encode exposing (Value)
+import Platform.Sub as Sub
 import Process
+import Shared.EventEditor as EventEditor
 import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Shared.FormatUrls exposing (formatTextWithLinks)
-import Platform.Sub as Sub
-import Shared.EventEditor as EventEditor
-import Dict exposing (Dict)
-import Task
-import Shared.ViewComments exposing (viewComments)
-import Json.Encode as Encode exposing (Value)
-import Iso8601 as Iso8601
 import Shared.PageState exposing (PageState, mapPageState)
+import Shared.SectionSeparator exposing (sectionSeparator)
+import Shared.ViewAttendees exposing (viewAttendees)
+import Shared.ViewComments exposing (viewComments)
+import SingleDatePicker as DP
+import Task
+import Time
+import Types exposing (..)
+import Util exposing (viewEventDate, viewEventTime)
+
 
 type State
     = Loading
@@ -45,13 +45,16 @@ type State
     | SubmittedEdit Event EventEditor.State
     | Failure
 
+
 type StateModal
     = WrongPasswordModal
+
 
 type Msg
     = EditSuccessful Event
     | EditCancelled String
     | InternalMsg InternalMsg
+
 
 type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
@@ -60,6 +63,7 @@ type InternalMsg
     | CloseModal
     | EventEditorMsg EventEditor.Msg
 
+
 type alias EditEventInput =
     { id : String
     , title : String
@@ -67,9 +71,11 @@ type alias EditEventInput =
     , startTime : Time.Posix
     , endTime : Maybe Time.Posix
     , location : String
+
     -- , googleMapsLink : Maybe String
     , password : String
     }
+
 
 encodeEditEventInput : EditEventInput -> Value
 encodeEditEventInput { title, description, location, startTime, endTime, password } =
@@ -82,26 +88,29 @@ encodeEditEventInput { title, description, location, startTime, endTime, passwor
         , ( "password", Encode.string password )
         ]
 
+
 copy : Dict String String
-copy = Dict.insert "password_header" "Password" <| Dict.empty
+copy =
+    Dict.insert "password_header" "Password" <| Dict.empty
+
 
 view : PageState navbarState State -> Html Msg
 view pageState =
     case pageState.state of
         Loading ->
             H.div [ A.class "center" ]
-              [ H.text "Loading..."
-              ]
+                [ H.text "Loading..."
+                ]
 
         SubmittedEdit _ _ ->
             H.div [ A.class "center" ]
-              [ H.text "Loading..."
-              ]
+                [ H.text "Loading..."
+                ]
 
         Failure ->
             H.div [ A.class "center" ]
-              [ H.text "Something went wrong, please try again later"
-              ]
+                [ H.text "Something went wrong, please try again later"
+                ]
 
         EditEvent event maybeModal eventEditorState ->
             H.div []
@@ -154,7 +163,8 @@ update msg pageState =
                             , password = ""
                             }
 
-                        newState = EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput }
+                        newState =
+                            EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput }
                     in
                     ( format newState, Cmd.none )
 
@@ -163,24 +173,27 @@ update msg pageState =
 
         EditResponse result ->
             case result of
-                Ok event -> ( pageState, wrapCmd (EditSuccessful event) )
+                Ok event ->
+                    ( pageState, wrapCmd (EditSuccessful event) )
 
                 Err (Http.BadStatus 403) ->
                     case pageState.state of
                         SubmittedEdit event state ->
-                            let eventEditorState =
-                                  { picker = state.picker
-                                  , timezone = pageState.timeZone
-                                  , input =
-                                    { title = state.input.title
-                                    , description = state.input.description
-                                    , startTime = state.input.startTime
-                                    , endTime = state.input.endTime
-                                    , location = state.input.location
-                                    , password = state.input.password
+                            let
+                                eventEditorState =
+                                    { picker = state.picker
+                                    , timezone = pageState.timeZone
+                                    , input =
+                                        { title = state.input.title
+                                        , description = state.input.description
+                                        , startTime = state.input.startTime
+                                        , endTime = state.input.endTime
+                                        , location = state.input.location
+                                        , password = state.input.password
+                                        }
                                     }
-                                  }
-                            in ( format (EditEvent event (Just WrongPasswordModal) eventEditorState), Cmd.none )
+                            in
+                            ( format (EditEvent event (Just WrongPasswordModal) eventEditorState), Cmd.none )
 
                         _ ->
                             ( format Failure, Cmd.none )
@@ -197,37 +210,47 @@ update msg pageState =
                     ( format otherState, Cmd.none )
 
         EventEditorMsg (EventEditor.InternalMsg internalMsg) ->
-          case pageState.state of
-            EditEvent event modal eventEditorState ->
-              let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
-              in ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+            case pageState.state of
+                EditEvent event modal eventEditorState ->
+                    let
+                        ( newEventEditorState, newEventEditorMsg ) =
+                            EventEditor.update internalMsg eventEditorState
+                    in
+                    ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
 
-            state -> ( format pageState.state, Cmd.none )
+                state ->
+                    ( format pageState.state, Cmd.none )
 
         SubmitUpdate eventInput ->
-          case pageState.state of
-            EditEvent event _ eventEditorState ->
-              let editEventInput =
-                    { id = event.id
-                    , title = eventInput.title
-                    , description = eventInput.description
-                    , startTime = eventInput.startTime
-                    , endTime = eventInput.endTime
-                    , location = eventInput.location
-                    , password = eventInput.password
-                    }
-              in ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput)
-            otherState ->
-              ( format otherState, Cmd.none )
+            case pageState.state of
+                EditEvent event _ eventEditorState ->
+                    let
+                        editEventInput =
+                            { id = event.id
+                            , title = eventInput.title
+                            , description = eventInput.description
+                            , startTime = eventInput.startTime
+                            , endTime = eventInput.endTime
+                            , location = eventInput.location
+                            , password = eventInput.password
+                            }
+                    in
+                    ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
+
+                otherState ->
+                    ( format otherState, Cmd.none )
+
 
 init : String -> ( State, Cmd Msg )
 init id =
-    let cmd =
-          Http.get
-            { url = "/api/v1/events/" ++ id
-            , expect = Http.expectJson (InternalMsg << LoadedEventForEdit) eventDecoder
-            }
-    in ( Loading, cmd )
+    let
+        cmd =
+            Http.get
+                { url = "/api/v1/events/" ++ id
+                , expect = Http.expectJson (InternalMsg << LoadedEventForEdit) eventDecoder
+                }
+    in
+    ( Loading, cmd )
 
 
 submitEdit : EditEventInput -> Cmd Msg
@@ -248,8 +271,11 @@ handleSubscription pageState =
     case pageState.state of
         EditEvent _ _ eventState ->
             Sub.map (InternalMsg << EventEditorMsg) <| EventEditor.handleSubscription eventState
+
         _ ->
             Sub.none
 
+
 wrapCmd : msg -> Cmd msg
-wrapCmd msg = Task.perform (always msg) (Task.succeed ())
+wrapCmd msg =
+    Task.perform (always msg) (Task.succeed ())

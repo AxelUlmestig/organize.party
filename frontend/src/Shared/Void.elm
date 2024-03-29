@@ -1,8 +1,10 @@
-module Shared.Void exposing (Void , absurd)
+module Shared.Void exposing (Void, absurd)
+
 
 type Void
-  = Void Void
+    = Void Void
+
 
 absurd : Void -> a
 absurd (Void v) =
-  absurd v
+    absurd v
