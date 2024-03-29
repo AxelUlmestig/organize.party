@@ -1,4 +1,12 @@
-port module Page.ViewEvent exposing (fetchEvent, update, view, handleSubscription)
+port module Page.ViewEvent exposing (
+    update,
+    view,
+    handleSubscription,
+    init,
+    ViewEventInput(..),
+    ViewEventMsg(..),
+    ViewEventState
+  )
 
 import Basics.Extra exposing (uncurry)
 import Browser
@@ -29,10 +37,55 @@ import Util exposing (viewEventDate, viewEventTime)
 import Shared.FormatUrls exposing (formatTextWithLinks)
 import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Json.Decode as Decode
+import Shared.PageState exposing (PageState, setPageState)
+
+type ViewEventState
+    = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
+    | AttendEventLoading
+    | LoadingEvent
+    | EventNotFound
+    | Error
+
+type ViewEventMsg
+    = InternalMsg InternalMsg
+    | ViewEditEventPage String
+
+type InternalMsg
+    = UpdateAttendeeInput AttendeeInput
+    | AttendedEvent (Result Http.Error Event)
+    | AttendMsg AttendeeInput
+    | LoadedEvent (Result Http.Error Event)
+    | CloseModal
+    | RequestLocalStorageAttendeeInput String
+    | CommentOnEvent AttendeeInput
+    | CommentedOnEvent (Result Http.Error Event)
+    | DoNothing
+
+type ViewEventStateModal
+    = InviteGuestsInfoModal
+    | AttendeeSuccessModal
+
+type ViewEventInput
+    = ViewEventFromEvent Event
+    | ViewEventFromId String
 
 port writeToLocalStorage : Value -> Cmd msg
 port requestLocalStorageAttendeeInput : String -> Cmd msg
 port localStorageAttendeeInputReceiver : (Maybe String -> msg) -> Sub msg
+
+init : ViewEventInput -> Bool -> ( ViewEventState, Cmd ViewEventMsg )
+init viewEventInput newlyCreated =
+    case viewEventInput of
+      ViewEventFromId eventId ->
+        let fetchEvent =
+              Http.get
+                  { url = "/api/v1/events/" ++ eventId
+                  , expect = Http.expectJson (InternalMsg << LoadedEvent) eventDecoder
+                  }
+        in ( LoadingEvent, fetchEvent )
+      ViewEventFromEvent event ->
+        let modal = if newlyCreated then Just InviteGuestsInfoModal else Nothing
+        in ( ViewEvent modal event (emptyAttendeeInput event.id), Cmd.none )
 
 borderRadius =
     A.style "border-radius" "5px"
@@ -66,15 +119,7 @@ disableUnlessValidCommentInput { email, name, comment } =
     A.disabled (mContains /= Just True || name == "" || comment == "")
 
 
-fetchEvent : String -> Cmd Msg
-fetchEvent id =
-    Http.get
-        { url = "/api/v1/events/" ++ id
-        , expect = Http.expectJson (ViewEventMsg << LoadedEvent) eventDecoder
-        }
-
-
-view : PageState ViewEventState -> Html ViewEventMsg
+view : PageState navbarState ViewEventState -> Html ViewEventMsg
 view pageState =
     case pageState.state of
         AttendEventLoading ->
@@ -92,24 +137,30 @@ view pageState =
               [ H.text "Event not found, please verify the URL"
               ]
 
+        Error ->
+            H.div [ A.class "center" ]
+              [ H.text "Something went wrong, please try again later"
+              ]
+
         ViewEvent maybeModal event attendeeInput ->
             let
                 { id, title, description, startTime, endTime, location, attendees, comments } =
                     event
 
                 onStatusUpdate newStatus =
-                    case newStatus of
-                        "Coming" ->
-                            UpdateAttendeeInput { attendeeInput | status = Coming }
+                    InternalMsg <|
+                      case newStatus of
+                          "Coming" ->
+                              UpdateAttendeeInput { attendeeInput | status = Coming }
 
-                        "Maybe Coming" ->
-                            UpdateAttendeeInput { attendeeInput | status = MaybeComing }
+                          "Maybe Coming" ->
+                              UpdateAttendeeInput { attendeeInput | status = MaybeComing }
 
-                        "Not Coming" ->
-                            UpdateAttendeeInput { attendeeInput | status = NotComing }
+                          "Not Coming" ->
+                              UpdateAttendeeInput { attendeeInput | status = NotComing }
 
-                        _ ->
-                            UpdateAttendeeInput attendeeInput
+                          _ ->
+                              UpdateAttendeeInput attendeeInput
             in
             H.div []
                 [ case maybeModal of
@@ -126,7 +177,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Share this page with your friends to invite them."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
 
@@ -136,7 +187,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Fill in the form again with the same email address to edit your status."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick CloseModal, A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
@@ -170,17 +221,17 @@ view pageState =
                 , H.div []
                     [ H.b [] [ H.text "Are you attending?" ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> UpdateAttendeeInput { attendeeInput | plusOne = po }) ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
+                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
                     , H.div
                       [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
                       [ H.text "get notified on comments? ",
                       H.input
                         [ A.type_ "checkbox"
                         , A.checked attendeeInput.getNotifiedOnComments
-                        , onCheck (\gnoc -> UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc })
+                        , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
                         ] []
                       ]
                     , H.div []
@@ -191,7 +242,7 @@ view pageState =
                             ]
                         ]
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (AttendMsg attendeeInput), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (InternalMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
                     ]
                 , H.br [] []
@@ -203,31 +254,22 @@ view pageState =
                 ]
 
 
-update : ViewEventMsg -> PageState ViewEventState -> ( PageState State, Cmd Msg )
+update : InternalMsg -> PageState navbarState ViewEventState -> ( PageState navbarState ViewEventState, Cmd ViewEventMsg )
 update msg pageState =
-    let
-        format =
-            \x -> mapPageState (always x) pageState
-
-        { key, timeZone, state } =
-            pageState
-    in
     case msg of
+        DoNothing -> ( pageState, Cmd.none )
         AttendedEvent result ->
             case result of
                 Ok attendedEvent ->
-
-                    let pushUrlCmd = Nav.pushUrl key ("/e/" ++ attendedEvent.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
-                    in ( format (ViewEventState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id))), cmds )
+                    ( setPageState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, requestLocalStorageAttendeeInput attendedEvent.id )
 
                 Err _ ->
-                    ( format Failure, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
         UpdateAttendeeInput input ->
             case pageState.state of
                 ViewEvent modal event _ ->
-                    let newState = format (ViewEventState (ViewEvent modal event input))
+                    let newState = setPageState (ViewEvent modal event input) pageState
                         localStorageObject =
                           Encode.object
                             [ ("eventId", Encode.string input.eventId)
@@ -236,34 +278,32 @@ update msg pageState =
                     in ( newState, writeToLocalStorage localStorageObject )
 
                 _ ->
-                    ( format (ViewEventState pageState.state), Cmd.none )
+                    ( pageState, Cmd.none )
 
         AttendMsg input ->
-            ( format (ViewEventState AttendEventLoading), attendEvent input )
+            ( setPageState AttendEventLoading pageState, attendEvent input )
 
         LoadedEvent result ->
             case result of
                 Ok event ->
-                    let pushUrlCmd = Nav.pushUrl pageState.key ("/e/" ++ event.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput event.id, pushUrlCmd]
-                    in ( format (ViewEventState (ViewEvent Nothing event (emptyAttendeeInput event.id))), cmds )
+                    ( setPageState (ViewEvent Nothing event (emptyAttendeeInput event.id)) pageState, requestLocalStorageAttendeeInput event.id )
 
                 Err (BadStatus 404) ->
-                    ( format (ViewEventState EventNotFound), Cmd.none )
+                    ( setPageState EventNotFound pageState, Cmd.none )
 
                 Err _ ->
-                    ( format Failure, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
         CloseModal ->
-            case state of
+            case pageState.state of
                 ViewEvent _ event attendeeInput ->
-                    ( format (ViewEventState (ViewEvent Nothing event attendeeInput)), Cmd.none )
+                    ( setPageState (ViewEvent Nothing event attendeeInput) pageState, Cmd.none )
 
-                otherState ->
-                    ( format (ViewEventState otherState), Cmd.none )
+                _ ->
+                    ( pageState, Cmd.none )
 
         RequestLocalStorageAttendeeInput eventId ->
-            ( format (ViewEventState state), requestLocalStorageAttendeeInput eventId )
+            ( pageState, requestLocalStorageAttendeeInput eventId )
 
         CommentOnEvent input ->
             -- can't think of a less messy way to delete the comment from the input state
@@ -272,46 +312,43 @@ update msg pageState =
                       [ ("eventId", Encode.string input.eventId)
                       , ("attendeeInput", encodeAttendeeInput { input | comment = "", forceNotificationOnComment = False })
                       ]
-            in ( format (ViewEventState AttendEventLoading), Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ])
+            in ( setPageState AttendEventLoading pageState, Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ])
 
         CommentedOnEvent result ->
             case result of
                 Ok attendedEvent ->
-
-                    let pushUrlCmd = Nav.pushUrl key ("/e/" ++ attendedEvent.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
-                    in ( format (ViewEventState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id))), cmds )
+                    ( setPageState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, requestLocalStorageAttendeeInput attendedEvent.id )
 
                 Err _ ->
-                    ( format Failure, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
 
-handleSubscription : PageState ViewEventState -> Sub Msg
+handleSubscription : PageState navbarState ViewEventState -> Sub ViewEventMsg
 handleSubscription _ =
   localStorageAttendeeInputReceiver
     <| \mJsonString -> case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
-      Just (Ok attendeeInput) -> ViewEventMsg <| UpdateAttendeeInput attendeeInput
-      _ -> DoNothing
+      Just (Ok attendeeInput) -> InternalMsg <| UpdateAttendeeInput attendeeInput
+      _ -> InternalMsg DoNothing
 
-attendEvent : AttendeeInput -> Cmd Msg
+attendEvent : AttendeeInput -> Cmd ViewEventMsg
 attendEvent input =
     Http.request
         { method = "PUT"
         , headers = []
         , url = "/api/v1/events/" ++ input.eventId ++ "/attend"
-        , expect = Http.expectJson (ViewEventMsg << AttendedEvent) eventDecoder
+        , expect = Http.expectJson (InternalMsg << AttendedEvent) eventDecoder
         , body = Http.jsonBody (encodeAttendeeInputForRsvp input)
         , timeout = Nothing
         , tracker = Nothing
         }
 
-commentOnEvent : AttendeeInput -> Cmd Msg
+commentOnEvent : AttendeeInput -> Cmd ViewEventMsg
 commentOnEvent input =
     Http.request
         { method = "POST"
         , headers = []
         , url = "/api/v1/events/" ++ input.eventId ++ "/comment"
-        , expect = Http.expectJson (ViewEventMsg << CommentedOnEvent) eventDecoder
+        , expect = Http.expectJson (InternalMsg << CommentedOnEvent) eventDecoder
         , body = Http.jsonBody (encodeAttendeeInputForComment input)
         , timeout = Nothing
         , tracker = Nothing
@@ -319,28 +356,30 @@ commentOnEvent input =
 
 addCommentView : AttendeeInput -> Html ViewEventMsg
 addCommentView attendeeInput =
-  H.div []
-    [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-    , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
-    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-    , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-    , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
-    , expandingTextarea
-        { text = attendeeInput.comment
-        , onInput = (\c -> UpdateAttendeeInput { attendeeInput | comment = c })
-        , placeholder = "Leave a comment"
-        , styling = []
-        }
-    , H.div
-      [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-      [ H.text "send email notification to everyone? "
-      , H.input
-        [ A.type_ "checkbox"
-        , A.checked attendeeInput.forceNotificationOnComment
-        , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
-        ] []
-      ]
-    , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-        [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
+  H.map InternalMsg <|
+    H.div []
+      [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
+      , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
+      , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
+      , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
+      , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
+      , expandingTextarea
+          { text = attendeeInput.comment
+          , onInput = (\c -> UpdateAttendeeInput { attendeeInput | comment = c })
+          , placeholder = "Leave a comment"
+          , styling = []
+          }
+      , H.div
+        [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+        [ H.text "send email notification to everyone? "
+        , H.input
+          [ A.type_ "checkbox"
+          , A.checked attendeeInput.forceNotificationOnComment
+          , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
+          ] []
         ]
-    ]
+      , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
+          [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
+          ]
+      ]
+

@@ -1,4 +1,4 @@
-module Shared.EventEditor exposing (EventEditorMsg(..), EventEditorState, view, update, handleSubscription)
+module Shared.EventEditor exposing (Msg(..), State, view, update, handleSubscription)
 
 import Time as Time
 import SingleDatePicker as DP
@@ -18,27 +18,19 @@ import Task
 import Process
 import Browser.Dom as Dom
 import Dict exposing (Dict)
+import Types exposing (EventInput)
 
-type alias EventEditorState =
+type alias State =
   { picker : DP.DatePicker
   , input : EventInput
   , timezone : Time.Zone
   }
 
-type alias EventInput =
-  { title : String
-  , description : String
-  , startTime : Time.Posix
-  , endTime : Maybe Time.Posix
-  , location : String
-  , password : String
-  }
+type Msg
+  = Submit EventInput
+  | InternalMsg InternalMsg
 
-type EventEditorMsg
-  = EventEditorSubmit EventInput
-  | EventEditorInternalMsg EventEditorInternalMsg
-
-type EventEditorInternalMsg
+type InternalMsg
   = UpdateEventInput DP.DatePicker EventInput
   | UpdateEventStartTime ( DP.DatePicker, Maybe Time.Posix )
   | OpenPicker
@@ -49,31 +41,31 @@ type EventEditorInternalMsg
 borderRadius =
     A.style "border-radius" "5px"
 
-view : Dict String String -> EventEditorState -> Html EventEditorMsg
+view : Dict String String -> State -> Html Msg
 view copy { picker, input, timezone } =
   let
-      updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> EventEditorMsg
+      updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
       updatePicker input2 ( picker2, mTimestamp ) =
           case mTimestamp of
               Just newStart ->
-                  EventEditorInternalMsg (UpdateEventInput picker2 { input2 | startTime = newStart })
+                  InternalMsg (UpdateEventInput picker2 { input2 | startTime = newStart })
 
               Nothing ->
-                  EventEditorInternalMsg (UpdateEventInput picker2 input2)
+                  InternalMsg (UpdateEventInput picker2 input2)
   in
   H.div []
       [ sectionSeparator "What"
       , H.div [] [ H.text "Event name" ]
-      , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> EventEditorInternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+      , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
       , H.div [] [ H.text "Description" ]
       , expandingTextarea
           { text = input.description
-          , onInput = (\d -> EventEditorInternalMsg (UpdateEventInput picker { input | description = d }))
+          , onInput = (\d -> InternalMsg (UpdateEventInput picker { input | description = d }))
           , placeholder = ""
           , styling = []
           }
       , sectionSeparator "When"
-      , H.div [ A.style "display" "flex", A.style "color" "black", onClick (EventEditorInternalMsg OpenPicker) ]
+      , H.div [ A.style "display" "flex", A.style "color" "black", onClick (InternalMsg OpenPicker) ]
           [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
               [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                   [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
@@ -92,7 +84,7 @@ view copy { picker, input, timezone } =
           [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
             [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                 [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-            , H.input [ A.attribute "data-testid" "event-editor-event-location", A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> EventEditorInternalMsg (UpdateEventInput picker { input | location = l })) ] []
+            , H.input [ A.attribute "data-testid" "event-editor-event-location", A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> InternalMsg (UpdateEventInput picker { input | location = l })) ] []
             ]
           ]
       , sectionSeparator (Maybe.withDefault "Password For Future Edits" <| Dict.get "password_header" copy)
@@ -102,15 +94,15 @@ view copy { picker, input, timezone } =
           [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
             [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
                 [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-            , H.input [ A.attribute "data-testid" "event-editor-event-password",  A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> EventEditorInternalMsg (UpdateEventInput picker { input | password = pw })) ] []
+            , H.input [ A.attribute "data-testid" "event-editor-event-password",  A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> InternalMsg (UpdateEventInput picker { input | password = pw })) ] []
             ]
           ]
       , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-          [ H.button [ A.attribute "data-testid" "event-editor-event-submit-button", A.style "background-color" "#1c2c3b", onClick (EventEditorSubmit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
+          [ H.button [ A.attribute "data-testid" "event-editor-event-submit-button", A.style "background-color" "#1c2c3b", onClick (Submit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
           ]
       ]
 
-update : EventEditorInternalMsg -> EventEditorState -> ( EventEditorState, Cmd EventEditorMsg )
+update : InternalMsg -> State -> ( State, Cmd Msg )
 update msg state =
   case msg of
     UpdateEventInput picker input ->
@@ -136,37 +128,37 @@ update msg state =
       in ( { state | picker = newPicker }, focusTimePickerOrTryAgainLater )
 
     FocusTimePicker -> ( state, focusTimePickerOrTryAgainLater )
-    FocusTimePickerSoon -> ( state, delay100ms (EventEditorInternalMsg FocusTimePicker) )
+    FocusTimePickerSoon -> ( state, delay100ms (InternalMsg FocusTimePicker) )
     DoNothing -> ( state, Cmd.none )
 
 
-handleSubscription : EventEditorState -> Sub EventEditorMsg
+handleSubscription : State -> Sub Msg
 handleSubscription { picker, input, timezone } =
-  DP.subscriptions (pickerSettings timezone picker input) (EventEditorInternalMsg << UpdateEventStartTime) picker
+  DP.subscriptions (pickerSettings timezone picker input) (InternalMsg << UpdateEventStartTime) picker
 
 
-focusTimePickerOrTryAgainLater : Cmd EventEditorMsg
+focusTimePickerOrTryAgainLater : Cmd Msg
 focusTimePickerOrTryAgainLater =
   let
       handleFocusResult result =
         case result of
-          Ok _ -> EventEditorInternalMsg DoNothing
-          Err _ -> EventEditorInternalMsg FocusTimePickerSoon
+          Ok _ -> InternalMsg DoNothing
+          Err _ -> InternalMsg FocusTimePickerSoon
   in Task.attempt handleFocusResult (Dom.focus "hour-select")
 
 delay100ms : msg -> Cmd msg
 delay100ms msg = Process.sleep 100 |> Task.perform (\_ -> msg)
 
 
-pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings EventEditorMsg
+pickerSettings : Time.Zone -> DP.DatePicker -> EventInput -> DP.Settings Msg
 pickerSettings timeZone picker input =
     let
-        getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> EventEditorMsg
+        getValueFromPicker : ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         getValueFromPicker ( dp, mTime ) =
             case mTime of
-                Nothing -> EventEditorInternalMsg (UpdateEventInput dp input)
+                Nothing -> InternalMsg (UpdateEventInput dp input)
 
-                Just newStart -> EventEditorInternalMsg (UpdateEventInput dp { input | startTime = newStart })
+                Just newStart -> InternalMsg (UpdateEventInput dp { input | startTime = newStart })
     in
     DP.defaultSettings timeZone getValueFromPicker
 

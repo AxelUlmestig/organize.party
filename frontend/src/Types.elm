@@ -3,29 +3,8 @@ module Types exposing
     , AttendeeInput
     , AttendeeStatus(..)
     , Comment
-    , EditEventInput
-    , EditEventMsg(..)
-    , EditEventState(..)
-    , AboutState
-    , AboutMsg
-    , NewForgetMeRequestState(..)
-    , NewForgetMeRequestMsg(..)
-    , ForgetMeRequestState(..)
-    , ForgetMeRequestMsg(..)
-    , ForgetMeRequest
-    , EditEventStateModal(..)
     , Event
     , EventInput
-    , Msg(..)
-    , NewEventMsg(..)
-    , NewEventState(..)
-    , PageState
-    , State(..)
-    , ViewEventMsg(..)
-    , ViewEventState(..)
-    , ViewEventStateModal(..)
-    , NavbarState(..)
-    , NavbarMsg(..)
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -33,14 +12,11 @@ module Types exposing
     , encodeAttendeeInputForRsvp
     , encodeAttendeeInputForComment
     , attendeeInputDecoder
-    , encodeEditEventInput
     , encodeEventInput
     , eventDecoder
     , encodeNewForgetMeRequest
     , newForgetMeRequestResponseDecoder
     , forgetMeRequestDecoder
-    , mapPageState
-    , setPageState
     )
 
 import Browser
@@ -52,135 +28,7 @@ import Json.Encode as Encode exposing (Value)
 import SingleDatePicker as DP
 import Time as Time
 import Url exposing (Url)
-import Shared.EventEditor as EventEditor
 import Maybe
-
-
-
--- State
-
-
-type State
-    = Loading
-    | Failure
-    | NewEventState NewEventState
-    | ViewEventState ViewEventState
-    | EditEventState EditEventState
-    | AboutState AboutState
-    | NewForgetMeRequestState NewForgetMeRequestState
-    | ForgetMeRequestState ForgetMeRequestState
-
-
-type NewEventState
-    = NewEvent EventEditor.EventEditorState
-    | NewEventLoading
-
-
-type ViewEventState
-    = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
-    | AttendEventLoading
-    | LoadingEvent
-    | EventNotFound
-
-
-type ViewEventStateModal
-    = InviteGuestsInfoModal
-    | AttendeeSuccessModal
-
-
-
-type EditEventState
-    = LoadingEventToEdit
-    | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
-    | SubmittedEdit Event EventEditor.EventEditorState
-
-type NavbarState
-    = NavbarOpen
-    | NavbarClosed
-
-
-type EditEventStateModal
-    = WrongPasswordModal
-
-type alias AboutState = ()
-
-type NewForgetMeRequestState
-    = NewForgetMeRequestInputtingEmail String
-    | NewForgetMeRequestLoading
-    | NewForgetMeRequestSuccess String
-
-type ForgetMeRequestState
-    = ForgetMeRequestLoading
-    | ViewForgetMeRequest ForgetMeRequest
-
-type alias PageState a =
-    { key : Nav.Key
-    , timeZone : Time.Zone
-    , currentTime : Time.Posix
-    , state : a
-    , pageUrl : Url
-    , navbarState : NavbarState
-    }
-
-
-
--- Msg
-
-
-type Msg
-    = UrlRequest Browser.UrlRequest
-    | UrlChange Url
-    | CurrentTimeIs Url Time.Zone Time.Posix
-    | NewEventMsg NewEventMsg
-    | ViewEventMsg ViewEventMsg
-    | EditEventMsg EditEventMsg
-    | AboutMsg AboutMsg
-    | NewForgetMeRequestMsg NewForgetMeRequestMsg
-    | ForgetMeRequestMsg ForgetMeRequestMsg
-    | NavbarMsg NavbarMsg
-    | DoNothing
-
-
-type NewEventMsg
-    = CreateEventEventEditorMsg EventEditor.EventEditorMsg
-    | CreatedEvent (Result Http.Error Event)
-
-
-type ViewEventMsg
-    = UpdateAttendeeInput AttendeeInput
-    | AttendedEvent (Result Http.Error Event)
-    | AttendMsg AttendeeInput
-    | LoadedEvent (Result Http.Error Event)
-    | CloseModal
-    | RequestLocalStorageAttendeeInput String
-    | CommentOnEvent AttendeeInput
-    | CommentedOnEvent (Result Http.Error Event)
-
-
-type EditEventMsg
-    = LoadedEventForEdit (Result Http.Error Event)
-    | EditedEvent (Result Http.Error Event)
-    | CloseEditEventModal
-    | EditEventEventEditorMsg EventEditor.EventEditorMsg
-
-type alias AboutMsg
-    = ()
-
-type NewForgetMeRequestMsg
-    = UpdateNewForgetMeRequestEmail String
-    | SubmitNewForgetMetRequest String
-    | SubmittedNewForgetMetRequest (Result Http.Error String)
-
-type ForgetMeRequestMsg
-    = LoadedForgetMeRequest (Result Http.Error ForgetMeRequest)
-    | SubmitForgetMeRequest String
-    | SubmittedForgetMeRequest Time.Posix
-
-type NavbarMsg
-    = CloseNavbar
-    | OpenNavbar
-
--- Event
 
 
 type alias Event =
@@ -195,7 +43,6 @@ type alias Event =
     -- , googleMapsLink : Maybe String
     }
 
-
 type alias EventInput =
     { title : String
     , description : String
@@ -206,24 +53,6 @@ type alias EventInput =
     -- , googleMapsLink : Maybe String
     , password : String
     }
-
-
-type alias EditEventInput =
-    { id : String
-    , title : String
-    , description : String
-    , startTime : Time.Posix
-    , endTime : Maybe Time.Posix
-    , location : String
-
-    -- , googleMapsLink : Maybe String
-    , password : String
-    }
-
-
-
--- Attendee
-
 
 type alias Attendee =
     { name : String
@@ -268,25 +97,10 @@ type alias ForgetMeRequest =
     }
 
 
-mapPageState : (a -> b) -> PageState a -> PageState b
-mapPageState f ps =
-    { state = f ps.state
-    , timeZone = ps.timeZone
-    , currentTime = ps.currentTime
-    , key = ps.key
-    , pageUrl = ps.pageUrl
-    , navbarState = ps.navbarState
-    }
-
-
-setPageState : a -> PageState b -> PageState a
-setPageState x =
-    mapPageState (\_ -> x)
 
 
 
 -- encoders and decoders
-
 
 eventDecoder : D.Decoder Event
 eventDecoder =
@@ -363,18 +177,6 @@ emptyEventInput startTime =
 
 encodeEventInput : EventInput -> Value
 encodeEventInput { title, description, location, startTime, endTime, password } =
-    Encode.object
-        [ ( "title", Encode.string title )
-        , ( "description", Encode.string description )
-        , ( "location", Encode.string location )
-        , ( "startTime", Iso8601.encode startTime )
-        , ( "endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime )
-        , ( "password", Encode.string password )
-        ]
-
-
-encodeEditEventInput : EditEventInput -> Value
-encodeEditEventInput { title, description, location, startTime, endTime, password } =
     Encode.object
         [ ( "title", Encode.string title )
         , ( "description", Encode.string description )

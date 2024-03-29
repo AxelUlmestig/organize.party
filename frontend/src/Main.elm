@@ -26,8 +26,35 @@ import Url.Parser as P exposing ((</>), Parser, int, map, oneOf, s, string)
 import Url.Parser.Query as Q
 import Shared.Navbar as Navbar
 import Html
+import Shared.PageState exposing (PageState, mapPageState, setPageState, bimapPsCmd)
 
-view : PageState State -> Browser.Document Msg
+
+type Msg
+    = UrlRequest Browser.UrlRequest
+    | UrlChange Url
+    | CurrentTimeIs Url Time.Zone Time.Posix
+    | NewEventMsg NewEvent.Msg
+    | ViewEventMsg ViewEvent.ViewEventMsg
+    | EditEventMsg EditEvent.Msg
+    | AboutMsg About.Msg
+    | NewForgetMeRequestMsg NewForgetMeRequest.Msg
+    | ForgetMeRequestMsg ForgetMeRequest.Msg
+    | NavbarMsg Navbar.NavbarMsg
+    -- | DoNothing
+
+
+type State
+    = Loading
+    | Failure
+    | NewEventState NewEvent.State
+    | ViewEventState ViewEvent.ViewEventState
+    | EditEventState EditEvent.State
+    | AboutState About.State
+    | NewForgetMeRequestState NewForgetMeRequest.State
+    | ForgetMeRequestState ForgetMeRequest.State
+
+
+view : PageState Navbar.NavbarState State -> Browser.Document Msg
 view state =
     Browser.Document "organize.party"
         [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
@@ -49,27 +76,27 @@ view state =
                       ]
 
                 ViewEventState viewEventState ->
-                    H.map ViewEventMsg <| ViewEvent.view (mapPageState (always viewEventState) state)
+                    H.map ViewEventMsg <| ViewEvent.view (setPageState viewEventState state)
 
-                NewEventState x ->
-                    H.map NewEventMsg <| NewEvent.view (mapPageState (always x) state)
+                NewEventState newEventState ->
+                    H.map NewEventMsg <| NewEvent.view (setPageState newEventState state)
 
                 EditEventState x ->
-                    H.map EditEventMsg <| EditEvent.view (mapPageState (always x) state)
+                    H.map EditEventMsg <| EditEvent.view (setPageState x state)
 
                 AboutState x ->
-                  H.map AboutMsg <| About.view (mapPageState (always x) state)
+                  H.map AboutMsg <| About.view (setPageState x state)
 
                 NewForgetMeRequestState x ->
-                  H.map NewForgetMeRequestMsg <| NewForgetMeRequest.view (mapPageState (always x) state)
+                  H.map NewForgetMeRequestMsg <| NewForgetMeRequest.view (setPageState x state)
 
                 ForgetMeRequestState x ->
-                  H.map ForgetMeRequestMsg <| ForgetMeRequest.view (mapPageState (always x) state)
+                  H.map ForgetMeRequestMsg <| ForgetMeRequest.view (setPageState x state)
             ]
         ]
 
 
-init : () -> Url -> Nav.Key -> ( PageState State, Cmd Msg )
+init : () -> Url -> Nav.Key -> ( PageState Navbar.NavbarState State, Cmd Msg )
 init _ url key =
     let
         getCurrentTimeCmd =
@@ -86,206 +113,130 @@ init _ url key =
     in
     ( pageState, getCurrentTimeCmd )
 
-
-update : Msg -> PageState State -> ( PageState State, Cmd Msg )
+update : Msg -> PageState Navbar.NavbarState State -> ( PageState Navbar.NavbarState State, Cmd Msg )
 update msg pageState =
-    let
-        { key, timeZone, state, pageUrl, currentTime, navbarState } =
-            pageState
+    case (pageState.state, msg) of
+        (_, NavbarMsg navbarMsg) ->
+            let (newNavbarState, newCmd) = Navbar.update navbarMsg pageState.navbarState
+            in ({ pageState | navbarState = newNavbarState }, Cmd.map NavbarMsg newCmd)
 
-        packageStateAndCmd newZone newTime nextState cmd =
-            ( { key = key, timeZone = newZone, currentTime = newTime, state = nextState, pageUrl = pageUrl, navbarState = navbarState }, cmd )
-
-        packageStateTimeZoneAndCmd nextState zone cmd =
-            ( { key = key, timeZone = zone, currentTime = currentTime, state = nextState, pageUrl = pageUrl, navbarState = navbarState }, cmd )
-
-        packageStatePageUrlAndCmd nextState url cmd =
-            ( { key = key, timeZone = timeZone, currentTime = currentTime, state = nextState, pageUrl = url, navbarState = navbarState }, cmd )
-    in
-    case msg of
-        DoNothing -> ( pageState, Cmd.none )
-
-        NavbarMsg navbarMsg ->
-            let (newState, newCmd) = Navbar.update navbarMsg navbarState
-            in ({ pageState | navbarState = newState }, Cmd.map NavbarMsg newCmd)
-
-        CurrentTimeIs url zone time ->
-            let
-                ( newState, newCmd ) =
+        (_, CurrentTimeIs url zone time) ->
+            let ( newPageState, newCmd ) =
                     case P.parse routeParser url of
                         Just NewEventR ->
-                            ( NewEventState (NewEvent { timezone = zone, picker = DP.init, input = emptyEventInput time }), Cmd.none )
+                            wrapInit pageState NewEventState NewEventMsg Nothing <| NewEvent.init zone time
 
                         Just (ViewEventR id) ->
-                            ( ViewEventState LoadingEvent, ViewEvent.fetchEvent id )
+                            wrapInit pageState ViewEventState ViewEventMsg Nothing <| ViewEvent.init (ViewEvent.ViewEventFromId id) False
 
                         Just (EditEventR id) ->
-                            ( EditEventState LoadingEventToEdit, EditEvent.fetchEvent id )
+                            wrapInit pageState EditEventState EditEventMsg Nothing <| EditEvent.init id
 
                         Just AboutR ->
-                            ( AboutState (), Cmd.none )
+                            wrapInit pageState AboutState AboutMsg Nothing <| About.init
 
                         Just NewForgetMeRequestR ->
-                            ( NewForgetMeRequestState (NewForgetMeRequestInputtingEmail ""), Cmd.none )
+                            wrapInit pageState NewForgetMeRequestState NewForgetMeRequestMsg Nothing <| NewForgetMeRequest.init
 
                         Just (ForgetMeRequestR requestId) ->
-                            ( ForgetMeRequestState ForgetMeRequestLoading, (ForgetMeRequest.fetchForgetMeRequest requestId) )
+                            wrapInit pageState ForgetMeRequestState ForgetMeRequestMsg Nothing <| ForgetMeRequest.init requestId
 
                         Nothing ->
-                            ( Failure, Cmd.none )
-            in
-            packageStateAndCmd zone time newState newCmd
+                            ( setPageState Failure pageState, Cmd.none )
+            in ( { newPageState | timeZone = zone, currentTime = time, pageUrl = url }, newCmd )
 
-        UrlRequest urlRequest ->
+        (_, UrlRequest urlRequest) ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( pageState, Nav.pushUrl key (Url.toString url) )
+                    ( pageState, Nav.pushUrl pageState.key (Url.toString url) )
 
                 Browser.External href ->
                     ( pageState, Nav.load href )
 
-        UrlChange url ->
-            case ( P.parse routeParser url, state ) of
-                ( Just NewEventR, NewEventState nes ) ->
-                    packageStatePageUrlAndCmd state url Cmd.none
+        (_, UrlChange url) ->
+            let ( newPageState, newCmd ) =
+                    case (P.parse routeParser url, pageState.state) of
+                        (Just NewEventR, NewEventState nes ) ->
+                            ( pageState, Cmd.none )
 
-                ( Just NewEventR, _ ) ->
-                    let
-                        ( loading, currentTimeIs ) =
-                            init () url key
-                    in
-                    packageStatePageUrlAndCmd loading.state url currentTimeIs
+                        (Just NewEventR, _ ) ->
+                            wrapInit pageState NewEventState NewEventMsg Nothing <| NewEvent.init pageState.timeZone pageState.currentTime
 
-                ( Just (ViewEventR id), ViewEventState AttendEventLoading ) ->
-                    packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
+                        -- TODO: what if the event id changes?
+                        (Just (ViewEventR id), ViewEventState _) ->
+                            ( pageState, Cmd.none )
 
-                ( Just (ViewEventR id), ViewEventState (ViewEvent _ event _) ) ->
-                    if event.id == id then
-                        packageStatePageUrlAndCmd state url Cmd.none
+                        (Just (ViewEventR id), _) ->
+                            wrapInit pageState ViewEventState ViewEventMsg Nothing <| ViewEvent.init (ViewEvent.ViewEventFromId id) False
 
-                    else
-                        packageStatePageUrlAndCmd (NewEventState NewEventLoading) url (ViewEvent.fetchEvent id)
+                        (Just (EditEventR id), EditEventState _) ->
+                            ( pageState, Cmd.none )
 
-                ( Just (ViewEventR id), _ ) ->
-                    packageStatePageUrlAndCmd (ViewEventState LoadingEvent) url (ViewEvent.fetchEvent id)
+                        (Just (EditEventR id), _) ->
+                            wrapInit pageState EditEventState EditEventMsg Nothing <| EditEvent.init id
 
-                ( Just (EditEventR id), EditEventState (EditEvent event Nothing { input }) ) ->
-                    if event.id == id then
-                        packageStatePageUrlAndCmd state url Cmd.none
+                        (Just AboutR, AboutState _) ->
+                            ( pageState, Cmd.none )
 
-                    else
-                        packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
+                        (Just AboutR, _) ->
+                            wrapInit pageState AboutState AboutMsg Nothing <| About.init
 
-                ( Just (EditEventR id), _ ) ->
-                    packageStatePageUrlAndCmd (EditEventState LoadingEventToEdit) url (EditEvent.fetchEvent id)
+                        (Just NewForgetMeRequestR, NewForgetMeRequestState _) ->
+                            ( pageState, Cmd.none )
 
-                ( Just AboutR, _ ) ->
-                    packageStatePageUrlAndCmd (AboutState ()) url Cmd.none
+                        (Just NewForgetMeRequestR, _) ->
+                            wrapInit pageState NewForgetMeRequestState NewForgetMeRequestMsg Nothing <| NewForgetMeRequest.init
 
-                ( Just NewForgetMeRequestR, _ ) ->
-                    packageStatePageUrlAndCmd (NewForgetMeRequestState (NewForgetMeRequestInputtingEmail "")) url Cmd.none
+                        (Just (ForgetMeRequestR requestId), ForgetMeRequestState _) ->
+                            ( pageState, Cmd.none )
 
-                ( Just (ForgetMeRequestR requestId), _ ) ->
-                    packageStatePageUrlAndCmd (ForgetMeRequestState ForgetMeRequestLoading) url (ForgetMeRequest.fetchForgetMeRequest requestId)
+                        (Just (ForgetMeRequestR requestId), _) ->
+                            wrapInit pageState ForgetMeRequestState ForgetMeRequestMsg Nothing <| ForgetMeRequest.init requestId
 
-                ( Nothing, _ ) ->
-                    packageStatePageUrlAndCmd Failure url Cmd.none
+                        (Nothing, _) ->
+                            ( setPageState Failure pageState, Cmd.none )
+            in ( { newPageState | pageUrl = url }, newCmd )
 
-        NewEventMsg nem ->
-            case state of
-                NewEventState nes ->
-                    let
-                        newEventPageState =
-                            { state = nes
-                            , key = key
-                            , timeZone = timeZone
-                            , currentTime = pageState.currentTime
-                            , pageUrl = pageUrl
-                            , navbarState = navbarState
-                            }
+        (NewEventState nes, NewEventMsg nem) ->
+            case nem of
+              NewEvent.CreatedEvent event ->
+                  wrapInit pageState ViewEventState ViewEventMsg (Just ("/e/" ++ event.id)) <| ViewEvent.init (ViewEvent.ViewEventFromEvent event) True
+              NewEvent.InternalMsg internalMsg ->
+                  bimapPsCmd NewEventState NewEventMsg <| NewEvent.update internalMsg (setPageState nes pageState)
 
-                        ( newState, newCmd ) =
-                            NewEvent.update nem newEventPageState
-                    in
-                    packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+        (ViewEventState ves, ViewEventMsg vem) ->
+            case vem of
+                -- TODO: this is still an href in ViewEventPage, update it to generate a msg
+                ViewEvent.ViewEditEventPage eventId ->
+                    wrapInit pageState EditEventState EditEventMsg (Just ("/e/" ++ eventId ++ "/edit")) <| EditEvent.init eventId
+                ViewEvent.InternalMsg internalMsg ->
+                    bimapPsCmd ViewEventState ViewEventMsg <| ViewEvent.update internalMsg (setPageState ves pageState)
 
-                _ ->
-                    packageStateAndCmd timeZone currentTime state Cmd.none
+        (EditEventState ves, EditEventMsg vem) ->
+            case vem of
+                EditEvent.EditSuccessful event ->
+                  wrapInit pageState ViewEventState ViewEventMsg (Just ("/e/" ++ event.id)) <| ViewEvent.init (ViewEvent.ViewEventFromEvent event) False
+                EditEvent.EditCancelled eventId ->
+                  wrapInit pageState ViewEventState ViewEventMsg (Just ("/e/" ++ eventId)) <| ViewEvent.init (ViewEvent.ViewEventFromId eventId) False
+                EditEvent.InternalMsg internalMsg ->
+                  bimapPsCmd EditEventState EditEventMsg <| EditEvent.update internalMsg (setPageState ves pageState)
 
-        ViewEventMsg vem ->
-            case state of
-                ViewEventState viewEventState ->
-                    let
-                        viewEventPageState =
-                            mapPageState (always viewEventState) pageState
+        (NewForgetMeRequestState nfmrs, NewForgetMeRequestMsg nfmrm) ->
+            case nfmrm of
+                NewForgetMeRequest.InternalMsg internalMsg ->
+                  bimapPsCmd NewForgetMeRequestState NewForgetMeRequestMsg <| NewForgetMeRequest.update internalMsg (setPageState nfmrs pageState)
 
-                        ( newState, newCmd ) =
-                            ViewEvent.update vem viewEventPageState
-                    in
-                    packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
+        (ForgetMeRequestState fmrs, ForgetMeRequestMsg fmrm) ->
+            case fmrm of
+                ForgetMeRequest.InternalMsg internalMsg ->
+                  bimapPsCmd ForgetMeRequestState ForgetMeRequestMsg <| ForgetMeRequest.update internalMsg (setPageState fmrs pageState)
 
-                _ ->
-                    packageStateAndCmd timeZone currentTime state Cmd.none
+        (AboutState fmrs, AboutMsg fmrm) ->
+            case fmrm of
+                About.InternalMsg internalMsg ->
+                  bimapPsCmd AboutState AboutMsg <| About.update internalMsg (setPageState fmrs pageState)
 
-        EditEventMsg eem ->
-            case state of
-                EditEventState editEventState ->
-                    let
-                        editEventPageState =
-                            mapPageState (always editEventState) pageState
-
-                        ( newState, newCmd ) =
-                            EditEvent.update eem editEventPageState
-                    in
-                    packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-
-                _ ->
-                    packageStateAndCmd timeZone currentTime state Cmd.none
-
-        AboutMsg am ->
-          case state of
-            AboutState aboutState ->
-              let
-                aboutPageState =
-                  mapPageState (always aboutState) pageState
-
-                ( newState, newCmd ) =
-                  About.update am aboutPageState
-              in
-              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-
-            _ ->
-              packageStateAndCmd timeZone currentTime state Cmd.none
-
-        NewForgetMeRequestMsg nfmrm ->
-          case state of
-            NewForgetMeRequestState newForgetMeRequestState ->
-              let
-                newForgetMeRequestPageState =
-                  mapPageState (always newForgetMeRequestState) pageState
-
-                ( newState, newCmd ) =
-                  NewForgetMeRequest.update nfmrm newForgetMeRequestPageState
-              in
-              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-
-            _ ->
-              packageStateAndCmd timeZone currentTime state Cmd.none
-
-        ForgetMeRequestMsg fmrm ->
-          case state of
-            ForgetMeRequestState forgetMeRequestState ->
-              let
-                forgetMeRequestPageState =
-                  mapPageState (always forgetMeRequestState) pageState
-
-                ( newState, newCmd ) =
-                  ForgetMeRequest.update fmrm forgetMeRequestPageState
-              in
-              packageStateTimeZoneAndCmd newState.state newState.timeZone newCmd
-
-            _ ->
-              packageStateAndCmd timeZone currentTime state Cmd.none
+        _ -> ( pageState, Cmd.none )
 
 
 routeParser : Parser (Route -> a) a
@@ -309,20 +260,20 @@ type Route
     | ForgetMeRequestR String
 
 
-subscriptions : PageState State -> Sub Msg
+subscriptions : PageState Navbar.NavbarState State -> Sub Msg
 subscriptions model =
     case model.state of
         NewEventState state ->
-            NewEvent.handleSubscription (setPageState state model)
+            Sub.map NewEventMsg <| NewEvent.handleSubscription (setPageState state model)
 
         EditEventState state ->
-            EditEvent.handleSubscription (setPageState state model)
+            Sub.map EditEventMsg <| EditEvent.handleSubscription (setPageState state model)
 
         ViewEventState state ->
-            ViewEvent.handleSubscription (setPageState state model)
+            Sub.map ViewEventMsg <| ViewEvent.handleSubscription (setPageState state model)
 
         AboutState state ->
-            About.handleSubscription (setPageState state model)
+            Sub.map AboutMsg <| About.handleSubscription (setPageState state model)
         _ ->
             Sub.none
 
@@ -337,7 +288,14 @@ main =
         , onUrlChange = UrlChange
         }
 
-handleNavbarUpdateResults : PageState State -> ( NavbarState, Cmd NavbarMsg ) -> ( PageState State, Cmd Msg )
+handleNavbarUpdateResults : PageState Navbar.NavbarState State -> ( Navbar.NavbarState, Cmd Navbar.NavbarMsg ) -> ( PageState Navbar.NavbarState State, Cmd Msg )
 handleNavbarUpdateResults pageState ( navbarState, cmd ) =
     ( { pageState | navbarState = navbarState }, Cmd.map NavbarMsg cmd )
 
+wrapInit : PageState navbar x -> (s1 -> s2) -> (c1 -> c2) -> Maybe String -> (s1, Cmd c1) -> (PageState navbar s2, Cmd c2)
+wrapInit pageState f g mUrl (state, cmd) =
+  let pushUrlCmd =
+        case mUrl of
+          Nothing -> Cmd.none
+          Just url -> Nav.pushUrl pageState.key url
+  in ( setPageState (f state) pageState, Cmd.batch [Cmd.map g cmd, pushUrlCmd] )
