@@ -3,8 +3,8 @@ module Page.About exposing (
     update,
     view,
     init,
-    AboutMsg(..),
-    AboutState
+    Msg(..),
+    State
   )
 
 import Browser
@@ -30,17 +30,16 @@ import Task
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Platform.Sub as Sub
-import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
 import Shared.Void exposing (Void, absurd)
 
 borderRadius =
     A.style "border-radius" "5px"
 
-init : ( AboutState, Cmd AboutMsg )
+init : ( State, Cmd Msg )
 init = ( (), Cmd.none )
 
-view : PageState navbarState AboutState -> Html AboutMsg
+view : PageState navbarState State -> Html Msg
 view pageState =
     case pageState.state of
         () ->
@@ -66,14 +65,14 @@ view pageState =
 
 
 
-update : AboutInternalMsg -> PageState navbarState AboutState -> ( PageState navbarState AboutState, Cmd AboutMsg )
+update : InternalMsg -> PageState navbarState State -> ( PageState navbarState State, Cmd Msg )
 update = absurd
 
-handleSubscription : PageState navbarState AboutState -> Sub AboutMsg
+handleSubscription : PageState navbarState State -> Sub Msg
 handleSubscription pageState = Sub.none
 
-type AboutMsg
-  = AboutInternalMsg AboutInternalMsg
+type Msg
+  = InternalMsg InternalMsg
 
-type alias AboutInternalMsg = Void
-type alias AboutState = ()
+type alias InternalMsg = Void
+type alias State = ()

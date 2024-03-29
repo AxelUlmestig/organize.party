@@ -3,8 +3,8 @@ module Page.NewEvent exposing (
     update,
     view,
     init,
-    NewEventState(..),
-    NewEventMsg(..)
+    State(..),
+    Msg(..)
   )
 
 import Browser
@@ -33,28 +33,28 @@ import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
 
-type NewEventState
-    = NewEvent EventEditor.EventEditorState
+type State
+    = NewEvent EventEditor.State
     | Loading
     | Failure
 
-type NewEventMsg
-    = NewEventInternalMsg NewEventInternalMsg
+type Msg
+    = InternalMsg InternalMsg
     | CreatedEvent Event
 
-type NewEventInternalMsg
-    = CreateEventEventEditorMsg EventEditor.EventEditorMsg
+type InternalMsg
+    = EventEditorMsg EventEditor.Msg
     | InternalCreatedEvent (Result Http.Error Event)
 
 
 borderRadius =
     A.style "border-radius" "5px"
 
-init : Time.Zone -> Time.Posix -> ( NewEventState, Cmd NewEventMsg )
+init : Time.Zone -> Time.Posix -> ( State, Cmd Msg )
 init timezone time =
   ( NewEvent { timezone = timezone, picker = DP.init, input = emptyEventInput time }, Cmd.none )
 
-view : PageState navbarState NewEventState -> Html NewEventMsg
+view : PageState navbarState State -> Html Msg
 view pageState =
     case pageState.state of
         Loading ->
@@ -70,26 +70,26 @@ view pageState =
         NewEvent { picker, input } ->
             H.div []
               [ H.h1 [ A.style "margin-top" "1rem" , A.class "mb-3" ] [ H.text "Create an event" ]
-              , H.map (NewEventInternalMsg << CreateEventEventEditorMsg) <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
+              , H.map (InternalMsg << EventEditorMsg) <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
               ]
 
 
-update : NewEventInternalMsg -> PageState navbarState NewEventState -> ( PageState navbarState NewEventState, Cmd NewEventMsg )
+update : InternalMsg -> PageState navbarState State -> ( PageState navbarState State, Cmd Msg )
 update msg pageState =
     case msg of
-        CreateEventEventEditorMsg (EventEditor.EventEditorInternalMsg internalMsg) ->
+        EventEditorMsg (EventEditor.InternalMsg internalMsg) ->
           case pageState.state of
             NewEvent eventEditorState ->
               let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
-              in ( setPageState (NewEvent newEventEditorState) pageState, Cmd.map (NewEventInternalMsg << CreateEventEventEditorMsg) newEventEditorMsg )
+              in ( setPageState (NewEvent newEventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
 
             state -> ( pageState, Cmd.none )
 
-        CreateEventEventEditorMsg (EventEditor.EventEditorSubmit event) ->
+        EventEditorMsg (EventEditor.Submit event) ->
             let cmd =
                   Http.post
                       { url = "/api/v1/events"
-                      , expect = Http.expectJson (NewEventInternalMsg << InternalCreatedEvent) eventDecoder
+                      , expect = Http.expectJson (InternalMsg << InternalCreatedEvent) eventDecoder
                       , body = Http.jsonBody (encodeEventInput event)
                       }
             in ( setPageState Loading pageState, cmd )
@@ -104,11 +104,11 @@ update msg pageState =
 
 
 
-handleSubscription : PageState navbarState NewEventState -> Sub NewEventMsg
+handleSubscription : PageState navbarState State -> Sub Msg
 handleSubscription pageState =
     case pageState.state of
         NewEvent eventState ->
-            Sub.map (NewEventInternalMsg << CreateEventEventEditorMsg) <| EventEditor.handleSubscription eventState
+            Sub.map (InternalMsg << EventEditorMsg) <| EventEditor.handleSubscription eventState
         _ ->
             Sub.none
 

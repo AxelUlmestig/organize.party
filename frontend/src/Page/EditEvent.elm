@@ -3,8 +3,8 @@ module Page.EditEvent exposing (
     handleSubscription,
     update,
     view,
-    EditEventState,
-    EditEventMsg(..)
+    State,
+    Msg(..)
   )
 
 import Browser
@@ -38,25 +38,25 @@ import Shared.ViewComments exposing (viewComments)
 import Json.Encode as Encode exposing (Value)
 import Iso8601 as Iso8601
 
-type EditEventState
-    = LoadingEventToEdit
-    | EditEvent Event (Maybe EditEventStateModal) EventEditor.EventEditorState
-    | SubmittedEdit Event EventEditor.EventEditorState
-    | EditEventFailure
+type State
+    = Loading
+    | EditEvent Event (Maybe StateModal) EventEditor.State
+    | SubmittedEdit Event EventEditor.State
+    | Failure
 
-type EditEventStateModal
+type StateModal
     = WrongPasswordModal
 
-type EditEventMsg
+type Msg
     = EditSuccessful Event
     | EditCancelled String
-    | EditEventInternalMsg EditEventInternalMsg
+    | InternalMsg InternalMsg
 
-type EditEventInternalMsg
+type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditResponse (Result Http.Error Event)
     | CloseEditEventModal
-    | EditEventEventEditorMsg EventEditor.EventEditorMsg
+    | EventEditorMsg EventEditor.Msg
 
 type alias EditEventInput =
     { id : String
@@ -83,10 +83,10 @@ encodeEditEventInput { title, description, location, startTime, endTime, passwor
 copy : Dict String String
 copy = Dict.insert "password_header" "Password" <| Dict.empty
 
-view : PageState navbarState EditEventState -> Html EditEventMsg
+view : PageState navbarState State -> Html Msg
 view pageState =
     case pageState.state of
-        LoadingEventToEdit ->
+        Loading ->
             H.div [ A.class "center" ]
               [ H.text "Loading..."
               ]
@@ -96,7 +96,7 @@ view pageState =
               [ H.text "Loading..."
               ]
 
-        EditEventFailure ->
+        Failure ->
             H.div [ A.class "center" ]
               [ H.text "Something went wrong, please try again later"
               ]
@@ -115,20 +115,20 @@ view pageState =
                                         H.div []
                                             [ H.text "Error: incorrect password"
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (EditEventInternalMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
                             ]
                 , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
-                , H.map (EditEventInternalMsg << EditEventEventEditorMsg) (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
+                , H.map (InternalMsg << EventEditorMsg) (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
                 , viewAttendees event.attendees
                 , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
                 , viewComments pageState.currentTime event.comments
                 ]
 
 
-update : EditEventInternalMsg -> PageState navbarState EditEventState -> ( PageState navbarState EditEventState, Cmd EditEventMsg )
+update : InternalMsg -> PageState navbarState State -> ( PageState navbarState State, Cmd Msg )
 update msg pageState =
     let
         format =
@@ -153,7 +153,7 @@ update msg pageState =
                     ( format newState, Cmd.none )
 
                 Err _ ->
-                    ( format EditEventFailure, Cmd.none )
+                    ( format Failure, Cmd.none )
 
         EditResponse result ->
             case result of
@@ -177,10 +177,10 @@ update msg pageState =
                             in ( format (EditEvent event (Just WrongPasswordModal) eventEditorState), Cmd.none )
 
                         _ ->
-                            ( format EditEventFailure, Cmd.none )
+                            ( format Failure, Cmd.none )
 
                 _ ->
-                    ( format EditEventFailure, Cmd.none )
+                    ( format Failure, Cmd.none )
 
         CloseEditEventModal ->
             case pageState.state of
@@ -190,15 +190,15 @@ update msg pageState =
                 otherState ->
                     ( format otherState, Cmd.none )
 
-        EditEventEventEditorMsg (EventEditor.EventEditorInternalMsg internalMsg) ->
+        EventEditorMsg (EventEditor.InternalMsg internalMsg) ->
           case pageState.state of
             EditEvent event modal eventEditorState ->
               let (newEventEditorState, newEventEditorMsg) = EventEditor.update internalMsg eventEditorState
-              in ( format (EditEvent event modal newEventEditorState), Cmd.map (EditEventInternalMsg << EditEventEventEditorMsg) newEventEditorMsg )
+              in ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
 
             state -> ( format pageState.state, Cmd.none )
 
-        EditEventEventEditorMsg (EventEditor.EventEditorSubmit _) ->
+        EventEditorMsg (EventEditor.Submit _) ->
           case pageState.state of
             EditEvent event _ state ->
               let editEventInput =
@@ -214,34 +214,34 @@ update msg pageState =
             otherState ->
               ( format otherState, Cmd.none )
 
-init : String -> ( EditEventState, Cmd EditEventMsg )
+init : String -> ( State, Cmd Msg )
 init id =
     let cmd =
           Http.get
             { url = "/api/v1/events/" ++ id
-            , expect = Http.expectJson (EditEventInternalMsg << LoadedEventForEdit) eventDecoder
+            , expect = Http.expectJson (InternalMsg << LoadedEventForEdit) eventDecoder
             }
-    in ( LoadingEventToEdit, cmd )
+    in ( Loading, cmd )
 
 
-submitEdit : EditEventInput -> Cmd EditEventMsg
+submitEdit : EditEventInput -> Cmd Msg
 submitEdit input =
     Http.request
         { url = "/api/v1/events/" ++ input.id ++ "/edit"
         , method = "PUT"
         , body = Http.jsonBody (encodeEditEventInput input)
         , headers = []
-        , expect = Http.expectJson (EditEventInternalMsg << EditResponse) eventDecoder
+        , expect = Http.expectJson (InternalMsg << EditResponse) eventDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-handleSubscription : PageState navbarState EditEventState -> Sub EditEventMsg
+handleSubscription : PageState navbarState State -> Sub Msg
 handleSubscription pageState =
     case pageState.state of
         EditEvent _ _ eventState ->
-            Sub.map (EditEventInternalMsg << EditEventEventEditorMsg) <| EventEditor.handleSubscription eventState
+            Sub.map (InternalMsg << EventEditorMsg) <| EventEditor.handleSubscription eventState
         _ ->
             Sub.none
 

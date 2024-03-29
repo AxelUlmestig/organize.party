@@ -43,13 +43,13 @@ type ViewEventState
     | AttendEventLoading
     | LoadingEvent
     | EventNotFound
-    | ViewEventError
+    | Error
 
 type ViewEventMsg
-    = ViewEventInternalMsg ViewEventInternalMsg
+    = InternalMsg InternalMsg
     | ViewEditEventPage String
 
-type ViewEventInternalMsg
+type InternalMsg
     = UpdateAttendeeInput AttendeeInput
     | AttendedEvent (Result Http.Error Event)
     | AttendMsg AttendeeInput
@@ -90,7 +90,7 @@ init viewEventInput newlyCreated =
         let fetchEvent =
               Http.get
                   { url = "/api/v1/events/" ++ eventId
-                  , expect = Http.expectJson (ViewEventInternalMsg << LoadedEvent) eventDecoder
+                  , expect = Http.expectJson (InternalMsg << LoadedEvent) eventDecoder
                   }
         in ( LoadingEvent, fetchEvent )
       ViewEventFromEvent event ->
@@ -147,7 +147,7 @@ view pageState =
               [ H.text "Event not found, please verify the URL"
               ]
 
-        ViewEventError ->
+        Error ->
             H.div [ A.class "center" ]
               [ H.text "Something went wrong, please try again later"
               ]
@@ -158,7 +158,7 @@ view pageState =
                     event
 
                 onStatusUpdate newStatus =
-                    ViewEventInternalMsg <|
+                    InternalMsg <|
                       case newStatus of
                           "Coming" ->
                               UpdateAttendeeInput { attendeeInput | status = Coming }
@@ -187,7 +187,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Share this page with your friends to invite them."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventInternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
 
@@ -197,7 +197,7 @@ view pageState =
                                             , H.br [] []
                                             , H.text "Fill in the form again with the same email address to edit your status."
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (ViewEventInternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
@@ -231,17 +231,17 @@ view pageState =
                 , H.div []
                     [ H.b [] [ H.text "Are you attending?" ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> ViewEventInternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> ViewEventInternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> ViewEventInternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
+                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
+                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
                     , H.div
                       [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
                       [ H.text "get notified on comments? ",
                       H.input
                         [ A.type_ "checkbox"
                         , A.checked attendeeInput.getNotifiedOnComments
-                        , onCheck (\gnoc -> ViewEventInternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
+                        , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
                         ] []
                       ]
                     , H.div []
@@ -252,7 +252,7 @@ view pageState =
                             ]
                         ]
                     , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (ViewEventInternalMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
+                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (InternalMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
                         ]
                     ]
                 , H.br [] []
@@ -264,7 +264,7 @@ view pageState =
                 ]
 
 
-update : ViewEventInternalMsg -> PageState navbarState ViewEventState -> ( PageState navbarState ViewEventState, Cmd ViewEventMsg )
+update : InternalMsg -> PageState navbarState ViewEventState -> ( PageState navbarState ViewEventState, Cmd ViewEventMsg )
 update msg pageState =
     case msg of
         DoNothing -> ( pageState, Cmd.none )
@@ -277,7 +277,7 @@ update msg pageState =
                     in ( setPageState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, cmds )
 
                 Err _ ->
-                    ( setPageState ViewEventError pageState, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
         UpdateAttendeeInput input ->
             case pageState.state of
@@ -307,7 +307,7 @@ update msg pageState =
                     ( setPageState EventNotFound pageState, Cmd.none )
 
                 Err _ ->
-                    ( setPageState ViewEventError pageState, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
         CloseModal ->
             case pageState.state of
@@ -338,15 +338,15 @@ update msg pageState =
                     in ( setPageState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, cmds )
 
                 Err _ ->
-                    ( setPageState ViewEventError pageState, Cmd.none )
+                    ( setPageState Error pageState, Cmd.none )
 
 
 handleSubscription : PageState navbarState ViewEventState -> Sub ViewEventMsg
 handleSubscription _ =
   localStorageAttendeeInputReceiver
     <| \mJsonString -> case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
-      Just (Ok attendeeInput) -> ViewEventInternalMsg <| UpdateAttendeeInput attendeeInput
-      _ -> ViewEventInternalMsg DoNothing
+      Just (Ok attendeeInput) -> InternalMsg <| UpdateAttendeeInput attendeeInput
+      _ -> InternalMsg DoNothing
 
 attendEvent : AttendeeInput -> Cmd ViewEventMsg
 attendEvent input =
@@ -354,7 +354,7 @@ attendEvent input =
         { method = "PUT"
         , headers = []
         , url = "/api/v1/events/" ++ input.eventId ++ "/attend"
-        , expect = Http.expectJson (ViewEventInternalMsg << AttendedEvent) eventDecoder
+        , expect = Http.expectJson (InternalMsg << AttendedEvent) eventDecoder
         , body = Http.jsonBody (encodeAttendeeInputForRsvp input)
         , timeout = Nothing
         , tracker = Nothing
@@ -366,7 +366,7 @@ commentOnEvent input =
         { method = "POST"
         , headers = []
         , url = "/api/v1/events/" ++ input.eventId ++ "/comment"
-        , expect = Http.expectJson (ViewEventInternalMsg << CommentedOnEvent) eventDecoder
+        , expect = Http.expectJson (InternalMsg << CommentedOnEvent) eventDecoder
         , body = Http.jsonBody (encodeAttendeeInputForComment input)
         , timeout = Nothing
         , tracker = Nothing
@@ -374,7 +374,7 @@ commentOnEvent input =
 
 addCommentView : AttendeeInput -> Html ViewEventMsg
 addCommentView attendeeInput =
-  H.map ViewEventInternalMsg <|
+  H.map InternalMsg <|
     H.div []
       [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
       , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]

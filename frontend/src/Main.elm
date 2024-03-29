@@ -32,12 +32,12 @@ type Msg
     = UrlRequest Browser.UrlRequest
     | UrlChange Url
     | CurrentTimeIs Url Time.Zone Time.Posix
-    | NewEventMsg NewEvent.NewEventMsg
+    | NewEventMsg NewEvent.Msg
     | ViewEventMsg ViewEvent.ViewEventMsg
-    | EditEventMsg EditEvent.EditEventMsg
-    | AboutMsg About.AboutMsg
-    | NewForgetMeRequestMsg NewForgetMeRequest.NewForgetMeRequestMsg
-    | ForgetMeRequestMsg ForgetMeRequest.ForgetMeRequestMsg
+    | EditEventMsg EditEvent.Msg
+    | AboutMsg About.Msg
+    | NewForgetMeRequestMsg NewForgetMeRequest.Msg
+    | ForgetMeRequestMsg ForgetMeRequest.Msg
     | NavbarMsg Navbar.NavbarMsg
     -- | DoNothing
 
@@ -45,12 +45,12 @@ type Msg
 type State
     = Loading
     | Failure
-    | NewEventState NewEvent.NewEventState
+    | NewEventState NewEvent.State
     | ViewEventState ViewEvent.ViewEventState
-    | EditEventState EditEvent.EditEventState
-    | AboutState About.AboutState
-    | NewForgetMeRequestState NewForgetMeRequest.NewForgetMeRequestState
-    | ForgetMeRequestState ForgetMeRequest.ForgetMeRequestState
+    | EditEventState EditEvent.State
+    | AboutState About.State
+    | NewForgetMeRequestState NewForgetMeRequest.State
+    | ForgetMeRequestState ForgetMeRequest.State
 
 
 view : PageState Navbar.NavbarState State -> Browser.Document Msg
@@ -216,7 +216,7 @@ update msg pageState =
               NewEvent.CreatedEvent event ->
                   let ( newState, newCmd ) = ViewEvent.init (ViewEvent.ViewEventFromEvent event) True
                   in ( setPageState (ViewEventState newState) pageState, Cmd.batch [Cmd.map ViewEventMsg newCmd, Nav.pushUrl pageState.key ("/e/" ++ event.id)] )
-              NewEvent.NewEventInternalMsg internalMsg ->
+              NewEvent.InternalMsg internalMsg ->
                   let ( newState, newCmd ) = NewEvent.update internalMsg (setPageState nes pageState)
                   in ( mapPageState NewEventState newState, Cmd.map NewEventMsg newCmd )
 
@@ -226,7 +226,7 @@ update msg pageState =
                 ViewEvent.ViewEditEventPage eventId ->
                     let ( newState, newCmd ) = EditEvent.init eventId
                     in ( setPageState (EditEventState newState) pageState, Cmd.batch [Cmd.map EditEventMsg newCmd, Nav.pushUrl pageState.key ("/e/" ++ eventId ++ "/edit")] )
-                ViewEvent.ViewEventInternalMsg internalMsg ->
+                ViewEvent.InternalMsg internalMsg ->
                     let ( newState, newCmd ) = ViewEvent.update internalMsg (setPageState ves pageState)
                     in ( mapPageState ViewEventState newState, Cmd.map ViewEventMsg newCmd )
 
@@ -238,19 +238,19 @@ update msg pageState =
                 EditEvent.EditCancelled eventId ->
                   let ( newState, newCmd ) = ViewEvent.init (ViewEvent.ViewEventFromId eventId) False
                   in ( setPageState (ViewEventState newState) pageState, Cmd.batch [Cmd.map ViewEventMsg newCmd, Nav.pushUrl pageState.key ("/e/" ++ eventId)] )
-                EditEvent.EditEventInternalMsg internalMsg ->
+                EditEvent.InternalMsg internalMsg ->
                   let ( newState, newCmd ) = EditEvent.update internalMsg (setPageState ves pageState)
                   in ( mapPageState EditEventState newState, Cmd.map EditEventMsg newCmd )
 
         (NewForgetMeRequestState nfmrs, NewForgetMeRequestMsg nfmrm) ->
             case nfmrm of
-                NewForgetMeRequest.NewForgetMeRequestInternalMsg internalMsg ->
+                NewForgetMeRequest.InternalMsg internalMsg ->
                   let ( newState, newCmd ) = NewForgetMeRequest.update internalMsg (setPageState nfmrs pageState)
                   in ( mapPageState NewForgetMeRequestState newState, Cmd.map NewForgetMeRequestMsg newCmd )
 
         (ForgetMeRequestState fmrs, ForgetMeRequestMsg fmrm) ->
             case fmrm of
-                ForgetMeRequest.ForgetMeRequestInternalMsg internalMsg ->
+                ForgetMeRequest.InternalMsg internalMsg ->
                   let ( newState, newCmd ) = ForgetMeRequest.update internalMsg (setPageState fmrs pageState)
                   in ( mapPageState ForgetMeRequestState newState, Cmd.map ForgetMeRequestMsg newCmd )
 

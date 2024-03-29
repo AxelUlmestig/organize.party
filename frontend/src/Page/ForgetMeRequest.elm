@@ -2,8 +2,8 @@ module Page.ForgetMeRequest exposing (
     view,
     update,
     init,
-    ForgetMeRequestState,
-    ForgetMeRequestMsg(..)
+    State,
+    Msg(..)
   )
 
 import Types exposing (..)
@@ -14,6 +14,8 @@ import Maybe
 import Http
 import Util exposing (viewEventDate, viewEventTime)
 import Time as Time
+import Json.Decode as D
+import Iso8601 as Iso8601
 
 type alias ForgetMeRequest =
     { id : String
@@ -21,32 +23,32 @@ type alias ForgetMeRequest =
     , deletedAt : Maybe Time.Posix
     }
 
-type ForgetMeRequestState
+type State
     = Loading
     | Failure
-    | ViewForgetMeRequest ForgetMeRequest
+    | View ForgetMeRequest
 
-type ForgetMeRequestMsg
-    = ForgetMeRequestInternalMsg ForgetMeRequestInternalMsg
+type Msg
+    = InternalMsg InternalMsg
 
-type ForgetMeRequestInternalMsg
-    = LoadedForgetMeRequest (Result Http.Error ForgetMeRequest)
-    | SubmitForgetMeRequest String
-    | SubmittedForgetMeRequest Time.Posix
+type InternalMsg
+    = Loaded (Result Http.Error ForgetMeRequest)
+    | Submit String
+    | Submitted Time.Posix
 
-init : String -> ( ForgetMeRequestState, Cmd ForgetMeRequestMsg )
+init : String -> ( State, Cmd Msg )
 init forgetMeRequestId = 
     let cmd = 
           Http.get
               { url = "/api/v1/forget-me/" ++ forgetMeRequestId
-              , expect = Http.expectJson (ForgetMeRequestInternalMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
+              , expect = Http.expectJson (InternalMsg << Loaded) forgetMeRequestDecoder
               }
     in ( Loading, cmd )
 
-view : PageState navbarState ForgetMeRequestState -> Html ForgetMeRequestMsg
+view : PageState navbarState State -> Html Msg
 view pageState =
   case pageState.state of
-    ViewForgetMeRequest { id, email, deletedAt } ->
+    View { id, email, deletedAt } ->
       case (email, deletedAt) of
         (Just emailValue, _) ->
           H.div [ A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
@@ -55,7 +57,7 @@ view pageState =
             , H.text " from the database?"
             , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
               [ H.button
-                [ onClick (ForgetMeRequestInternalMsg <| SubmitForgetMeRequest id)
+                [ onClick (InternalMsg <| Submit id)
                 , A.style "background-color" "#1c2c3b"
                 , A.class "btn btn-primary"
                 ]
@@ -84,7 +86,7 @@ view pageState =
         [ H.text "Something went wrong, please try again later"
         ]
 
-update : ForgetMeRequestInternalMsg -> PageState navbarState ForgetMeRequestState -> (PageState navbarState ForgetMeRequestState, Cmd ForgetMeRequestMsg)
+update : InternalMsg -> PageState navbarState State -> (PageState navbarState State, Cmd Msg)
 update msg pageState =
     let
         format =
@@ -94,23 +96,30 @@ update msg pageState =
             pageState
     in
     case msg of
-      LoadedForgetMeRequest result ->
+      Loaded result ->
         case result of
           Ok forgetMeRequest ->
-            ( format (ViewForgetMeRequest forgetMeRequest), Cmd.none )
+            ( format (View forgetMeRequest), Cmd.none )
           Err _ ->
             ( format Failure, Cmd.none )
-      SubmitForgetMeRequest forgetMeRequestId ->
+      Submit forgetMeRequestId ->
         let httpRequest =
               Http.request
                   { method = "DELETE"
                   , url = "/api/v1/forget-me/" ++ forgetMeRequestId
                   , headers = []
                   , body = Http.emptyBody
-                  , expect = Http.expectJson (ForgetMeRequestInternalMsg << LoadedForgetMeRequest) forgetMeRequestDecoder
+                  , expect = Http.expectJson (InternalMsg << Loaded) forgetMeRequestDecoder
                   , timeout = Nothing
                   , tracker = Nothing
                   }
         in (format Loading, httpRequest )
       _ -> ( pageState, Cmd.none )
 
+
+forgetMeRequestDecoder : D.Decoder ForgetMeRequest
+forgetMeRequestDecoder =
+  D.map3 ForgetMeRequest
+    (D.field "id" D.string)
+    (D.maybe <| D.field "email" D.string)
+    (D.maybe <| D.field "deletedAt" Iso8601.decoder)
