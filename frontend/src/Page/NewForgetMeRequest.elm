@@ -52,12 +52,9 @@ view pageState =
             ] []
           ]
 
-        , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
+        , H.div [ A.class "button-wrapper" ]
             [ H.button
-              [ A.style "background-color" "#1c2c3b"
-              , A.class "btn btn-primary"
-              , A.style "margin-top" "1rem"
-              , A.style "margin-bottom" "1rem"
+              [ A.class "submit-button"
               , disableUnlessValidEmail emailAddress
               , onClick (InternalMsg <| SubmitRequest emailAddress)
               ]

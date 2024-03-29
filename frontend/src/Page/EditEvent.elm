@@ -56,6 +56,7 @@ type Msg
 type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditResponse (Result Http.Error Event)
+    | SubmitUpdate EventInput
     | CloseModal
     | EventEditorMsg EventEditor.Msg
 
@@ -102,7 +103,7 @@ view pageState =
               [ H.text "Something went wrong, please try again later"
               ]
 
-        EditEvent event maybeModal { picker, input } ->
+        EditEvent event maybeModal eventEditorState ->
             H.div []
                 [ case maybeModal of
                     Nothing ->
@@ -115,14 +116,18 @@ view pageState =
                                     WrongPasswordModal ->
                                         H.div []
                                             [ H.text "Error: incorrect password"
-                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                            , H.div [ A.class "button-wrapper" ]
+                                                [ H.button [ A.class "submit-button", onClick (InternalMsg CloseModal) ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
                             ]
                 , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
-                , H.map (InternalMsg << EventEditorMsg) (EventEditor.view copy { timezone = pageState.timeZone, picker = picker, input = input })
+                , H.map (InternalMsg << EventEditorMsg) (EventEditor.view copy eventEditorState)
+                , H.div [ A.class "button-wrapper" ]
+                    [ H.button [ A.class "submit-button", onClick (EditCancelled event.id) ] [ H.text "Cancel" ]
+                    , H.button [ A.class "submit-button", onClick (InternalMsg (SubmitUpdate (EventEditor.getInput eventEditorState))) ] [ H.text "Submit" ]
+                    ]
                 , viewAttendees event.attendees
                 , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
                 , viewComments pageState.currentTime event.comments
@@ -199,19 +204,19 @@ update msg pageState =
 
             state -> ( format pageState.state, Cmd.none )
 
-        EventEditorMsg (EventEditor.Submit _) ->
+        SubmitUpdate eventInput ->
           case pageState.state of
-            EditEvent event _ state ->
+            EditEvent event _ eventEditorState ->
               let editEventInput =
                     { id = event.id
-                    , title = state.input.title
-                    , description = state.input.description
-                    , startTime = state.input.startTime
-                    , endTime = state.input.endTime
-                    , location = state.input.location
-                    , password = state.input.password
+                    , title = eventInput.title
+                    , description = eventInput.description
+                    , startTime = eventInput.startTime
+                    , endTime = eventInput.endTime
+                    , location = eventInput.location
+                    , password = eventInput.password
                     }
-              in ( format (SubmittedEdit event state), submitEdit editEventInput)
+              in ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput)
             otherState ->
               ( format otherState, Cmd.none )
 

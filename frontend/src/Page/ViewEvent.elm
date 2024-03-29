@@ -176,8 +176,8 @@ view pageState =
                                             [ H.text "You have created a new event 🎉"
                                             , H.br [] []
                                             , H.text "Share this page with your friends to invite them."
-                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                            , H.div [ A.class "button-wrapper" ]
+                                                [ H.button [ A.class "submit-button", onClick (InternalMsg CloseModal) ] [ H.text "Ok" ]
                                                 ]
                                             ]
 
@@ -185,9 +185,9 @@ view pageState =
                                         H.div []
                                             [ H.text "You have updated your status."
                                             , H.br [] []
-                                            , H.text "Fill in the form again with the same email address to edit your status."
-                                            , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                            , H.text "Fill out the form again with the same email address to edit your status."
+                                            , H.div [ A.class "button-wrapper" ]
+                                                [ H.button [ A.class "submit-button", onClick (InternalMsg CloseModal) ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
@@ -241,9 +241,16 @@ view pageState =
                             , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
                             ]
                         ]
-                    , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                        [ H.button [ A.attribute "data-testid" "view-event-submit-attendee", A.style "background-color" "#1c2c3b", disableUnlessValidInput attendeeInput, onClick (InternalMsg (AttendMsg attendeeInput)), A.class "btn btn-primary" ] [ H.text "Submit" ]
-                        ]
+                    , H.div [ A.class "button-wrapper" ]
+                        [ H.button
+                          [ A.attribute "data-testid" "view-event-submit-attendee"
+                          , disableUnlessValidInput attendeeInput
+                          , onClick (InternalMsg (AttendMsg attendeeInput))
+                          , A.class "submit-button"
+                          ]
+                          [ H.text "Submit"
+                          ]
+                         ]
                     ]
                 , H.br [] []
                 , H.br [] []
@@ -378,8 +385,8 @@ addCommentView attendeeInput =
           , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
           ] []
         ]
-      , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-          [ H.button [ A.style "background-color" "#1c2c3b", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput), A.class "btn btn-primary" ] [ H.text "Comment" ]
+      , H.div [ A.class "button-wrapper" ]
+          [ H.button [ A.class "submit-button", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput) ] [ H.text "Comment" ]
           ]
       ]
 

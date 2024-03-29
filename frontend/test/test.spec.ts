@@ -99,6 +99,11 @@ test('can create event', async ({ page, request }) => {
 
   // edit event
   await page.getByTestId('edit-event').click()
+
+  // cancel first to see that you can get back, then go back to edit
+  await page.getByRole('button', { name: /cancel/i }).click()
+  await page.getByTestId('edit-event').click()
+
   await page.getByTestId('event-editor-event-location').fill(secondEventLocation)
   await page.getByTestId('expanding-text-area').fill(secondEventDescription)
   await page.getByRole('button', { name: /submit/i }).click()

@@ -56,11 +56,11 @@ view pageState =
             [ H.text "Are you sure that you want to purge all references to "
             , H.b [] [ H.text emailValue ]
             , H.text " from the database?"
-            , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
+            , H.div [ A.class "button-wrapper" ]
               [ H.button
                 [ onClick (InternalMsg <| Submit id)
                 , A.style "background-color" "#1c2c3b"
-                , A.class "btn btn-primary"
+                , A.class "submit-button"
                 ]
                 [ H.text "Yes, forget me" ]
               ]

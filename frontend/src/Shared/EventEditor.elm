@@ -1,4 +1,4 @@
-module Shared.EventEditor exposing (Msg(..), State, view, update, handleSubscription)
+module Shared.EventEditor exposing (Msg(..), State, view, update, handleSubscription, getInput)
 
 import Time as Time
 import SingleDatePicker as DP
@@ -27,8 +27,8 @@ type alias State =
   }
 
 type Msg
-  = Submit EventInput
-  | InternalMsg InternalMsg
+  -- = Submit EventInput
+  = InternalMsg InternalMsg
 
 type InternalMsg
   = UpdateEventInput DP.DatePicker EventInput
@@ -97,9 +97,6 @@ view copy { picker, input, timezone } =
             , H.input [ A.attribute "data-testid" "event-editor-event-password",  A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> InternalMsg (UpdateEventInput picker { input | password = pw })) ] []
             ]
           ]
-      , H.div [ A.class "text-center", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
-          [ H.button [ A.attribute "data-testid" "event-editor-event-submit-button", A.style "background-color" "#1c2c3b", onClick (Submit input), A.class "btn btn-primary" ] [ H.text "Submit" ]
-          ]
       ]
 
 update : InternalMsg -> State -> ( State, Cmd Msg )
@@ -162,3 +159,5 @@ pickerSettings timeZone picker input =
     in
     DP.defaultSettings timeZone getValueFromPicker
 
+getInput : State -> EventInput
+getInput state = state.input

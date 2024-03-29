@@ -45,6 +45,7 @@ type Msg
 
 type InternalMsg
     = EventEditorMsg EventEditor.Msg
+    | SubmitEvent EventInput
     | InternalCreatedEvent (Result Http.Error Event)
 
 
@@ -68,10 +69,19 @@ view pageState =
               [ H.text "Something went wrong, please try again later"
               ]
 
-        NewEvent { picker, input } ->
+        NewEvent eventEditorState ->
             H.div []
               [ H.h1 [ A.style "margin-top" "1rem" , A.class "mb-3" ] [ H.text "Create an event" ]
-              , H.map (InternalMsg << EventEditorMsg) <| EventEditor.view Dict.empty { timezone = pageState.timeZone, picker = picker, input = input }
+              , H.map (InternalMsg << EventEditorMsg) <| EventEditor.view Dict.empty eventEditorState
+              , H.div [ A.class "button-wrapper" ]
+                  [ H.button
+                    [ A.attribute "data-testid" "event-editor-event-submit-button"
+                    , A.class "submit-button"
+                    , onClick (InternalMsg (SubmitEvent (EventEditor.getInput eventEditorState)))
+                    ]
+                    [ H.text "Submit"
+                    ]
+                  ]
               ]
 
 
@@ -86,7 +96,7 @@ update msg pageState =
 
             state -> ( pageState, Cmd.none )
 
-        EventEditorMsg (EventEditor.Submit event) ->
+        SubmitEvent event ->
             let cmd =
                   Http.post
                       { url = "/api/v1/events"
