@@ -37,6 +37,7 @@ import Task
 import Shared.ViewComments exposing (viewComments)
 import Json.Encode as Encode exposing (Value)
 import Iso8601 as Iso8601
+import Shared.PageState exposing (PageState, mapPageState)
 
 type State
     = Loading
@@ -55,7 +56,7 @@ type Msg
 type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditResponse (Result Http.Error Event)
-    | CloseEditEventModal
+    | CloseModal
     | EventEditorMsg EventEditor.Msg
 
 type alias EditEventInput =
@@ -115,7 +116,7 @@ view pageState =
                                         H.div []
                                             [ H.text "Error: incorrect password"
                                             , H.div [ A.class "text-center", A.style "margin-top" "1rem" ]
-                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseEditEventModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
+                                                [ H.button [ A.style "background-color" "#1c2c3b", onClick (InternalMsg CloseModal), A.class "btn btn-primary" ] [ H.text "Ok" ]
                                                 ]
                                             ]
                                 ]
@@ -182,7 +183,7 @@ update msg pageState =
                 _ ->
                     ( format Failure, Cmd.none )
 
-        CloseEditEventModal ->
+        CloseModal ->
             case pageState.state of
                 EditEvent event _ input ->
                     ( format (EditEvent event Nothing input), Cmd.none )

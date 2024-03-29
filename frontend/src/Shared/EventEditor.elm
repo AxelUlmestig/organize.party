@@ -18,20 +18,12 @@ import Task
 import Process
 import Browser.Dom as Dom
 import Dict exposing (Dict)
+import Types exposing (EventInput)
 
 type alias State =
   { picker : DP.DatePicker
   , input : EventInput
   , timezone : Time.Zone
-  }
-
-type alias EventInput =
-  { title : String
-  , description : String
-  , startTime : Time.Posix
-  , endTime : Maybe Time.Posix
-  , location : String
-  , password : String
   }
 
 type Msg

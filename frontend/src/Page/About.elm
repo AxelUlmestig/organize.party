@@ -23,7 +23,7 @@ import Iso8601 as Iso8601
 import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Time as Time
-import Types exposing (PageState)
+import Shared.PageState exposing (PageState)
 import Util exposing (viewEventDate, viewEventTime)
 import Browser.Dom as Dom
 import Task

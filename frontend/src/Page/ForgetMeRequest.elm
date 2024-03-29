@@ -16,6 +16,7 @@ import Util exposing (viewEventDate, viewEventTime)
 import Time as Time
 import Json.Decode as D
 import Iso8601 as Iso8601
+import Shared.PageState exposing (PageState, mapPageState)
 
 type alias ForgetMeRequest =
     { id : String

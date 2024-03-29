@@ -14,6 +14,7 @@ import Regex
 import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 import Json.Decode as D
+import Shared.PageState exposing (PageState, mapPageState)
 
 type State
     = InputtingEmail String

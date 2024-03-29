@@ -5,7 +5,6 @@ module Types exposing
     , Comment
     , Event
     , EventInput
-    , PageState
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput
@@ -18,8 +17,6 @@ module Types exposing
     , encodeNewForgetMeRequest
     , newForgetMeRequestResponseDecoder
     , forgetMeRequestDecoder
-    , mapPageState
-    , setPageState
     )
 
 import Browser
@@ -31,7 +28,6 @@ import Json.Encode as Encode exposing (Value)
 import SingleDatePicker as DP
 import Time as Time
 import Url exposing (Url)
-import Shared.EventEditor as EventEditor
 import Maybe
 
 
@@ -100,29 +96,7 @@ type alias ForgetMeRequest =
     , deletedAt : Maybe Time.Posix
     }
 
-type alias PageState navbarState a =
-    { key : Nav.Key
-    , timeZone : Time.Zone
-    , currentTime : Time.Posix
-    , state : a
-    , pageUrl : Url
-    , navbarState : navbarState
-    }
 
-mapPageState : (a -> b) -> PageState navbarState a -> PageState navbarState b
-mapPageState f ps =
-    { state = f ps.state
-    , timeZone = ps.timeZone
-    , currentTime = ps.currentTime
-    , key = ps.key
-    , pageUrl = ps.pageUrl
-    , navbarState = ps.navbarState
-    }
-
-
-setPageState : a -> PageState navbarState b -> PageState navbarState a
-setPageState x =
-    mapPageState (\_ -> x)
 
 
 

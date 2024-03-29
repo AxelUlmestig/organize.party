@@ -32,6 +32,7 @@ import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Platform.Sub as Sub
 import Shared.EventEditor as EventEditor
 import Dict exposing (Dict)
+import Shared.PageState exposing (PageState, setPageState)
 
 type State
     = NewEvent EventEditor.State

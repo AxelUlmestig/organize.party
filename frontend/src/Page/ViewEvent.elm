@@ -37,6 +37,7 @@ import Util exposing (viewEventDate, viewEventTime)
 import Shared.FormatUrls exposing (formatTextWithLinks)
 import Shared.ExpandingTextarea exposing (expandingTextarea)
 import Json.Decode as Decode
+import Shared.PageState exposing (PageState, setPageState)
 
 type ViewEventState
     = ViewEvent (Maybe ViewEventStateModal) Event AttendeeInput
@@ -63,17 +64,6 @@ type InternalMsg
 type ViewEventStateModal
     = InviteGuestsInfoModal
     | AttendeeSuccessModal
-
-type alias AttendeeInput =
-    { eventId : String
-    , email : String
-    , name : String
-    , status : AttendeeStatus
-    , plusOne : Bool
-    , getNotifiedOnComments : Bool
-    , comment : String
-    , forceNotificationOnComment : Bool
-    }
 
 type ViewEventInput
     = ViewEventFromEvent Event
@@ -271,10 +261,7 @@ update msg pageState =
         AttendedEvent result ->
             case result of
                 Ok attendedEvent ->
-
-                    let pushUrlCmd = Nav.pushUrl pageState.key ("/e/" ++ attendedEvent.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
-                    in ( setPageState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, cmds )
+                    ( setPageState (ViewEvent (Just AttendeeSuccessModal) attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, requestLocalStorageAttendeeInput attendedEvent.id )
 
                 Err _ ->
                     ( setPageState Error pageState, Cmd.none )
@@ -299,9 +286,7 @@ update msg pageState =
         LoadedEvent result ->
             case result of
                 Ok event ->
-                    let pushUrlCmd = Nav.pushUrl pageState.key ("/e/" ++ event.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput event.id, pushUrlCmd]
-                    in ( setPageState (ViewEvent Nothing event (emptyAttendeeInput event.id)) pageState, cmds )
+                    ( setPageState (ViewEvent Nothing event (emptyAttendeeInput event.id)) pageState, requestLocalStorageAttendeeInput event.id )
 
                 Err (BadStatus 404) ->
                     ( setPageState EventNotFound pageState, Cmd.none )
@@ -332,10 +317,7 @@ update msg pageState =
         CommentedOnEvent result ->
             case result of
                 Ok attendedEvent ->
-
-                    let pushUrlCmd = Nav.pushUrl pageState.key ("/e/" ++ attendedEvent.id)
-                        cmds = Cmd.batch [requestLocalStorageAttendeeInput attendedEvent.id, pushUrlCmd]
-                    in ( setPageState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, cmds )
+                    ( setPageState (ViewEvent Nothing attendedEvent (emptyAttendeeInput attendedEvent.id)) pageState, requestLocalStorageAttendeeInput attendedEvent.id )
 
                 Err _ ->
                     ( setPageState Error pageState, Cmd.none )
@@ -401,116 +383,3 @@ addCommentView attendeeInput =
           ]
       ]
 
-emptyAttendeeInput : String -> AttendeeInput
-emptyAttendeeInput eventId =
-    { eventId = eventId
-    , email = ""
-    , name = ""
-    , status = Coming
-    , plusOne = False
-    , getNotifiedOnComments = False
-    , comment = ""
-    , forceNotificationOnComment = False
-    }
-
-encodeAttendeeInput : AttendeeInput -> Value
-encodeAttendeeInput { eventId, email, name, status, plusOne, getNotifiedOnComments, comment, forceNotificationOnComment } =
-    let
-        encodeAttendeeStatus ai =
-            case ai of
-                Coming ->
-                    Encode.string "Coming"
-
-                MaybeComing ->
-                    Encode.string "MaybeComing"
-
-                NotComing ->
-                    Encode.string "NotComing"
-    in
-    Encode.object
-        [ ( "eventId", Encode.string eventId )
-        , ( "email", Encode.string (String.trim email) )
-        , ( "name", Encode.string (String.trim name) )
-        , ( "status", encodeAttendeeStatus status )
-        , ( "plusOne", Encode.bool plusOne )
-        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
-        , ( "comment", Encode.string comment )
-        , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
-        ]
-
-encodeAttendeeInputForRsvp : AttendeeInput -> Value
-encodeAttendeeInputForRsvp { eventId, email, name, status, plusOne, getNotifiedOnComments } =
-    let
-        encodeAttendeeStatus ai =
-            case ai of
-                Coming ->
-                    Encode.string "Coming"
-
-                MaybeComing ->
-                    Encode.string "MaybeComing"
-
-                NotComing ->
-                    Encode.string "NotComing"
-    in
-    Encode.object
-        [ ( "eventId", Encode.string eventId )
-        , ( "email", Encode.string (String.trim email) )
-        , ( "name", Encode.string (String.trim name) )
-        , ( "status", encodeAttendeeStatus status )
-        , ( "plusOne", Encode.bool plusOne )
-        , ( "getNotifiedOnComments", Encode.bool getNotifiedOnComments )
-        ]
-
-encodeAttendeeInputForComment : AttendeeInput -> Value
-encodeAttendeeInputForComment { eventId, email, name, comment, forceNotificationOnComment } =
-  Encode.object
-    [ ( "eventId", Encode.string eventId )
-    , ( "email", Encode.string (String.trim email) )
-    , ( "name", Encode.string (String.trim name) )
-    , ( "comment", Encode.string (String.trim comment) )
-    , ( "forceNotificationOnComment", Encode.bool forceNotificationOnComment )
-    ]
-
-attendeeInputDecoder : D.Decoder AttendeeInput
-attendeeInputDecoder =
-    D.map8 AttendeeInput
-        (D.field "eventId" D.string)
-        (D.field "email" D.string)
-        (D.field "name" D.string)
-        (D.field "status" attendeeStatusDecoder)
-        (D.field "plusOne" D.bool)
-        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "getNotifiedOnComments" D.bool)
-        (D.field "comment" D.string)
-        (D.map (Maybe.withDefault False) <| D.maybe <| D.field "forceNotificationOnComment" D.bool)
-
-attendeeStatusDecoder : D.Decoder AttendeeStatus
-attendeeStatusDecoder =
-    D.string
-        |> D.andThen
-            (\str ->
-                case str of
-                    "Coming" ->
-                        D.succeed Coming
-
-                    "MaybeComing" ->
-                        D.succeed MaybeComing
-
-                    "NotComing" ->
-                        D.succeed NotComing
-
-                    somethingElse ->
-                        D.fail ("Unknown status: " ++ somethingElse)
-            )
-
-
-attendeeStatusToString : AttendeeStatus -> String
-attendeeStatusToString status =
-    case status of
-        Coming ->
-            "Coming"
-
-        MaybeComing ->
-            "Maybe Coming"
-
-        NotComing ->
-            "Not Coming"
