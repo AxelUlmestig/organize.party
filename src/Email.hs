@@ -97,8 +97,9 @@ sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId}
       Mail.htmlPart
         [__i|
           #{description}
-
-          #{emailHostUrl}/e/#{eid}
+          <br>
+          <br>
+          <a href="#{emailHostUrl}/e/#{eid}">#{emailHostUrl}/e/#{eid}</a>
           <br>
           <br>
           <div style="font-size: x-small">
@@ -124,8 +125,9 @@ sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId
       Mail.htmlPart
         [__i|
           #{description}
-
-          #{emailHostUrl}/e/#{eid}
+          <br>
+          <br>
+          <a href="#{emailHostUrl}/e/#{eid}">#{emailHostUrl}/e/#{eid}</a>
           <br>
           <br>
           <div style="font-size: x-small">
@@ -211,7 +213,8 @@ sendForgetMeConfirmation hostUrl SmtpConfig{server, port, login, password} forge
         [__i|
           A request to delete your data has been received. If you did not make
           this request, please ignore this email.
-
+          <br>
+          <br>
           If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
           <br>
           <a href="#{hostUrl}/forget-me/#{forgetMeRequestId}">#{hostUrl}/forget-me/#{forgetMeRequestId}</a>
