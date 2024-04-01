@@ -1,0 +1,23 @@
+# prepare third party libraries needed in runtime
+FROM alpine:latest as run
+WORKDIR /events
+
+RUN apk update && apk add --no-cache libpq libc6-compat so:libgmp.so.10
+
+# build the server
+FROM haskell:9.4.5 as build-server
+WORKDIR /events
+
+RUN apt-get update && apt-get install -y libgmp10 postgresql postgresql-contrib libpq-dev
+
+COPY events.cabal /events/
+
+RUN cabal update
+RUN cabal build --only-dependencies
+
+COPY src /events/src
+
+RUN cabal install --installdir=/events/ --enable-executable-static
+
+CMD ["cabal", "run"]
+

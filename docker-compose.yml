@@ -18,17 +18,20 @@ services:
       - ~/.sqitch:/root/.sqitch
     working_dir: /repo
 
-  server:
+  dev-server:
     ports:
       - "8081:8081"
-    build: .
+    build: Dockerfile.dev
     depends_on:
       - db
+      - mailhog
     environment:
       DB_HOST: db
       DB_PORT: 5432
       HOST_URL: "http://localhost:8081"
     env_file: .env
+    volumes:
+      - ./frontend:/events/frontend
 
   production:
     image: axelulmestig/organize.party:0.3
