@@ -21,7 +21,9 @@ services:
   dev-server:
     ports:
       - "8081:8081"
-    build: Dockerfile.dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     depends_on:
       - db
       - mailhog
@@ -29,6 +31,10 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       HOST_URL: "http://localhost:8081"
+      SMTP_SERVER: localhost
+      SMTP_PORT: 1025
+      SMTP_LOGIN: null
+      SMTP_PASSWORD: null
     env_file: .env
     volumes:
       - ./frontend:/events/frontend
