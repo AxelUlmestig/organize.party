@@ -17,11 +17,12 @@ import           Hasql.TH                (maybeStatement, resultlessStatement,
 import           Servant                 (ServerError (..), err403, err404,
                                           err500)
 
-import           Email                   (sendEventUpdateEmail)
+import           Email                   (EmailData (..), sendEventUpdateEmail)
 import           Endpoints.GetEvent      (getAttendeesStatement,
                                           getCommentsStatement)
 import           Types.AppEnv            (AppEnv (..), SmtpConfig (..),
                                           connection)
+import           Types.Attendee          (Attendee (..), readStatus)
 import           Types.CreateEventInput
 import qualified Types.Event             as Event
 import           Types.Event             (Event)
@@ -148,9 +149,9 @@ sendEmailUpdate event = do
       throwError err500 { errBody = "Something went wrong" }
     Right attendees -> do
       smtpConf <- asks smtpConfig
-      hostUrl' <- asks hostUrl
-      liftIO $ forM_ attendees $ \attendee' -> do
-        forkIO $ sendEventUpdateEmail hostUrl' smtpConf event attendee'
+      emailHostUrl <- asks hostUrl
+      liftIO $ forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
+        forkIO $ sendEventUpdateEmail EmailData{..} smtpConf event
   where
     statement = fmap to <$>
       [vectorStatement|
@@ -160,7 +161,8 @@ sendEmailUpdate event = do
           attendee_data.name::text,
           attendee_data.status::text,
           attendee_data.plus_one::bool,
-          attendee_data.rsvp_at::timestamptz
+          attendee_data.rsvp_at::timestamptz,
+          attendees.unsubscribe_id::uuid
         from attendees
         join attendee_data
           on attendee_data.attendee_id = attendees.id

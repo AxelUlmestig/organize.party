@@ -9,23 +9,26 @@ import           Data.Types.Isomorphic   (Injective (to), Iso)
 import           Data.UUID               (UUID)
 import           GHC.Generics            (Generic)
 
-data AttendeeStatus = Coming
-                 | MaybeComing
-                 | NotComing
-                 deriving (Eq, Read, Generic, Show)
+data AttendeeStatus
+  = Coming
+  | MaybeComing
+  | NotComing
+  deriving (Eq, Read, Generic, Show)
 
 instance ToJSON AttendeeStatus
 instance FromJSON AttendeeStatus
 
-data Attendee = Attendee
-                { eventId :: UUID
-                , email   :: Text
-                , name    :: Text
-                , status  :: AttendeeStatus
-                , plusOne :: Bool
-                , rsvpAt  :: UTCTime
-                }
-                deriving (Generic, Show)
+data Attendee
+  = Attendee
+    { eventId       :: UUID
+    , email         :: Text
+    , name          :: Text
+    , status        :: AttendeeStatus
+    , plusOne       :: Bool
+    , rsvpAt        :: UTCTime
+    , unsubscribeId :: UUID
+    }
+    deriving (Generic, Show)
 
 instance ToJSON Attendee
 
@@ -40,8 +43,8 @@ readStatus "maybe_coming" = MaybeComing
 readStatus "not_coming"   = NotComing
 readStatus other          = error [iii|unknown AttendeeStatus: #{other}|]
 
-instance Injective (UUID, Text, Text, Text, Bool, UTCTime) Attendee where
-  to (eventId, email, name, status, plusOne, rsvpAt) = Attendee{ status = readStatus status, .. }
+instance Injective (UUID, Text, Text, Text, Bool, UTCTime, UUID) Attendee where
+  to (eventId, email, name, status, plusOne, rsvpAt, unsubscribeId) = Attendee{ status = readStatus status, .. }
 
 instance Injective Attendee (UUID, Text, Text, Text, Bool) where
   to Attendee{eventId, email, name, status, plusOne} = (eventId, email, name, writeStatus status, plusOne)

@@ -11,7 +11,7 @@ import qualified Data.Text               as Text
 import           Data.Types.Injective    (to)
 import           Data.UUID               (UUID)
 import           Email                   (CommentNotificationRecipient (..),
-                                          sendEmailInvitation)
+                                          EmailData (..), sendEmailInvitation)
 import           Endpoints.GetEvent      (getEvent)
 import           Hasql.Connection        (Connection)
 import           Hasql.Session           (CommandError (ResultError),
@@ -72,6 +72,35 @@ insertCommentStatement =
     |]
 
 sendEmailUpdate commentInput = do
+  emailHostUrl <- asks hostUrl
+
+  let toEmailRecipient (email, recipientName, eventTitle, forcePush, unsubscribeId) = (EmailData{..}, CommentNotificationRecipient{..})
+  let statement = fmap toEmailRecipient <$>
+        [vectorStatement|
+          select
+            attendees.email::text,
+            attendee_data.name::text,
+            event_data.title::text,
+            ($3::bool and not attendee_data.get_notified_on_comments)::bool as forced,
+            unsubscribe_id::uuid
+          from event_data
+          join attendees
+            on attendees.event_id = event_data.id
+            and attendees.deleted_at is null
+          join attendee_data
+            on attendee_data.attendee_id = attendees.id
+            and attendee_data.superseded_at is null
+          where
+            event_data.id = $1::uuid
+            and event_data.superseded_at is null
+            and attendees.email <> $2::text
+            and unsubscribed_at is null
+            and (
+              attendee_data.get_notified_on_comments
+              or $3::bool
+            )
+        |]
+
   conn <- asks connection
   eSubscribers <- liftIO $ Hasql.run (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement) conn
 
@@ -81,32 +110,5 @@ sendEmailUpdate commentInput = do
       throwError err500 { errBody = "Something went wrong" }
     Right subscribers -> do
       smtpConf <- asks smtpConfig
-      hostUrl' <- asks hostUrl
-      liftIO $ forM_ subscribers $ \subscriber -> do
-        forkIO $ Email.sendCommentNotifications hostUrl' smtpConf commentInput subscriber
-  where
-    statement = fmap toEmailRecipient <$>
-      [vectorStatement|
-        select
-          attendees.email::text,
-          attendee_data.name::text,
-          event_data.title::text,
-          ($3::bool and not attendee_data.get_notified_on_comments)::bool as forced
-        from event_data
-        join attendees
-          on attendees.event_id = event_data.id
-          and attendees.deleted_at is null
-        join attendee_data
-          on attendee_data.attendee_id = attendees.id
-          and attendee_data.superseded_at is null
-        where
-          event_data.id = $1::uuid
-          and event_data.superseded_at is null
-          and attendees.email <> $2::text
-          and (
-            attendee_data.get_notified_on_comments
-            or $3::bool
-          )
-      |]
-      where
-        toEmailRecipient (email, recipientName, eventTitle, forcePush) = CommentNotificationRecipient{..}
+      liftIO $ forM_ subscribers $ \(emailData, subscriber) -> do
+        forkIO $ Email.sendCommentNotifications emailData smtpConf commentInput subscriber

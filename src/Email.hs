@@ -3,6 +3,7 @@ module Email (
   sendEventUpdateEmail,
   sendCommentNotifications,
   CommentNotificationRecipient(..),
+  EmailData(..),
   sendForgetMeConfirmation,
 ) where
 
@@ -25,6 +26,14 @@ import           Types.Attendee           (Attendee (..))
 import           Types.CommentInput       (CommentInput (..))
 import qualified Types.Event              as Event
 import           Types.Event              (Event (..))
+
+data EmailData
+  = EmailData
+    { email         :: Text
+    , recipientName :: Text
+    , emailHostUrl  :: String
+    , unsubscribeId :: UUID
+    }
 
 eventToICalendarString :: String -> Text -> Event -> LBS.ByteString
 eventToICalendarString hostUrl email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
@@ -71,33 +80,58 @@ formatDescription hostUrl Event{description, Event.id = eid} =
     #{hostUrl}/e/#{eid}
   |]
 
-sendEmailInvitation ::  String -> SmtpConfig -> Event -> Attendee -> IO ()
-sendEmailInvitation hostUrl SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
+sendEmailInvitation :: EmailData -> SmtpConfig -> Event -> IO ()
+sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId} SmtpConfig{server, port, login, password} event@Event{title, description, id = eid} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address (Just name) email]
+  let to         = [SMTP.Address (Just recipientName) email]
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = Mail.plainPart (formatDescription hostUrl event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString hostUrl email event
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString emailHostUrl email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
   SMTP.sendMailWithLogin' server port login password mail
+  where
+    body =
+      Mail.htmlPart
+        [__i|
+          #{description}
 
-sendEventUpdateEmail :: String -> SmtpConfig -> Event -> Attendee -> IO ()
-sendEventUpdateEmail hostUrl SmtpConfig{server, port, login, password} event@Event{title} Attendee{email, name} = do
+          #{emailHostUrl}/e/#{eid}
+          <br>
+          <br>
+          <div style="font-size: x-small">
+            If you never want to receive an email from this event again, <a href="#{emailHostUrl}/unsubscribe/#{unsubscribeId}">click here to unsubscribe</a>. Warning, this can not be undone
+          </div>
+        |]
+
+
+sendEventUpdateEmail :: EmailData -> SmtpConfig -> Event -> IO ()
+sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId} SmtpConfig{server, port, login, password} event@Event{title, id = eid, description} = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address (Just name) email]
+  let to         = [SMTP.Address (Just recipientName) email]
   let cc         = []
   let bcc        = []
   let subject    = title
-  let body       = Mail.plainPart (formatDescription hostUrl event)
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString hostUrl email event
+  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString emailHostUrl email event
 
   let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
 
   SMTP.sendMailWithLogin' server port login password mail
+  where
+    body =
+      Mail.htmlPart
+        [__i|
+          #{description}
+
+          #{emailHostUrl}/e/#{eid}
+          <br>
+          <br>
+          <div style="font-size: x-small">
+            If you never want to receive an email from this event again, <a href="#{emailHostUrl}/unsubscribe/#{unsubscribeId}">click here to unsubscribe</a>. Warning, this can not be undone
+          </div>
+        |]
 
 
 formatICalendarTimestamp :: UTCTime -> String
@@ -105,19 +139,17 @@ formatICalendarTimestamp = formatTime defaultTimeLocale "%Y%m%dT%k%M%SZ"
 
 data CommentNotificationRecipient =
   CommentNotificationRecipient
-    { email         :: Text
-    , recipientName :: Text
-    , eventTitle    :: Text
-    , forcePush     :: Bool
+    { eventTitle :: Text
+    , forcePush  :: Bool
     }
     deriving (Eq, Show)
 
-sendCommentNotifications :: String -> SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
+sendCommentNotifications :: EmailData -> SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
 sendCommentNotifications
-  hostUrl
+  EmailData{emailHostUrl, email, recipientName, unsubscribeId}
   SmtpConfig{server, port, login, password}
   CommentInput{eventId, name, comment}
-  CommentNotificationRecipient{email, recipientName, eventTitle, forcePush}
+  CommentNotificationRecipient{eventTitle, forcePush}
   = do
   let from       = SMTP.Address Nothing "noreply@organize.party"
   let cc         = []
@@ -131,7 +163,7 @@ sendCommentNotifications
     emailBody =
       Mail.htmlPart
         [__i|
-          <b>#{name}</b> has left a comment on <a href="#{hostUrl}/e/#{eventId}">#{eventTitle}</a>
+          <b>#{name}</b> has left a comment on <a href="#{emailHostUrl}/e/#{eventId}">#{eventTitle}</a>
           <br>
           <br>
           <i>
@@ -139,10 +171,12 @@ sendCommentNotifications
           </i>
           <br>
           <br>
-          click the link below for more details
-          <br>
-          #{hostUrl}/e/#{eventId}
           #{unsubscribeInfo}
+          <br>
+          <br>
+          <div style="font-size: x-small">
+            If you never want to receive an email from this event again, <a href="#{emailHostUrl}/unsubscribe/#{unsubscribeId}">click here to unsubscribe</a>. Warning, this can not be undone
+          </div>
         |]
       where
         unsubscribeInfo =

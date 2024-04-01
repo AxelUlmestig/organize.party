@@ -37,6 +37,7 @@ import qualified Endpoints.EditEvent
 import qualified Endpoints.ExecuteForgetMeRequest
 import qualified Endpoints.GetEvent
 import qualified Endpoints.InitForgetMeRequest
+import qualified Endpoints.Unsubscribe
 import qualified Endpoints.ViewForgetMeRequest
 import           Types.AppEnv                     (AppEnv (..), SmtpConfig (..))
 import           Types.Attendee                   (Attendee)
@@ -48,6 +49,7 @@ import           Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
                                                    ForgetMeRequest (..),
                                                    InitForgetMeInput (..),
                                                    InitForgetMeResult (..))
+import           Types.Unsubscribe                (UnsubscribeResult)
 
 type API
   = GetEventAPI
@@ -58,12 +60,14 @@ type API
   :<|> InitForgetMeRequestApi
   :<|> ViewForgetMeRequestApi
   :<|> ExecuteForgetMeRequestApi
+  :<|> UnsubscribeApi
   :<|> CreateEventHtml
   :<|> ViewEventHtml
   :<|> EditEventHtml
   :<|> AboutHtml
   :<|> ForgetMeEventHtml
   :<|> ViewForgetMeEventHtml
+  :<|> UnsubscribeHtml
   :<|> Raw
 
 type CreateEventAPI = "api" :> "v1" :> "events" :> ReqBody '[JSON] CreateEventInput :> Post '[JSON] Event
@@ -76,12 +80,15 @@ type InitForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> ReqBody '[JSON] In
 type ViewForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_request_id" UUID :> Get '[JSON] ForgetMeRequest
 type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
 
+type UnsubscribeApi = "api" :> "v1" :> "unsubscribe" :> Capture "unsubscribe_id" UUID :> Put '[JSON] UnsubscribeResult
+
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
 type EditEventHtml = "e" :> Capture "event_id" UUID :> "edit" :> Get '[HTML] RawHtml
 type AboutHtml = "about" :> Get '[HTML] RawHtml
 type ForgetMeEventHtml = "forget-me" :> Get '[HTML] RawHtml
 type ViewForgetMeEventHtml = "forget-me" :> Capture "forgetme_request_id" UUID :> Get '[HTML] RawHtml
+type UnsubscribeHtml = "unsubscribe" :> Capture "unsubscribe_id" UUID :> Get '[HTML] RawHtml
 
 type MyHandler = ReaderT AppEnv Handler
 
@@ -100,12 +107,14 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> Endpoints.InitForgetMeRequest.initForgetMe
         :<|> Endpoints.ViewForgetMeRequest.viewForgetMeRequest
         :<|> Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
+        :<|> Endpoints.Unsubscribe.unsubscribe
         :<|> frontPage
         :<|> eventPage -- view event
         :<|> eventPage -- edit event
         :<|> frontPage -- about
         :<|> frontPage -- forget me
         :<|> eventPage -- forget me id
+        :<|> eventPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
       where
         frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")

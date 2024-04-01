@@ -16,6 +16,7 @@ import Page.EditEvent as EditEvent
 import Page.ForgetMeRequest as ForgetMeRequest
 import Page.NewEvent as NewEvent
 import Page.NewForgetMeRequest as NewForgetMeRequest
+import Page.Unsubscribe as Unsubscribe
 import Page.ViewEvent as ViewEvent
 import Shared.Navbar as Navbar
 import Shared.PageState exposing (PageState, bimapPsCmd, mapPageState, setPageState)
@@ -38,6 +39,7 @@ type Msg
     | AboutMsg About.Msg
     | NewForgetMeRequestMsg NewForgetMeRequest.Msg
     | ForgetMeRequestMsg ForgetMeRequest.Msg
+    | UnsubscribeMsg Unsubscribe.Msg
     | NavbarMsg Navbar.NavbarMsg
 
 
@@ -50,6 +52,7 @@ type State
     | AboutState About.State
     | NewForgetMeRequestState NewForgetMeRequest.State
     | ForgetMeRequestState ForgetMeRequest.State
+    | UnsubscribeState Unsubscribe.State
 
 
 view : PageState Navbar.NavbarState State -> Browser.Document Msg
@@ -90,6 +93,9 @@ view state =
 
                 ForgetMeRequestState x ->
                     H.map ForgetMeRequestMsg <| ForgetMeRequest.view (setPageState x state)
+
+                UnsubscribeState x ->
+                    H.map UnsubscribeMsg <| Unsubscribe.view (setPageState x state)
             ]
         ]
 
@@ -143,6 +149,9 @@ update msg pageState =
 
                         Just (ForgetMeRequestR requestId) ->
                             wrapInit pageState ForgetMeRequestState ForgetMeRequestMsg Nothing <| ForgetMeRequest.init requestId
+
+                        Just (UnsubscribeR unsubscribeId) ->
+                            wrapInit pageState UnsubscribeState UnsubscribeMsg Nothing <| Unsubscribe.init unsubscribeId
 
                         Nothing ->
                             ( setPageState Failure pageState, Cmd.none )
@@ -198,6 +207,9 @@ update msg pageState =
                         ( Just (ForgetMeRequestR requestId), _ ) ->
                             wrapInit pageState ForgetMeRequestState ForgetMeRequestMsg Nothing <| ForgetMeRequest.init requestId
 
+                        ( Just (UnsubscribeR unsubscribeId), _ ) ->
+                            wrapInit pageState UnsubscribeState UnsubscribeMsg Nothing <| Unsubscribe.init unsubscribeId
+
                         ( Nothing, _ ) ->
                             ( setPageState Failure pageState, Cmd.none )
             in
@@ -241,6 +253,11 @@ update msg pageState =
                 ForgetMeRequest.InternalMsg internalMsg ->
                     bimapPsCmd ForgetMeRequestState ForgetMeRequestMsg <| ForgetMeRequest.update internalMsg (setPageState fmrs pageState)
 
+        ( UnsubscribeState us, UnsubscribeMsg um ) ->
+            case um of
+                Unsubscribe.InternalMsg internalMsg ->
+                    bimapPsCmd UnsubscribeState UnsubscribeMsg <| Unsubscribe.update internalMsg (setPageState us pageState)
+
         ( AboutState fmrs, AboutMsg fmrm ) ->
             case fmrm of
                 About.InternalMsg internalMsg ->
@@ -259,6 +276,7 @@ routeParser =
         , P.map AboutR (s "about")
         , P.map NewForgetMeRequestR (s "forget-me")
         , P.map ForgetMeRequestR (s "forget-me" </> string)
+        , P.map UnsubscribeR (s "unsubscribe" </> string)
         ]
 
 
@@ -269,6 +287,7 @@ type Route
     | AboutR
     | NewForgetMeRequestR
     | ForgetMeRequestR String
+    | UnsubscribeR String
 
 
 subscriptions : PageState Navbar.NavbarState State -> Sub Msg

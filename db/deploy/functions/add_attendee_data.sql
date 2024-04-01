@@ -2,6 +2,10 @@
 
 BEGIN;
 
+
+  -- needed to change return type, delete in next rework
+  drop function if exists add_attendee_data;
+
   create or replace function add_attendee_data(
     event_id_ uuid,
     email_ text,
@@ -18,7 +22,8 @@ BEGIN;
     plus_one bool,
     get_notified_on_comments bool,
     status attendee_status,
-    rsvp_at timestamptz
+    rsvp_at timestamptz,
+    unsubscribe_id uuid
   ) as
   $$
     declare
@@ -77,7 +82,8 @@ BEGIN;
             attendee_data.plus_one bool,
             attendee_data.get_notified_on_comments bool,
             attendee_data.status attendee_status,
-            attendee_data.rsvp_at
+            attendee_data.rsvp_at,
+            attendees.unsubscribe_id
           from attendees
           join attendee_data
             on attendee_data.attendee_id = attendees.id
@@ -123,7 +129,8 @@ BEGIN;
             attendee_data.plus_one bool,
             attendee_data.get_notified_on_comments bool,
             attendee_data.status attendee_status,
-            attendee_data.rsvp_at
+            attendee_data.rsvp_at,
+            attendees.unsubscribe_id
           from attendees
           join attendee_data
             on attendee_data.attendee_id = attendees.id
