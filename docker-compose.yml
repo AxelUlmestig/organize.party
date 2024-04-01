@@ -19,7 +19,6 @@ services:
     working_dir: /repo
 
   server:
-    image: axelulmestig/organize.party
     ports:
       - "8081:8081"
     build: .

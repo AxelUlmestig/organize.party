@@ -1,3 +1,4 @@
 # sqitch generated files
 *@*.sql binary linguist-generated
-database/revert/**/*.sql linguist-generated
+db/revert/**/*.sql linguist-generated
+db/verify/**/*.sql linguist-generated

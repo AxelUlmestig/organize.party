@@ -22,7 +22,7 @@ data Event
     , modifiedAt     :: UTCTime
     , comments       :: [Comment]
     }
-    deriving (Generic, Eq)
+    deriving (Generic, Eq, Show)
 
 data Attendee
   = Attendee
@@ -30,7 +30,7 @@ data Attendee
     , status  :: AttendeeStatus
     , plusOne :: Bool
     }
-    deriving (Generic, Eq)
+    deriving (Generic, Eq, Show)
 
 data Comment
   = Comment
@@ -39,7 +39,7 @@ data Comment
     , timestamp     :: UTCTime
     , gravatarUrl   :: Maybe Text
     }
-    deriving (Generic, Eq)
+    deriving (Generic, Eq, Show)
 
 instance ToJSON Attendee
 instance ToJSON Comment

@@ -33,3 +33,7 @@ tables/attendee_data 2024-03-17T16:08:18Z root <root@e9ba0b5924e3> # attendee_da
 functions/add_attendee_data 2024-03-16T22:55:22Z root <root@e99888ad9c0f> # add_attendee_data function
 tables/comments [tables/comments@forgetme-feature] 2024-02-27T20:24:33Z root <root@3e47792cd030> # add deleted_at column
 tables/commenters [tables/commenters@forgetme-feature] 2024-02-21T18:24:36Z root <root@bb969f6e668d> # drop obsolete table
+
+@unsubscribe-feature 2024-03-30T10:42:04Z root <root@a43631d5b343> # unsubscribe feature
+tables/attendees [tables/attendees@unsubscribe-feature] 2024-03-30T10:42:32Z root <root@a43631d5b343> # add unsubscribed_at column
+functions/add_attendee_data [functions/add_attendee_data@unsubscribe-feature] 2024-04-01T12:17:25Z root <root@a43631d5b343> # add unsubscribe_id

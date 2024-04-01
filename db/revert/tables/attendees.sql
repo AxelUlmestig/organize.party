@@ -25,20 +25,22 @@ end
 $$;
 
 create table if not exists attendees (
+  id bigint not null generated always as identity,
   event_id uuid not null references events (id),
-  email email not null,
-  name text not null,
-  status attendee_status not null,
-  plus_one bool not null,
-  get_notified_on_comments bool not null default false,
-  rsvp_at timestamp with time zone not null default now(),
-  superseded_at timestamp with time zone
+  email email,
+  gravatar_url text generated always as ('https://www.gravatar.com/avatar/' || md5(email)) stored,
+  deleted_at timestamptz,
+
+  primary key (id)
 );
 
 create unique index if not exists unique_attendee_idx
-  on attendees (event_id, email)
-  where superseded_at is null;
+  on attendees (event_id, email);
 
 -- 👇 Alterations below 👇
+
+alter table attendees
+  drop column if exists unsubscribed_at,
+  drop column if exists unsubscribe_id;
 
 commit;
