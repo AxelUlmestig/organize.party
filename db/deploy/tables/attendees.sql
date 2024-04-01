@@ -30,6 +30,8 @@ create table if not exists attendees (
   email email,
   gravatar_url text generated always as ('https://www.gravatar.com/avatar/' || md5(email)) stored,
   deleted_at timestamptz,
+  unsubscribed_at timestamptz,
+  unsubscribe_id uuid not null default md5(random()::text || clock_timestamp()::text)::uuid
 
   primary key (id)
 );
