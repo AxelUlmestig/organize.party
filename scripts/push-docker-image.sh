@@ -9,10 +9,10 @@ if [ -z "$IMAGE_TAG" ]; then
   exit 1
 fi
 
+sed -i -e "s/\${IMAGE_TAG:-.*}/\${IMAGE_TAG:-$IMAGE_TAG}/g" docker-compose.yml
+
 git clean -fxd frontend/static/
-# ./scripts/build-frontend.sh --optimize
 docker compose build server
 
-docker image tag axelulmestig/organize.party:latest axelulmestig/organize.party:$IMAGE_TAG
 docker push axelulmestig/organize.party:$IMAGE_TAG
 

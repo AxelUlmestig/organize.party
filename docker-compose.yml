@@ -18,12 +18,13 @@ services:
       - ~/.sqitch:/root/.sqitch
     working_dir: /repo
 
-  dev-server:
+  server:
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
     ports:
       - "8081:8081"
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     depends_on:
       - db
       - mailhog
@@ -31,7 +32,27 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       HOST_URL: "http://localhost:8081"
-      SMTP_SERVER: localhost
+      SMTP_SERVER: "localhost"
+      SMTP_PORT: 1025
+      SMTP_LOGIN: null
+      SMTP_PASSWORD: null
+    env_file: .env
+    volumes:
+      - ./frontend:/events/frontend
+
+  # use this if you want to do frontend dev work without installing Haskell
+  dev-server:
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - db
+      - mailhog
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      HOST_URL: "http://localhost:8081"
+      SMTP_SERVER: "localhost"
       SMTP_PORT: 1025
       SMTP_LOGIN: null
       SMTP_PASSWORD: null
@@ -40,7 +61,7 @@ services:
       - ./frontend:/events/frontend
 
   production:
-    image: axelulmestig/organize.party:0.3
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
     ports:
       - "8081:8081"
     depends_on:
