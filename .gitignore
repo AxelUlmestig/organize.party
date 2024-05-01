@@ -11,3 +11,4 @@ frontend/static/expanding-textarea.*.css
 .env
 
 db_dumps/
+.direnv/

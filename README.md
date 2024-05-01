@@ -11,6 +11,14 @@ you might need to install the following dependencies
 sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib libpq-dev
 ```
 
+## Get dependencies with Nix
+1. Install [Nix](https://zero-to-nix.com/start/install) and [direnv](https://github.com/nix-community/nix-direnv)
+1. Add direnv hook to your shell file, e.g.
+    ```sh
+    echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+    ```
+1. Run `direnv allow` in this repo
+
 ## Run Locally
 1. Create env file `cp .env.example .env` add swap values as needed
 1. `make build-fontend`
