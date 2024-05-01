@@ -6,6 +6,7 @@ module Types exposing
     , Event
     , EventInput
     , attendeeInputDecoder
+    , attendeeStatusDecoder
     , attendeeStatusToString
     , emptyAttendeeInput
     , emptyEventInput

@@ -87,6 +87,9 @@ cat << EOF > frontend/index.html
   </body>
 
   <script type="text/javascript">
+    const eventsLocalStorageKey = 'events';
+    const nameAndEmailLocalStorageKey = 'lastUsedNameAndEmail';
+
     // convert from storing all attendee input on the top level mapped from
     // event ids to a more future proof structure
     if(!localStorage.getItem('events')) {
@@ -105,19 +108,28 @@ cat << EOF > frontend/index.html
       node: document.getElementById('myapp')
     })
 
-    app.ports.writeToLocalStorage.subscribe(
+    // Store the input from looking at specific events
+    app.ports.writeAttendeeInputToLocalStorage.subscribe(
       ({ eventId, attendeeInput }) => {
-        const events = JSON.parse(localStorage.getItem('events') || '{}')
+        const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || '{}')
         const updatedEvent = { ...(events[eventId]), attendeeInput: attendeeInput }
         const updatedEvents = { ...events, [eventId]: updatedEvent }
 
-        localStorage.setItem('events', JSON.stringify(updatedEvents))
+        localStorage.setItem(eventsLocalStorageKey, JSON.stringify(updatedEvents))
+      }
+    );
+
+    // Store the submitted name and email and use it when looking at a new
+    // event
+    app.ports.storeNameAndEmailGlobally.subscribe(
+      (nameAndEmail) => {
+        localStorage.setItem(nameAndEmailLocalStorageKey, JSON.stringify(nameAndEmail))
       }
     );
 
     app.ports.requestLocalStorageAttendeeInput.subscribe(
       (eventId) => {
-        const events = JSON.parse(localStorage.getItem('events') || {})
+        const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || {})
         const attendeeInput = events[eventId]?.attendeeInput
 
         if(attendeeInput) {
@@ -126,10 +138,12 @@ cat << EOF > frontend/index.html
             .localStorageAttendeeInputReceiver
             .send(JSON.stringify(attendeeInput))
         } else {
+          const nameAndEmail = localStorage.getItem(nameAndEmailLocalStorageKey)
+
           app
             .ports
             .localStorageAttendeeInputReceiver
-            .send(null)
+            .send(nameAndEmail)
         }
       }
     );

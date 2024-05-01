@@ -74,7 +74,10 @@ type ViewEventInput
     | ViewEventFromId String
 
 
-port writeToLocalStorage : Value -> Cmd msg
+port writeAttendeeInputToLocalStorage : Value -> Cmd msg
+
+
+port storeNameAndEmailGlobally : Value -> Cmd msg
 
 
 port requestLocalStorageAttendeeInput : String -> Cmd msg
@@ -314,13 +317,19 @@ update msg pageState =
                                 , ( "attendeeInput", encodeAttendeeInput input )
                                 ]
                     in
-                    ( newState, writeToLocalStorage localStorageObject )
+                    ( newState, writeAttendeeInputToLocalStorage localStorageObject )
 
                 _ ->
                     ( pageState, Cmd.none )
 
         AttendMsg input ->
-            ( setPageState AttendEventLoading pageState, attendEvent input )
+            let
+                commands =
+                    [ attendEvent input
+                    , storeNameAndEmailGloballyCmd input
+                    ]
+            in
+            ( setPageState AttendEventLoading pageState, Cmd.batch commands )
 
         LoadedEvent result ->
             case result of
@@ -347,13 +356,19 @@ update msg pageState =
         CommentOnEvent input ->
             -- can't think of a less messy way to delete the comment from the input state
             let
-                localStorageObject =
+                localStorageAttendeeInput =
                     Encode.object
                         [ ( "eventId", Encode.string input.eventId )
                         , ( "attendeeInput", encodeAttendeeInput { input | comment = "", forceNotificationOnComment = False } )
                         ]
+
+                commands =
+                    [ commentOnEvent input
+                    , writeAttendeeInputToLocalStorage localStorageAttendeeInput
+                    , storeNameAndEmailGloballyCmd input
+                    ]
             in
-            ( setPageState AttendEventLoading pageState, Cmd.batch [ commentOnEvent input, writeToLocalStorage localStorageObject ] )
+            ( setPageState AttendEventLoading pageState, Cmd.batch commands )
 
         CommentedOnEvent result ->
             case result of
@@ -364,16 +379,47 @@ update msg pageState =
                     ( setPageState Error pageState, Cmd.none )
 
 
+storeNameAndEmailGloballyCmd : AttendeeInput -> Cmd ViewEventMsg
+storeNameAndEmailGloballyCmd { name, email } =
+    let
+        localStorageNameAndEmail =
+            Encode.object
+                [ ( "name", Encode.string name )
+                , ( "email", Encode.string email )
+                ]
+    in
+    storeNameAndEmailGlobally localStorageNameAndEmail
+
+
 handleSubscription : PageState navbarState ViewEventState -> Sub ViewEventMsg
-handleSubscription _ =
+handleSubscription pageState =
     localStorageAttendeeInputReceiver <|
         \mJsonString ->
-            case Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString of
-                Just (Ok attendeeInput) ->
-                    InternalMsg <| UpdateAttendeeInput attendeeInput
+            InternalMsg <|
+                case ( Maybe.map (Decode.decodeString attendeeInputDecoder) mJsonString, pageState.state ) of
+                    -- we found attendee input from this specific event
+                    ( Just (Ok attendeeInput), _ ) ->
+                        UpdateAttendeeInput attendeeInput
 
-                _ ->
-                    InternalMsg DoNothing
+                    -- no input was found for this event, let's try to see if
+                    -- there's input from last time attendee input was submitted
+                    -- anywhere
+                    ( Just _, ViewEvent _ _ attendeeInput ) ->
+                        let
+                            justNameAndEmailDecoder =
+                                Decode.map2 (\email name -> ( email, name ))
+                                    (Decode.field "email" Decode.string)
+                                    (Decode.field "name" Decode.string)
+                        in
+                        case Maybe.map (Decode.decodeString justNameAndEmailDecoder) mJsonString of
+                            Just (Ok ( email, name )) ->
+                                UpdateAttendeeInput { attendeeInput | email = email, name = name }
+
+                            _ ->
+                                DoNothing
+
+                    _ ->
+                        DoNothing
 
 
 attendEvent : AttendeeInput -> Cmd ViewEventMsg
