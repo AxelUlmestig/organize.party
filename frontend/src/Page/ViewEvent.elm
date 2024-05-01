@@ -211,7 +211,9 @@ view pageState =
 
                                     AttendeeSuccessModal ->
                                         H.div []
-                                            [ H.text "You have updated your status."
+                                            [ H.b [] [ H.text "Check your email." ]
+                                            , H.text " The event will show up in your calendar if you open the email."
+                                            , H.br [] []
                                             , H.br [] []
                                             , H.text "Fill out the form again with the same email address to edit your status."
                                             , H.div [ A.class "button-wrapper" ]
