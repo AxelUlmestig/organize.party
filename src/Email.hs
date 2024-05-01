@@ -9,11 +9,13 @@ module Email (
 
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.Foldable            (for_)
+import           Data.Maybe               (fromMaybe)
 import           Data.String.Interpolate  (__i)
 import           Data.Text
 import           Data.Text.Lazy           (fromStrict)
 import qualified Data.Text.Lazy           as LT
-import           Data.Time.Clock          (UTCTime)
+import           Data.Time.Clock          (UTCTime, addUTCTime, nominalDay,
+                                           secondsToNominalDiffTime)
 import           Data.Time.Format         (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601 (iso8601Show)
 import           Data.UUID
@@ -37,7 +39,9 @@ data EmailData
 
 eventToICalendarString :: String -> Text -> Event -> LBS.ByteString
 eventToICalendarString hostUrl email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
-  [__i|
+  let
+    oneHour = secondsToNominalDiffTime $ 60 ^ 2
+  in [__i|
     BEGIN:VCALENDAR
 
     CALSCALE:GREGORIAN
@@ -53,7 +57,7 @@ eventToICalendarString hostUrl email event@Event{Event.id = eid, startTime, endT
     DTSTAMP:#{formatICalendarTimestamp modifiedAt}
     ORGANIZER;CN=organize.party:MAILTO:noreply@organize.party
     DTSTART:#{formatICalendarTimestamp startTime}
-    #{maybe "" (("DTEND:" <>) . formatICalendarTimestamp) endTime}
+    DTEND:#{formatICalendarTimestamp (fromMaybe (addUTCTime oneHour startTime) endTime)}
     SUMMARY:#{title}
     DESCRIPTION:#{LT.replace "\n" "\\n" (formatDescription hostUrl event)}
     CREATED:#{formatICalendarTimestamp createdAt}
