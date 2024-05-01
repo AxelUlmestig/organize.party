@@ -108,7 +108,7 @@ init viewEventInput newlyCreated =
                     else
                         Nothing
             in
-            ( ViewEvent modal event (emptyAttendeeInput event.id), Cmd.none )
+            ( ViewEvent modal event (emptyAttendeeInput event.id), requestLocalStorageAttendeeInput event.id )
 
 
 borderRadius =
