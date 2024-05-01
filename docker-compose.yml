@@ -19,7 +19,7 @@ services:
     working_dir: /repo
 
   server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
     ports:
       - "8081:8081"
     build:
@@ -32,7 +32,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       HOST_URL: "http://localhost:8081"
-      SMTP_SERVER: "localhost"
+      SMTP_SERVER: "mailhog"
       SMTP_PORT: 1025
       SMTP_LOGIN: null
       SMTP_PASSWORD: null
@@ -42,7 +42,7 @@ services:
 
   # use this if you want to do frontend dev work without installing Haskell
   dev-server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
     ports:
       - "8081:8081"
     depends_on:
@@ -52,7 +52,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       HOST_URL: "http://localhost:8081"
-      SMTP_SERVER: "localhost"
+      SMTP_SERVER: "mailhog"
       SMTP_PORT: 1025
       SMTP_LOGIN: null
       SMTP_PASSWORD: null
@@ -61,7 +61,7 @@ services:
       - ./frontend:/events/frontend
 
   production:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.4}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
     ports:
       - "8081:8081"
     depends_on:

@@ -17,6 +17,8 @@
           pkgs.ghc
           pkgs.elmPackages.elm
           pkgs.elmPackages.elm-format
+          pkgs.zlib
+          pkgs.postgresql
         ];
       };
     }
