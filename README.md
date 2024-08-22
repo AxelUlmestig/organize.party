@@ -42,7 +42,7 @@ Set up daily database backups, `crontab -e` and add:
 1. Schedule monthly renewal of the certificate:
     `crontab -e` and add (make sure to update the path to work with your setup):
     ```
-    0 0 1 * * cd /home/admin/organize.party && docker compose run --rm certbot renew
+    0 0 1 * * cd /home/admin/organize.party && docker compose run --rm certbot renew && docker compose restart nginx
     ```
 
 It should now be possible to view https://organize.party with full
