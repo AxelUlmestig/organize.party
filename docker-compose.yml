@@ -19,7 +19,7 @@ services:
     working_dir: /repo
 
   server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.6}
     ports:
       - "8081:8081"
     build:
@@ -42,7 +42,7 @@ services:
 
   # use this if you want to do frontend dev work without installing Haskell
   dev-server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.6}
     ports:
       - "8081:8081"
     depends_on:
@@ -61,7 +61,7 @@ services:
       - ./frontend:/events/frontend
 
   production:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.5}
+    image: axelulmestig/organize.party:${IMAGE_TAG:-0.6}
     ports:
       - "8081:8081"
     depends_on:

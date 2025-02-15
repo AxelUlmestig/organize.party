@@ -12,3 +12,4 @@ frontend/static/expanding-textarea.*.css
 
 db_dumps/
 .direnv/
+certbot
