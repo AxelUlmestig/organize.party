@@ -31,9 +31,9 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib
 `make deploy-production`, this will run it on your local machine with the
 latest pushed image from dockerhub.
 
-Set up daily database backups, `crontab -e` and add:
+Set up daily database backups
 ```
-0 3 * * * cd /home/admin/organize.party && make backup-db
+make schedule-backup
 ```
 
 ## Set up SSL with Let's Encrypt

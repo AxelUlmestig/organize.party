@@ -34,3 +34,6 @@ deploy-production:
 backup-db:
 	./scripts/backup-database.sh
 
+.PHONY: schedule-backup
+schedule-backup:
+	./scripts/schedule-backup.sh
