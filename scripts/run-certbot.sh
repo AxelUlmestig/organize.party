@@ -11,4 +11,5 @@ docker compose run \
   --webroot-path /var/www/certbot/ \
   -d organize.party
 
+docker compose down nginx-certbot
 docker compose up nginx -d
