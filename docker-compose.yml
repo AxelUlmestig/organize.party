@@ -86,6 +86,19 @@ services:
       - ./certbot/www/:/var/www/certbot/:ro
       - ./certbot/conf/:/etc/nginx/ssl/:ro
 
+  nginx-certbot:
+    image: nginx:latest
+    userns_mode: host
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx-certbot.conf
+      - ./nginx/mime.types:/etc/nginx/mime.types
+      - ./certbot/www/:/var/www/certbot/:ro
+      - ./certbot/conf/:/etc/nginx/ssl/:ro
+
   mailhog:
     image: mailhog/mailhog
     ports:

@@ -37,3 +37,7 @@ backup-db:
 .PHONY: schedule-backup
 schedule-backup:
 	./scripts/schedule-backup.sh
+
+.PHONY: run-certbot
+run-certbot:
+	./scripts/run-certbot.sh
