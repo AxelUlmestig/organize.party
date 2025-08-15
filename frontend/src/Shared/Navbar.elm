@@ -49,7 +49,9 @@ view state =
                 , H.li [] [ H.a [ A.href "/forget-me", onClick CloseNavbar ] [ H.text "Forget Me" ] ]
                 , H.li [] [ H.a [ A.href "/about", onClick CloseNavbar ] [ H.text "About" ] ]
                 ]
-            , H.h1 [ A.class "logo" ] [ H.a [ A.href "/" ] [ H.text "organize.party" ] ]
+            , H.a
+                [ A.href "/", A.class "logo" ]
+                [ H.img [ A.src "./logo.svg", A.alt "organize.party" ] [] ]
             ]
         ]
 

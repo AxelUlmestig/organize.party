@@ -29,31 +29,44 @@
   background: #fff;
   color: #000;
   opacity: 0.85;
-  height: 60px;
+  min-height: 80px;
   z-index: 12;
 }
 
 .navbar-container {
   display: flex;
   justify-content: space-between;
-  height: 64px;
   align-items: center;
   margin-bottom: 1rem;
 }
 
 .menu-items {
-  order: 2;
   display: flex;
+  order: 2;
+  align-items: center; /* Vertically centers the list items */
+  height: 100%; /* Takes full height of navbar */
+  margin: 0; /* Remove any default margins */
+  padding: 0; /* Remove any default padding */
+  line-height: 1;
 }
 
 .menu-items li {
+  display: flex;
+  align-items: center; /* Centers content vertically within each li */
+  height: 100%; /* Takes full available height */
+
   list-style: none;
   margin-left: 1.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 1.2rem;
+  margin-right: 1.5rem;
+  font-size: 1.4rem;
 }
 
 .menu-items a {
+  display: flex;
+  align-items: center; /* Centers text vertically */
+  height: 100%;
+  padding: 1rem 1.5rem; /* Better click area */
+
   text-decoration: none;
   color: #444;
   font-weight: 500;
@@ -68,7 +81,7 @@
 .logo {
   order: 1;
   font-size: 2.3rem;
-  margin-bottom: 1.5rem;
+  height: 100%;
 }
 
 .logo a {
@@ -78,6 +91,11 @@
 
 .logo a:hover{
     color: initial;
+}
+
+.logo img {
+  max-height: 100%;
+  width: auto;
 }
 
 
@@ -158,12 +176,17 @@
     padding-right: 1rem;
     transition: transform 0.5s ease-in-out;
     box-shadow: 5px 0px 10px 0px #aaa;
+    align-items: start;
   }
 
   .navbar .menu-items li {
     margin-bottom: 1.5rem;
     font-size: 1.3rem;
     font-weight: 500;
+  }
+
+  .navbar .menu-items a {
+    padding: 0 0;
   }
 
   .logo {
@@ -196,15 +219,6 @@
     font-size: 65%;
   }
 
-  .navbar .menu-items li{
-      font-size: 1.6rem;
-  }
-
-  .testimonial-container {
-    flex-direction: column;
-    text-align: center;
-  }
-
   .logo {
     margin-bottom: 1.5rem;
     position: absolute;
@@ -217,6 +231,7 @@
     margin-bottom: 2.5rem;
     font-size: 1.8rem;
     font-weight: 500;
+    height: revert;
   }
 }
 
