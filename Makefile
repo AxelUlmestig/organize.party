@@ -41,3 +41,7 @@ schedule-backup:
 .PHONY: run-certbot
 run-certbot:
 	./scripts/run-certbot.sh
+
+.PHONY: run-tests
+run-tests:
+	cd frontend/test && npx playwright test --headed test.spec.ts --project chromium

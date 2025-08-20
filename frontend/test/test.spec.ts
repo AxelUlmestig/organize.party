@@ -82,7 +82,7 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /comment/i }).click()
 
   // verify comment
-  await expect(page.getByText(comment)).toHaveText(comment)
+  await expect(page.locator('.comment-bubble').getByText(comment)).toHaveText(comment)
 
   // add a comment as attendee
   await page.getByTestId('view-event-attendee-name').fill(attendeeSecondName)
@@ -91,7 +91,7 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /comment/i }).click()
 
   // verify second comment
-  await expect(page.getByText(secondComment)).toHaveText(secondComment)
+  await expect(page.locator('.comment-bubble').getByText(secondComment)).toHaveText(secondComment);
 
   // verify that attendee updated their name
   await expect(page.getByText(attendeeName)).toHaveCount(0)
