@@ -51,7 +51,7 @@ view state =
                 ]
             , H.a
                 [ A.href "/", A.class "logo" ]
-                [ H.img [ A.src "./logo.svg", A.alt "organize.party" ] [] ]
+                [ H.img [ A.src "/logo.svg", A.alt "organize.party" ] [] ]
             ]
         ]
 
