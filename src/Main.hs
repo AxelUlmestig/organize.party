@@ -39,6 +39,8 @@ import qualified Endpoints.GetEvent
 import qualified Endpoints.InitForgetMeRequest
 import qualified Endpoints.Unsubscribe
 import qualified Endpoints.ViewForgetMeRequest
+import           Html                             (HTML, RawHtml, eventPage,
+                                                   frontPage)
 import           Types.AppEnv                     (AppEnv (..), SmtpConfig (..))
 import           Types.Attendee                   (Attendee)
 import           Types.AttendInput                (AttendInput)
@@ -96,7 +98,7 @@ api :: Proxy API
 api = Proxy
 
 app :: AppEnv -> Application
-app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servantServer
+app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantServer
   where
     servantServer =
         Endpoints.GetEvent.getEvent
@@ -113,12 +115,9 @@ app env = simpleCors . serve api $ hoistServer api (flip runReaderT env) servant
         :<|> eventPage -- edit event
         :<|> frontPage -- about
         :<|> frontPage -- forget me
-        :<|> eventPage -- forget me id
-        :<|> eventPage -- unsubscribe id
+        :<|> const frontPage -- forget me id
+        :<|> const frontPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
-      where
-        frontPage = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
-        eventPage _ = fmap RawHtml (liftIO $ LBS.readFile "frontend/index.html")
 
 getDbSettings :: IO (Either String Settings)
 getDbSettings = do
@@ -160,18 +159,7 @@ main = do
       putStrLn "listening on port 8081..."
       run 8081 $ app AppEnv { connection, smtpConfig, hostUrl }
 
--- type shenanigans to enable serving raw html
-
-data HTML
-
-newtype RawHtml = RawHtml { unRaw :: LBS.ByteString }
-
-instance Accept HTML where
-  contentTypes _ = pure $ "text" // "html" /: ("charset", "utf-8")
-
-instance MimeRender HTML RawHtml where
-  mimeRender _ = unRaw
-
 -- util
 maybeToEither _ (Just a)  = Right a
 maybeToEither err Nothing = Left err
+

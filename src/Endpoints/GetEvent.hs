@@ -1,4 +1,10 @@
-module Endpoints.GetEvent (getEvent, getAttendees, getAttendeesStatement, getCommentsStatement) where
+module Endpoints.GetEvent (
+  getEvent,
+  maybeGetEvent,
+  getAttendees,
+  getAttendeesStatement,
+  getCommentsStatement
+) where
 
 import           Control.Monad.Except    (MonadError (throwError))
 import           Control.Monad.IO.Class  (MonadIO, liftIO)
@@ -21,6 +27,13 @@ import           Types.Event             (Attendee, Comment (..), Event (..))
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
+  mEvent <- maybeGetEvent eventId
+  case mEvent of
+    Just event -> pure event
+    Nothing    -> throwError err404 { errBody = "Event not found" }
+
+maybeGetEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m (Maybe Event)
+maybeGetEvent eventId = do
     let statement = do
             mEvent <- Hasql.statement eventId getEventStatement
             case mEvent of
@@ -32,12 +45,15 @@ getEvent eventId = do
 
     conn <- asks connection
     eEvent <- liftIO $ Hasql.run statement conn
-    case eEvent of
-      Right (Just event)  -> getAttendees event
-      Right Nothing       -> throwError err404 { errBody = "Event not found" }
-      Left err            -> do
-        liftIO $ putStrLn [i|Something went wrong when getting event: #{err}|]
-        throwError err500 { errBody = "Something went wrong" }
+
+    mEvent <- do
+      case eEvent of
+        Right mEvent  -> pure mEvent
+        Left err            -> do
+          liftIO $ putStrLn [i|Something went wrong when getting event: #{err}|]
+          throwError err500 { errBody = "Something went wrong" }
+
+    traverse getAttendees mEvent
 
 
 getEventStatement :: Statement UUID (Maybe Event)

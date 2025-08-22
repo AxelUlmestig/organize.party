@@ -121,6 +121,7 @@ test('can create event', async ({ page, request }) => {
 
   // forget me
   await page.getByRole('link', { name: 'Forget Me' }).click()
+  await page.waitForTimeout(100); // wait a bit so we don't get the 'Your email' from the previous page
   await page.getByPlaceholder('Your email').fill(organizerEmail)
   await page.getByRole('button', { name: /submit/i }).click()
 
