@@ -286,7 +286,7 @@ view pageState =
                 , H.br [] []
                 , H.br [] []
                 , viewAttendees attendees
-                , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
+                , H.h1 [ A.class "mb-3", A.class "comments-header" ] [ H.text "Comments" ]
                 , addCommentView attendeeInput
                 , viewComments pageState.currentTime comments
                 ]
