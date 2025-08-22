@@ -20,6 +20,8 @@
           pkgs.zlib
           pkgs.postgresql
           pkgs.playwright-driver.browsers
+          pkgs.hlint
+          pkgs.stylish-haskell
         ];
 
         shellHook = ''

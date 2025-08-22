@@ -45,3 +45,7 @@ run-certbot:
 .PHONY: run-tests
 run-tests:
 	cd frontend/test && npx playwright test --headed test.spec.ts --project chromium
+
+.PHONY: lint
+lint:
+	hlint -X QuasiQuotes -X OverloadedRecordDot .
