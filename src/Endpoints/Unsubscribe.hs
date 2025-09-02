@@ -15,8 +15,8 @@ import           Email                   (CommentNotificationRecipient (..),
 import           Endpoints.GetEvent      (getEvent)
 import           Hasql.Connection        (Connection)
 import           Hasql.Session           (CommandError (ResultError),
-                                          QueryError (QueryError),
-                                          ResultError (ServerError))
+                                          ResultError (ServerError),
+                                          SessionError (QueryError))
 import qualified Hasql.Session           as Hasql
 import           Hasql.Statement         (Statement)
 import           Hasql.TH                (maybeStatement, resultlessStatement,

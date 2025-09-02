@@ -11,7 +11,8 @@ fi
 
 sed -i -e "s/\${IMAGE_TAG:-.*}/\${IMAGE_TAG:-$IMAGE_TAG}/g" docker-compose.yml
 
-git clean -fxd frontend/static/
+# the Dockerfile contains the instructions for building the frontend
+git clean -fxd frontend/static/ frontend/index.html
 docker compose build server
 
 docker push axelulmestig/organize.party:$IMAGE_TAG

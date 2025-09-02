@@ -14,7 +14,6 @@ import           Data.Types.Injective    (to)
 import           Data.UUID               (UUID)
 import           Hasql.Connection        (Connection)
 import           Hasql.Session           (CommandError (ResultError),
-                                          QueryError (QueryError),
                                           ResultError (UnexpectedAmountOfRows))
 import qualified Hasql.Session           as Hasql
 import           Hasql.Statement         (Statement)

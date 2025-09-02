@@ -5,29 +5,31 @@
 
 module Main where
 
-import           Control.Monad.IO.Class           (liftIO)
-import           Control.Monad.Trans.Reader       (ReaderT (..))
-import qualified Data.ByteString                  as BS
-import qualified Data.ByteString.Lazy             as LBS
-import           Data.ByteString.UTF8             as BSU
-import           Data.Int                         (Int64)
-import           Data.Text                        (Text, pack)
-import           Data.UUID                        (UUID)
-import           Hasql.Connection                 (Connection, Settings,
-                                                   acquire, settings)
-import qualified Hasql.Session                    as Hasql
-import           Hasql.Statement                  (Statement)
-import           Hasql.TH                         (maybeStatement,
-                                                   resultlessStatement,
-                                                   singletonStatement)
-import           Network.HTTP.Media               ((//), (/:))
-import           Network.Wai.Handler.Warp         (run)
-import           Network.Wai.Middleware.Cors      (simpleCors)
+import           Control.Monad.IO.Class              (liftIO)
+import           Control.Monad.Trans.Reader          (ReaderT (..))
+import qualified Data.ByteString                     as BS
+import qualified Data.ByteString.Lazy                as LBS
+import           Data.ByteString.UTF8                as BSU
+import           Data.Int                            (Int64)
+import           Data.String.Interpolate             (i)
+import           Data.Text                           (Text, pack)
+import           Data.UUID                           (UUID)
+import           Hasql.Connection                    (Connection, acquire)
+import qualified Hasql.Connection.Setting            as ConnectionSetting
+import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
+import qualified Hasql.Session                       as Hasql
+import           Hasql.Statement                     (Statement)
+import           Hasql.TH                            (maybeStatement,
+                                                      resultlessStatement,
+                                                      singletonStatement)
+import           Network.HTTP.Media                  ((//), (/:))
+import           Network.Wai.Handler.Warp            (run)
+import           Network.Wai.Middleware.Cors         (simpleCors)
 import           Servant
 import           Servant.API
-import           System.Environment               (lookupEnv)
-import           System.Exit                      (die)
-import           Text.Read                        (readMaybe)
+import           System.Environment                  (lookupEnv)
+import           System.Exit                         (die)
+import           Text.Read                           (readMaybe)
 
 import qualified Email
 import qualified Endpoints.Attend
@@ -39,19 +41,20 @@ import qualified Endpoints.GetEvent
 import qualified Endpoints.InitForgetMeRequest
 import qualified Endpoints.Unsubscribe
 import qualified Endpoints.ViewForgetMeRequest
-import           Html                             (HTML, RawHtml, eventPage,
-                                                   frontPage)
-import           Types.AppEnv                     (AppEnv (..), SmtpConfig (..))
-import           Types.Attendee                   (Attendee)
-import           Types.AttendInput                (AttendInput)
-import           Types.CommentInput               (CommentInput)
-import           Types.CreateEventInput           (CreateEventInput)
-import           Types.Event                      (Event)
-import           Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
-                                                   ForgetMeRequest (..),
-                                                   InitForgetMeInput (..),
-                                                   InitForgetMeResult (..))
-import           Types.Unsubscribe                (UnsubscribeResult)
+import           Html                                (HTML, RawHtml, eventPage,
+                                                      frontPage)
+import           Types.AppEnv                        (AppEnv (..),
+                                                      SmtpConfig (..))
+import           Types.Attendee                      (Attendee)
+import           Types.AttendInput                   (AttendInput)
+import           Types.CommentInput                  (CommentInput)
+import           Types.CreateEventInput              (CreateEventInput)
+import           Types.Event                         (Event)
+import           Types.ForgetMeRequest               (ExecuteForgetMeResult (..),
+                                                      ForgetMeRequest (..),
+                                                      InitForgetMeInput (..),
+                                                      InitForgetMeResult (..))
+import           Types.Unsubscribe                   (UnsubscribeResult)
 
 type API
   = GetEventAPI
@@ -119,15 +122,16 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> const frontPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
 
-getDbSettings :: IO (Either String Settings)
-getDbSettings = do
+getDbConnectionSettings :: IO (Either String [ConnectionSetting.Setting])
+getDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
     pure do
       host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
-      port <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
+      port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
-      pure $ settings host port "postgres" "postgres" "events"
+      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
+      pure $ [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
 
 getSmtpConfig :: IO (Either String SmtpConfig)
 getSmtpConfig = do
@@ -149,15 +153,14 @@ getHostUrl = do
 
 main :: IO ()
 main = do
-  dbSettings <- getDbSettings >>= either die pure
+  dbSettings <- getDbConnectionSettings >>= either die pure
   smtpConfig <- getSmtpConfig >>= either die pure
   hostUrl <- getHostUrl >>= either die pure
-  eConnection <- acquire dbSettings
-  case eConnection of
-    Left err -> print err
-    Right connection -> do
-      putStrLn "listening on port 8081..."
-      run 8081 $ app AppEnv { connection, smtpConfig, hostUrl }
+  connection <- acquire dbSettings >>= either (die . show) pure
+  let port = 8081
+
+  putStrLn [i|listening on port #{port}...|]
+  run port $ app AppEnv { connection, smtpConfig, hostUrl }
 
 -- util
 maybeToEither _ (Just a)  = Right a
