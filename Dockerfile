@@ -61,12 +61,26 @@ WORKDIR /events
 
 RUN apk update && apk add --no-cache curl make
 
-RUN curl -L -o elm.gz https://github.com/elm/compiler/releases/download/0.19.1/binary-for-linux-64-bit.gz \
-  && gunzip elm.gz \
-  && chmod +x elm \
-  && mv elm /usr/local/bin/
+# RUN curl -L -o elm.gz https://github.com/elm/compiler/releases/download/0.19.1/binary-for-linux-64-bit.gz \
+#   && gunzip elm.gz \
+#   && chmod +x elm \
+#   && mv elm /usr/local/bin/
 
-RUN npm install uglify-js -g
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        ELM_URL="https://github.com/elm/compiler/releases/download/0.19.1/binary-for-linux-64-bit.gz"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        ELM_URL="https://github.com/lydell/compiler/releases/download/0.19.1/binary-for-linux-arm-64-bit.gz"; \
+    else \
+        echo "Unsupported architecture: $ARCH"; \
+        exit 1; \
+    fi && \
+    curl -L -o elm.gz "$ELM_URL" && \
+    gunzip elm.gz && \
+    chmod +x elm && \
+    mv elm /usr/local/bin/
+# RUN npm install -g elm@0.19.1-5 uglify-js
+RUN npm install -g uglify-js
 
 COPY frontend/ /events/frontend/
 COPY scripts /events/scripts
