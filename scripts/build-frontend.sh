@@ -12,11 +12,6 @@ if [ ! -z "$1" ]; then
 
   optimize=true
 
-  if ! [ -x "$(command -v uglifyjs)" ]; then
-    echo "Error: uglifyjs is not installed. Please install it and try again" >&2
-    exit 1
-  fi
-
   if ! [ -x "$(command -v sha256sum)" ]; then
     echo "Error: sha256sum is not installed. Please install it and try again" >&2
     exit 1
@@ -29,7 +24,8 @@ if [ $optimize = true ]; then
   MIN_JS_FILE=elm.min.js
 
   (cd frontend; elm make src/Main.elm --optimize --output=$RAW_JS_FILE)
-  (cd frontend; uglifyjs $RAW_JS_FILE --compress "pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | uglifyjs --mangle --output $MIN_JS_FILE)
+  # (cd frontend; uglifyjs $RAW_JS_FILE --compress "pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe" | uglifyjs --mangle --output $MIN_JS_FILE)
+  (cd frontend; npm i; RAW_JS_FILE=$RAW_JS_FILE MIN_JS_FILE=$MIN_JS_FILE npm run minify)
   rm frontend/$RAW_JS_FILE
 
   JS_CHECKSUM=$(sha256sum frontend/$MIN_JS_FILE | cut -d " " -f1)
@@ -45,6 +41,18 @@ if [ $optimize = true ]; then
   # ------------ expanding-textarea.css --------------
   EXPANDING_TEXTAREA_CSS=expanding-textarea.$(sha256sum frontend/static/expanding-textarea.css | cut -d " " -f1).css
   cp frontend/static/expanding-textarea.css frontend/static/$EXPANDING_TEXTAREA_CSS
+
+  # ------------ datepicker.css ---------------------------
+  DATEPICKER_CSS=datepicker.$(sha256sum frontend/static/datepicker.css | cut -d " " -f1).css
+  cp frontend/static/datepicker.css frontend/static/$DATEPICKER_CSS
+
+  # ------------ navbar.css ---------------------------
+  NAVBAR_CSS=navbar.$(sha256sum frontend/static/navbar.css | cut -d " " -f1).css
+  cp frontend/static/navbar.css frontend/static/$NAVBAR_CSS
+
+  # ------------ about.css ----------------------------
+  ABOUT_CSS=about.$(sha256sum frontend/static/about.css | cut -d " " -f1).css
+  cp frontend/static/about.css frontend/static/$ABOUT_CSS
 else
   # ------------ Compiled JS -------------------------
   ELM_JS_FILE=elm.js
@@ -52,11 +60,12 @@ else
   (cd frontend; elm make src/Main.elm --output=$ELM_JS_FILE)
   mv frontend/$ELM_JS_FILE frontend/static/$ELM_JS_FILE
 
-  # ------------ style.css ---------------------------
+  # ------------ CSS ---------------------------------
   STYLE_CSS=style.css
-
-  # ------------ expanding-textarea.css --------------
   EXPANDING_TEXTAREA_CSS=expanding-textarea.css
+  DATEPICKER_CSS=datepicker.css
+  NAVBAR_CSS=navbar.css
+  ABOUT_CSS=about.css
 fi
 
 cat << EOF > frontend/index.html
@@ -67,9 +76,9 @@ cat << EOF > frontend/index.html
 
     <link rel="stylesheet" href="/$STYLE_CSS">
     <link rel="stylesheet" href="/$EXPANDING_TEXTAREA_CSS">
-    <link rel="stylesheet" href="/datepicker.css">
-    <link rel="stylesheet" href="/navbar.css">
-    <link rel="stylesheet" href="/about.css">
+    <link rel="stylesheet" href="/$DATEPICKER_CSS">
+    <link rel="stylesheet" href="/$NAVBAR_CSS">
+    <link rel="stylesheet" href="/$ABOUT_CSS">
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"

@@ -21,6 +21,7 @@
           pkgs.zlib
           pkgs.zstd
           pkgs.postgresql
+          pkgs.pkg-config
           pkgs.playwright-driver.browsers
           pkgs.hlint
           pkgs.stylish-haskell
@@ -30,15 +31,19 @@
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
           pkgs.zlib
           pkgs.zstd
+          pkgs.postgresql
         ];
 
         shellHook = ''
           export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
           export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+          # Set PATH to include Nix's pkg-config first
+          export PATH="${pkgs.pkg-config}/bin:$PATH"
           # Also set pkg-config path to help Cabal find the C libraries
           export PKG_CONFIG_PATH=${pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" [
             pkgs.zlib
             pkgs.zstd
+            pkgs.postgresql
           ]}
         '';
       };

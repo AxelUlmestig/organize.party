@@ -64,7 +64,7 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /ok/i }).click()
 
   // update attendee status to 'Maybe Coming'
-  await page.getByTestId('view-event-attendee-plus-one').check({force: true})
+  await page.getByTestId('view-event-attendee-plus-one').click({force: true})
   await page.getByTestId('view-event-attendee-status').selectOption({ label: 'Maybe Coming' })
   await page.getByTestId('view-event-submit-attendee').click()
 

@@ -7,6 +7,10 @@ frontend/index.html
 frontend/static/elm*.js
 frontend/static/style.*.css
 frontend/static/expanding-textarea.*.css
+frontend/static/about.*.css
+frontend/static/datepicker.*.css
+frontend/static/navbar.*.css
+frontend/node_modules/
 
 .env
 
