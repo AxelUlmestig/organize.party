@@ -25,6 +25,7 @@
           pkgs.playwright-driver.browsers
           pkgs.hlint
           pkgs.stylish-haskell
+          pkgs.sqitchPg
         ];
 
         # Add the C libraries to the library path so Cabal can find them
