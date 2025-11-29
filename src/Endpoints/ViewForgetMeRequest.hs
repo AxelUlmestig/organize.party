@@ -24,26 +24,22 @@ import           Servant                (ServerError (errBody), err400, err404,
 import qualified Email
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import           Types.ForgetMeRequest  (ForgetMeRequest (..))
+import qualified Util.Db                as Db
 
 viewForgetMeRequest ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
   UUID ->
   m ForgetMeRequest
 viewForgetMeRequest forgetMeRequestId = do
-  conn <- asks connection
-  queryResult <- liftIO $ Hasql.run (Hasql.statement forgetMeRequestId statement) conn
+  queryResult <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement forgetMeRequestId statement)
   case queryResult of
-    Left err -> do
-      liftIO $ print err
-      throwError err500 { errBody = "Something went wrong" }
-    Right Nothing -> throwError err404 { errBody = "Forget me request not found" }
-    Right (Just (forgetMeId, mEmail, deletedAt)) -> do
+    Nothing -> throwError err404 { errBody = "Forget me request not found" }
+    Just (forgetMeId, mEmail, deletedAt) -> do
       pure $ ForgetMeRequest
         { forgetMeRequestId = forgetMeId
         , forgetMeRequestEmail = mEmail
         , forgetMeRequestDeletedAt = deletedAt
         }
-
   where
     statement =
       [maybeStatement|
@@ -53,4 +49,4 @@ viewForgetMeRequest forgetMeRequestId = do
           deleted_at::timestamptz?
         from forgetme_requests
         where id = $1::uuid
-     |]
+      |]

@@ -29,6 +29,7 @@ import           Types.Attendee         (Attendee, writeStatus)
 import qualified Types.AttendInput      as VP
 import           Types.AttendInput      (AttendInput (..))
 import           Types.Event            (Event)
+import qualified Util.Db                as Db
 
 
 attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
@@ -48,21 +49,19 @@ attend eventId attendee' = do
 
         pure (insertedAttendee, not emailSentAlready && status /= Attendee.NotComing)
 
+  (attendee, shouldSendEmail) <- Db.queryDbOr handleErr session
 
-  conn <- asks connection
-  eAttendee <- liftIO $ Hasql.run session conn
-  case eAttendee of
-    Right (attendee, shouldSendEmail) -> do
-      event <- getEvent eventId
+  event <- getEvent eventId
 
-      when shouldSendEmail $ do
-        smtpConf <- asks smtpConfig
-        emailHostUrl <- asks hostUrl
-        void . liftIO . forkIO $
-          let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
-          in sendEmailInvitation emailData smtpConf event
-      pure event
-    Left err -> do
+  when shouldSendEmail $ do
+    smtpConf <- asks smtpConfig
+    emailHostUrl <- asks hostUrl
+    void . liftIO . forkIO $
+      let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
+      in sendEmailInvitation emailData smtpConf event
+  pure event
+  where
+    handleErr err = do
       liftIO $ print err
       case err of
         QueryError _ _ (ResultError (ServerError "23503" _ _ _ _)) -> throwError err404 { errBody = "Event not found" }

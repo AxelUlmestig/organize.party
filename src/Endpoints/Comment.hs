@@ -31,6 +31,7 @@ import           Types.Attendee          (Attendee, writeStatus)
 import qualified Types.CommentInput      as CommentInput
 import           Types.CommentInput      (CommentInput (..))
 import           Types.Event             (Event)
+import qualified Util.Db                 as Db
 
 
 addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event
@@ -40,13 +41,12 @@ addComment eventId commentInput' = do
   when (eventId /= commentInput.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
-  conn <- asks connection
-  queryResult <- liftIO $ Hasql.run (Hasql.statement commentInput insertCommentStatement) conn
-  case queryResult of
-    Right () -> do
-      sendEmailUpdate commentInput
-      getEvent eventId
-    Left err -> do
+  Db.queryDbOr handleErr (Hasql.statement commentInput insertCommentStatement)
+  sendEmailUpdate commentInput
+  getEvent eventId
+
+  where
+    handleErr err = do
       liftIO $ putStrLn [i|Something went wrong when adding comment: #{err}|]
       case err of
         QueryError _ _ (ResultError (ServerError "23503" _ _ _ _))  -> throwError err404 { errBody = "Event not found" }
@@ -101,14 +101,9 @@ sendEmailUpdate commentInput = do
             )
         |]
 
-  conn <- asks connection
-  eSubscribers <- liftIO $ Hasql.run (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement) conn
+  subscribers <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement)
 
-  case eSubscribers of
-    Left err -> do
-      liftIO $ putStrLn [i|Something went wrong when sending comment email update: #{err}|]
-      throwError err500 { errBody = "Something went wrong" }
-    Right subscribers -> do
-      smtpConf <- asks smtpConfig
-      liftIO $ forM_ subscribers $ \(emailData, subscriber) -> do
-        forkIO $ Email.sendCommentNotifications emailData smtpConf commentInput subscriber
+  smtpConf <- asks smtpConfig
+  liftIO $ forM_ subscribers $ \(emailData, subscriber) -> do
+    forkIO $ Email.sendCommentNotifications emailData smtpConf commentInput subscriber
+

@@ -12,6 +12,7 @@ import           Control.Monad.Reader    (MonadReader, asks)
 import           Data.String.Interpolate (i)
 import           Data.Types.Injective    (to)
 import           Data.UUID               (UUID)
+import qualified Data.Vector             as Vector
 import           Hasql.Connection        (Connection)
 import           Hasql.Session           (CommandError (ResultError),
                                           ResultError (UnexpectedAmountOfRows))
@@ -20,9 +21,9 @@ import           Hasql.Statement         (Statement)
 import           Hasql.TH                (maybeStatement, vectorStatement)
 import           Servant                 (ServerError (..), err404, err500)
 
-import qualified Data.Vector             as Vector
 import           Types.AppEnv
 import           Types.Event             (Attendee, Comment (..), Event (..))
+import qualified Util.Db                 as Db
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
@@ -42,15 +43,7 @@ maybeGetEvent eventId = do
                 comments <- Hasql.statement event.id getCommentsStatement
                 pure $ Just event { attendees, comments }
 
-    conn <- asks connection
-    eEvent <- liftIO $ Hasql.run statement conn
-
-    mEvent <- do
-      case eEvent of
-        Right mEvent  -> pure mEvent
-        Left err            -> do
-          liftIO $ putStrLn [i|Something went wrong when getting event: #{err}|]
-          throwError err500 { errBody = "Something went wrong" }
+    mEvent <- Db.queryDbOr Db.printAndThrow500 statement
 
     traverse getAttendees mEvent
 
@@ -79,13 +72,9 @@ getEventStatement =
 
 getAttendees :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => Event -> m Event
 getAttendees event@Event{Types.Event.id} = do
-  conn <- asks connection
-  eAttendees <- liftIO $ Hasql.run (Hasql.statement id getAttendeesStatement) conn
-  case eAttendees of
-    Left err -> do
-      liftIO $ putStrLn [i|Something went wrong when getting event attendees: #{err}|]
-      throwError err500 { errBody = "Something went wrong" }
-    Right attendees -> return $ event { attendees = attendees }
+  attendees <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement id getAttendeesStatement)
+  return $ event { attendees = attendees }
+
 
 getAttendeesStatement :: Statement UUID [Attendee]
 getAttendeesStatement =

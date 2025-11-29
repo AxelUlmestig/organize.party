@@ -20,12 +20,12 @@ import           Servant                 (ServerError (..), err403, err404,
 import           Email                   (EmailData (..), sendEventUpdateEmail)
 import           Endpoints.GetEvent      (getAttendeesStatement,
                                           getCommentsStatement)
-import           Types.AppEnv            (AppEnv (..), SmtpConfig (..),
-                                          connection)
+import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
 import           Types.Attendee          (Attendee (..), readStatus)
 import           Types.CreateEventInput
 import qualified Types.Event             as Event
 import           Types.Event             (Event)
+import qualified Util.Db                 as Db
 
 data EditResult
   = Success Event
@@ -35,18 +35,15 @@ data EditResult
 
 editEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CreateEventInput -> m Event
 editEvent eventId input = do
-  conn <- asks connection
-  eEvent <- liftIO $ Hasql.run (session (eventId, input)) conn
-  case eEvent of
-    Left err -> do
-      liftIO $ print err
-      throwError err500 { errBody = "Something went wrong" }
-    Right Forbidden -> throwError err403 { errBody = "Password didn't match" }
-    Right NotFound -> throwError err404 { errBody = "Event not found" }
-    Right (Success event) -> do
+  event <- Db.queryDbOr Db.printAndThrow500 (session (eventId, input))
+  case event of
+    Forbidden -> throwError err403 { errBody = "Password didn't match" }
+    NotFound -> throwError err404 { errBody = "Event not found" }
+    Success event -> do
       smtpConf <- asks smtpConfig
       sendEmailUpdate event
       pure event
+
 
 session :: (UUID, CreateEventInput) -> Hasql.Session EditResult
 session (eventId, input) = do
@@ -140,18 +137,12 @@ updateEventDataStatement =
 
 
 sendEmailUpdate event = do
-  conn <- asks connection
-  eAttendees <- liftIO $ Hasql.run (Hasql.statement (Event.id event) statement) conn
+  attendees <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (Event.id event) statement)
 
-  case eAttendees of
-    Left err -> do
-      liftIO $ putStrLn [i|Somethin went wrong when sending emails on event update: #{err}|]
-      throwError err500 { errBody = "Something went wrong" }
-    Right attendees -> do
-      smtpConf <- asks smtpConfig
-      emailHostUrl <- asks hostUrl
-      liftIO $ forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
-        forkIO $ sendEventUpdateEmail EmailData{..} smtpConf event
+  smtpConf <- asks smtpConfig
+  emailHostUrl <- asks hostUrl
+  liftIO $ forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
+    forkIO $ sendEventUpdateEmail EmailData{..} smtpConf event
   where
     statement = fmap to <$>
       [vectorStatement|
