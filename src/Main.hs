@@ -11,6 +11,7 @@ import qualified Data.ByteString                     as BS
 import qualified Data.ByteString.Lazy                as LBS
 import           Data.ByteString.UTF8                as BSU
 import           Data.Int                            (Int64)
+import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
 import           Data.Text                           (Text, pack)
 import           Data.UUID                           (UUID)
@@ -55,6 +56,7 @@ import           Types.ForgetMeRequest               (ExecuteForgetMeResult (..)
                                                       InitForgetMeInput (..),
                                                       InitForgetMeResult (..))
 import           Types.Unsubscribe                   (UnsubscribeResult)
+import qualified Util.Db                             as Db
 
 type API
   = GetEventAPI
@@ -156,11 +158,11 @@ main = do
   dbSettings <- getDbConnectionSettings >>= either die pure
   smtpConfig <- getSmtpConfig >>= either die pure
   hostUrl <- getHostUrl >>= either die pure
-  connection <- acquire dbSettings >>= either (die . show) pure
+  connectionPool <- Db.createPool dbSettings
   let port = 8081
 
   putStrLn [i|listening on port #{port}...|]
-  run port $ app AppEnv { connection, smtpConfig, hostUrl }
+  run port $ app AppEnv { connectionPool, smtpConfig, hostUrl }
 
 -- util
 maybeToEither _ (Just a)  = Right a

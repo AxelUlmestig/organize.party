@@ -30,16 +30,16 @@ import qualified Types.Attendee          as Attendee
 import           Types.Attendee          (Attendee, writeStatus)
 import           Types.Event             (Event)
 import           Types.Unsubscribe       (UnsubscribeResult (..))
+import qualified Util.Db                 as Db
 
 unsubscribe ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
   UUID ->
   m UnsubscribeResult
 unsubscribe unsubscribeId = do
-  conn <- asks connection
-  queryResult <- liftIO $ Hasql.run (Hasql.statement unsubscribeId statement) conn
+  queryResult <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement unsubscribeId statement)
   case queryResult of
-    Right (Just (eventId, email, unsubscribedAt)) -> do
+    Just (eventId, email, unsubscribedAt) -> do
       event <- getEvent eventId
       pure $ UnsubscribeResult
         { unsubscribeResultEmail = email
@@ -47,12 +47,8 @@ unsubscribe unsubscribeId = do
         , unsubscribeResultEvent = event
         }
 
-    Right Nothing ->
+    Nothing ->
       throwError err404 { errBody = [i|There's no attendee associated with the unsubscribe id: #{unsubscribeId}|] }
-
-    Left err -> do
-      liftIO $ print err
-      throwError err500 { errBody = "Something went wrong" }
   where
     statement =
       [maybeStatement|

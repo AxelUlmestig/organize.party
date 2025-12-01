@@ -1,12 +1,17 @@
-module Types.AppEnv (AppEnv(..), SmtpConfig(..)) where
+module Types.AppEnv (
+  AppEnv(..),
+  SmtpConfig(..),
+  HasConnectionPool(..),
+) where
 
+import           Data.Pool        (Pool)
 import           Hasql.Connection (Connection)
 import           Network.Socket   (PortNumber)
 
 data AppEnv = AppEnv
-  { connection :: Connection
-  , smtpConfig :: SmtpConfig
-  , hostUrl    :: String
+  { connectionPool :: Pool Connection
+  , smtpConfig     :: SmtpConfig
+  , hostUrl        :: String
   }
 
 
@@ -17,3 +22,11 @@ data SmtpConfig = SmtpConfig
   , password :: String
   }
 
+class HasConnectionPool a where
+    getConnectionPool :: a -> Pool Connection
+
+instance HasConnectionPool AppEnv where
+    getConnectionPool = connectionPool
+
+instance HasConnectionPool (Pool Connection) where
+    getConnectionPool = id

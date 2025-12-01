@@ -9,13 +9,23 @@
       pkgs = import nixpkgs {
         inherit system;
       };
+
+      haskellPackages = pkgs.haskellPackages;
+
     in
     {
       devShell = pkgs.mkShell {
         buildInputs = [
           pkgs.nodejs_20
-          pkgs.ghc
-          pkgs.cabal-install
+          # All Haskell tools from the same package set
+          haskellPackages.ghc
+          haskellPackages.cabal-install
+          haskellPackages.haskell-language-server
+          haskellPackages.hlint
+          haskellPackages.stylish-haskell
+          haskellPackages.fourmolu  # If you use formatters
+          haskellPackages.hoogle    # Documentation
+
           pkgs.elmPackages.elm
           pkgs.elmPackages.elm-format
           pkgs.zlib
@@ -23,11 +33,9 @@
           pkgs.postgresql
           pkgs.pkg-config
           pkgs.playwright-driver.browsers
-          pkgs.hlint
-          pkgs.stylish-haskell
+          pkgs.sqitchPg
         ];
 
-        # Add the C libraries to the library path so Cabal can find them
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
           pkgs.zlib
           pkgs.zstd
@@ -37,9 +45,7 @@
         shellHook = ''
           export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
           export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
-          # Set PATH to include Nix's pkg-config first
           export PATH="${pkgs.pkg-config}/bin:$PATH"
-          # Also set pkg-config path to help Cabal find the C libraries
           export PKG_CONFIG_PATH=${pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" [
             pkgs.zlib
             pkgs.zstd

@@ -31,22 +31,19 @@ import           Types.Attendee          (Attendee, writeStatus)
 import           Types.Event             (Event)
 import           Types.ForgetMeRequest   (ExecuteForgetMeResult (..),
                                           InitForgetMeInput (..))
+import qualified Util.Db                 as Db
 
 executeForgetMeRequest ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
   UUID ->
   m ExecuteForgetMeResult
 executeForgetMeRequest forgetMeRequestId = do
-  conn <- asks connection
-  queryResult <- liftIO $ Hasql.run session conn
+  queryResult <- Db.queryDbOr Db.printAndThrow500 session
   case queryResult of
-    Right Nothing -> do
+    Nothing -> do
       throwError err404 { errBody = "forget me request not found" }
-    Right (Just deletedAt) -> do
+    Just deletedAt -> do
       pure $ ExecuteForgetMeResult forgetMeRequestId deletedAt
-    Left err -> do
-      liftIO $ putStrLn [i|Something went wrong when executing forget me request: #{err}|]
-      throwError err500 { errBody = "Something went wrong" }
   where
     session = do
       mDeletedAt <- Hasql.statement forgetMeRequestId

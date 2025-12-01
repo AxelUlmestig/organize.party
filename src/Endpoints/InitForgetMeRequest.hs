@@ -30,26 +30,22 @@ import           Types.Attendee         (Attendee, writeStatus)
 import           Types.Event            (Event)
 import           Types.ForgetMeRequest  (InitForgetMeInput (..),
                                          InitForgetMeResult (..))
+import qualified Util.Db                as Db
 
 initForgetMe ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
   InitForgetMeInput ->
   m InitForgetMeResult
 initForgetMe InitForgetMeInput{email} = do
-  conn <- asks connection
-  queryResult <- liftIO $ Hasql.run (Hasql.statement email statement) conn
-  case queryResult of
-    Right (forgetMeRequestId, email) -> do
-      smtpConf <- asks smtpConfig
-      hostUrl' <- asks hostUrl
-      void . liftIO . forkIO $ Email.sendForgetMeConfirmation hostUrl' smtpConf forgetMeRequestId email
+  (forgetMeRequestId, email) <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement email statement)
 
-      pure $ InitForgetMeResult
-        { initForgetMeResultEmail = email
-        }
-    Left err -> do
-      liftIO $ print err
-      throwError err500 { errBody = "Something went wrong" }
+  smtpConf <- asks smtpConfig
+  hostUrl' <- asks hostUrl
+  void . liftIO . forkIO $ Email.sendForgetMeConfirmation hostUrl' smtpConf forgetMeRequestId email
+
+  pure $ InitForgetMeResult
+    { initForgetMeResultEmail = email
+    }
   where
     statement =
       [singletonStatement|
