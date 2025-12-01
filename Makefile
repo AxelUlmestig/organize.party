@@ -1,9 +1,9 @@
 .PHONY: start-dev-backend
 start-dev-backend:
-	docker compose up -d db
+	docker compose up -d pgbouncer
 	docker compose exec db sqitch --chdir db deploy
 	docker compose up -d mailhog
-	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=5433 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run
+	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=6432 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run
 
 .PHONY: build-frontend
 build-frontend:
@@ -11,7 +11,7 @@ build-frontend:
 
 .PHONY: access-database
 access-database:
-	docker compose exec db psql postgres://postgres:postgres@localhost:5432/events
+	docker compose exec pgbouncer psql postgres://postgres:postgres@pgbouncer:6432/events
 
 .PHONY: deploy-migrations
 deploy-migrations:

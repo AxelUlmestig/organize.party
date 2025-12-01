@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: db/postgres.Dockerfile
-    ports:
-      - "5433:5432"
+    # ports:
+    #   - "5433:5432"
     environment:
       POSTGRES_DB: events
       POSTGRES_PASSWORD: postgres
@@ -18,6 +18,35 @@ services:
       - ~/.sqitch:/root/.sqitch
     working_dir: /repo
     restart: always
+    networks:
+      - app-network
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    ports:
+      - "6432:6432"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=events
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PASS=postgres
+      - AUTH_TYPE=scram-sha-256
+      - LISTEN_PORT=6432
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=100
+      - DEFAULT_POOL_SIZE=25
+      - RESERVE_POOL_SIZE=5
+      - RESERVE_POOL_TIMEOUT=5
+      - IGNORE_STARTUP_PARAMETERS=extra_float_digits
+      - ADMIN_USERS=postgres
+      - STATS_USERS=postgres
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - app-network
 
   server:
     image: axelulmestig/organize.party:${IMAGE_TAG:-0.8}
@@ -30,8 +59,8 @@ services:
       - db
       - mailhog
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      DB_HOST: pgbouncer
+      DB_PORT: 6432
       HOST_URL: "http://localhost:8081"
       SMTP_SERVER: "mailhog"
       SMTP_PORT: 1025
@@ -40,6 +69,8 @@ services:
     env_file: .env
     # volumes:
     #   - ./frontend:/events/frontend
+    networks:
+      - app-network
 
   # use this if you want to do frontend dev work without installing Haskell
   dev-server:
@@ -50,8 +81,8 @@ services:
       - db
       - mailhog
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      DB_HOST: pgbouncer
+      DB_PORT: 6432
       HOST_URL: "http://localhost:8081"
       SMTP_SERVER: "mailhog"
       SMTP_PORT: 1025
@@ -60,6 +91,8 @@ services:
     env_file: .env
     volumes:
       - ./frontend:/events/frontend
+    networks:
+      - app-network
 
   production:
     image: axelulmestig/organize.party:${IMAGE_TAG:-0.8}
@@ -69,11 +102,13 @@ services:
       - db
       - nginx
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      DB_HOST: pgbouncer
+      DB_PORT: 6432
       HOST_URL: "https://organize.party"
     env_file: .env
     restart: always
+    networks:
+      - app-network
 
   nginx:
     image: nginx:latest
@@ -87,6 +122,8 @@ services:
       - ./nginx/mime.types:/etc/nginx/mime.types
       - ./certbot/www/:/var/www/certbot/:ro
       - ./certbot/conf/:/etc/nginx/ssl/:ro
+    # networks:
+    #   - app-network
 
   nginx-certbot:
     image: nginx:latest
@@ -100,12 +137,16 @@ services:
       - ./nginx/mime.types:/etc/nginx/mime.types
       - ./certbot/www/:/var/www/certbot/:rw
       - ./certbot/conf/:/etc/nginx/ssl/:rw
+    # networks:
+    #   - app-network
 
   mailhog:
     image: mailhog/mailhog
     ports:
       - "8025:8025"
       - "1025:1025"
+    networks:
+      - app-network
 
   certbot:
     image: certbot/certbot:latest
@@ -117,3 +158,7 @@ services:
 
 volumes:
   dbdata:
+
+networks:
+  app-network:
+    driver: bridge
