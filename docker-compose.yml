@@ -13,7 +13,7 @@ services:
       TZ: Europe/Stockholm
       PGTZ: Europe/Stockholm
     volumes:
-      - dbdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/postgresql/18/docker
       - .:/repo
       - ~/.sqitch:/root/.sqitch
     working_dir: /repo
@@ -99,7 +99,7 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - db
+      - pgbouncer
       - nginx
     environment:
       DB_HOST: pgbouncer
