@@ -1,8 +1,8 @@
 .PHONY: start-dev-backend
 start-dev-backend:
-	docker compose up -d pgbouncer
+	docker compose up -d pgbouncer mailhog
+	./scripts/wait-for-db.sh
 	docker compose exec db sqitch --chdir db deploy
-	docker compose up -d mailhog
 	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=6432 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run
 
 .PHONY: build-frontend
@@ -27,6 +27,7 @@ update-server-container:
 .PHONY: deploy-production
 deploy-production:
 	docker compose up -d db
+	./scripts/wait-for-db.sh
 	docker compose exec db sqitch --chdir db deploy
 	docker compose up --force-recreate -d production
 
