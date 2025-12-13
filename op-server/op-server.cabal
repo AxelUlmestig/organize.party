@@ -1,10 +1,10 @@
-name:                events
+name:                op-server
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/organize.party#readme
+homepage:            https://github.com/AxelUlmestig/organize.party#readme
 license:             BSD3
-author:              Author name here
+author:              Axel Ulmestig
 maintainer:          example@example.com
 copyright:           2021 Author name here
 category:            Web
@@ -12,7 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 -- extra-source-files:  README.md
 
-executable events
+executable op-server
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Email
