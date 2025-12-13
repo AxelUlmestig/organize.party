@@ -15,7 +15,7 @@ import qualified Types.CreateEventInput as CE
 import           Types.CreateEventInput (CreateEventInput)
 import qualified Types.Event            as E
 import           Types.Event            (Event)
-import qualified Util.Db                as Db
+import qualified Op.Db                 as Db
 
 
 createEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => CreateEventInput -> m Event

@@ -31,7 +31,7 @@ import           Types.Attendee          (Attendee, writeStatus)
 import qualified Types.CommentInput      as CommentInput
 import           Types.CommentInput      (CommentInput (..))
 import           Types.Event             (Event)
-import qualified Util.Db                 as Db
+import qualified Op.Db                             as Db
 
 
 addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event

@@ -29,7 +29,7 @@ import           Types.Attendee         (Attendee, writeStatus)
 import qualified Types.AttendInput      as VP
 import           Types.AttendInput      (AttendInput (..))
 import           Types.Event            (Event)
-import qualified Util.Db                as Db
+import qualified Op.Db                             as Db
 
 
 attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event

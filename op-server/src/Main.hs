@@ -56,7 +56,7 @@ import           Types.ForgetMeRequest               (ExecuteForgetMeResult (..)
                                                       InitForgetMeInput (..),
                                                       InitForgetMeResult (..))
 import           Types.Unsubscribe                   (UnsubscribeResult)
-import qualified Util.Db                             as Db
+import qualified Op.Db                  as Db
 
 type API
   = GetEventAPI

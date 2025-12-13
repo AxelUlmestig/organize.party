@@ -25,7 +25,7 @@ import           Types.Attendee          (Attendee (..), readStatus)
 import           Types.CreateEventInput
 import qualified Types.Event             as Event
 import           Types.Event             (Event)
-import qualified Util.Db                 as Db
+import qualified Op.Db                 as Db
 
 data EditResult
   = Success Event

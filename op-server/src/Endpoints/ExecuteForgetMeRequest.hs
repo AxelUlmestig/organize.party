@@ -21,6 +21,7 @@ import qualified Hasql.Session           as Hasql
 import           Hasql.Statement         (Statement)
 import           Hasql.TH                (maybeStatement, resultlessStatement,
                                           singletonStatement, vectorStatement)
+import qualified Op.Db                   as Db
 import           Servant                 (ServerError (errBody), err400, err404,
                                           err500)
 
@@ -31,7 +32,6 @@ import           Types.Attendee          (Attendee, writeStatus)
 import           Types.Event             (Event)
 import           Types.ForgetMeRequest   (ExecuteForgetMeResult (..),
                                           InitForgetMeInput (..))
-import qualified Util.Db                 as Db
 
 executeForgetMeRequest ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>

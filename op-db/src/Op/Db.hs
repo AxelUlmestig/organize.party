@@ -1,23 +1,23 @@
-module Util.Db (
+module Op.Db (
   queryDbOr,
   printAndThrow500,
   createPool,
+  HasConnectionPool(..),
 ) where
 
-import           Control.Exception        (throwIO)
 import           Control.Monad.Except     (MonadError (..))
 import           Control.Monad.IO.Class   (MonadIO (liftIO))
 import           Control.Monad.Reader     (MonadReader, asks)
+import           Data.Pool                (Pool)
 import qualified Data.Pool                as Pool
-import qualified Data.Text                as Text
+import           Hasql.Connection         (Connection)
 import qualified Hasql.Connection         as Hasql
 import           Hasql.Connection.Setting (Setting)
 import qualified Hasql.Session            as Hasql
-import           Hasql.Statement          (Statement)
-import           Hasql.TH                 (resultlessStatement)
 import           Servant                  (ServerError (..), err500)
 
-import           Types.AppEnv
+class HasConnectionPool a where
+    getConnectionPool :: a -> Pool Connection
 
 queryDbOr
   :: (HasConnectionPool cp, MonadIO m, MonadReader cp m)

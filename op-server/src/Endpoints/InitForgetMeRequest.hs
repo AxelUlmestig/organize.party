@@ -30,7 +30,7 @@ import           Types.Attendee         (Attendee, writeStatus)
 import           Types.Event            (Event)
 import           Types.ForgetMeRequest  (InitForgetMeInput (..),
                                          InitForgetMeResult (..))
-import qualified Util.Db                as Db
+import qualified Op.Db                 as Db
 
 initForgetMe ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>

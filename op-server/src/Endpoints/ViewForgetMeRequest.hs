@@ -18,13 +18,13 @@ import qualified Hasql.Session          as Hasql
 import           Hasql.Statement        (Statement)
 import           Hasql.TH               (maybeStatement, resultlessStatement,
                                          singletonStatement, vectorStatement)
+import qualified Op.Db                  as Db
 import           Servant                (ServerError (errBody), err400, err404,
                                          err500)
 
 import qualified Email
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import           Types.ForgetMeRequest  (ForgetMeRequest (..))
-import qualified Util.Db                as Db
 
 viewForgetMeRequest ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>

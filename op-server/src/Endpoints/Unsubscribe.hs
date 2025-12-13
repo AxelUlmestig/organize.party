@@ -30,7 +30,7 @@ import qualified Types.Attendee          as Attendee
 import           Types.Attendee          (Attendee, writeStatus)
 import           Types.Event             (Event)
 import           Types.Unsubscribe       (UnsubscribeResult (..))
-import qualified Util.Db                 as Db
+import qualified Op.Db                 as Db
 
 unsubscribe ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>

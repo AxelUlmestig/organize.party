@@ -23,7 +23,7 @@ import           Servant                 (ServerError (..), err404, err500)
 
 import           Types.AppEnv
 import           Types.Event             (Attendee, Comment (..), Event (..))
-import qualified Util.Db                 as Db
+import qualified Op.Db                             as Db
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
