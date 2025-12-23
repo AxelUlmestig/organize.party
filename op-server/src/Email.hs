@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Email (
   sendEmailInvitation,
   sendEventUpdateEmail,
@@ -7,6 +9,7 @@ module Email (
   sendForgetMeConfirmation,
 ) where
 
+import qualified Data.ByteString          as BS
 import qualified Data.ByteString.Lazy     as LBS
 import           Data.Foldable            (for_)
 import           Data.Maybe               (fromMaybe)
@@ -19,10 +22,12 @@ import           Data.Time.Clock          (UTCTime, addUTCTime, nominalDay,
 import           Data.Time.Format         (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601 (iso8601Show)
 import           Data.UUID
+import           Hasql.TH                 (resultlessStatement)
 import qualified Network.Mail.Mime        as Mail
-import qualified Network.Mail.SMTP        as SMTP
 import           Network.Socket           (PortNumber)
+import qualified RIO
 
+import qualified Op.Db                    as Db
 import           Types.AppEnv             (SmtpConfig (..))
 import           Types.Attendee           (Attendee (..))
 import           Types.CommentInput       (CommentInput (..))
@@ -37,7 +42,7 @@ data EmailData
     , unsubscribeId :: UUID
     }
 
-eventToICalendarString :: String -> Text -> Event -> LBS.ByteString
+eventToICalendarString :: String -> Text -> Event -> BS.ByteString
 eventToICalendarString hostUrl email event@Event{Event.id = eid, startTime, endTime, title, description, location, createdAt, modifiedAt} =
   let
     oneHour = secondsToNominalDiffTime $ 60 ^ 2
@@ -84,22 +89,56 @@ formatDescription hostUrl Event{description, Event.id = eid} =
     #{hostUrl}/e/#{eid}
   |]
 
-sendEmailInvitation :: EmailData -> SmtpConfig -> Event -> IO ()
-sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId} SmtpConfig{server, port, login, password} event@Event{title, description, id = eid} = do
-  let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address (Just recipientName) email]
-  let cc         = []
-  let bcc        = []
-  let subject    = title
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString emailHostUrl email event
+sendEmailInvitation
+  :: (
+    Db.HasDbConnection env,
+    RIO.MonadIO m,
+    RIO.MonadReader env m
+  ) =>
+  EmailData ->
+  Event ->
+  m ()
+sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, description, id = eid} = do
+  let icalendarString = eventToICalendarString emailHostUrl email event
 
-  let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
+  Db.queryDbOr (error . show) (Db.statement (email, recipientName, title, body, icalendarString) statement)
 
-  SMTP.sendMailWithLogin' server port login password mail
   where
+    statement =
+      [resultlessStatement|
+        with
+          inserted as (
+            insert into emails (
+              recipient_email,
+              recipient_name,
+              subject,
+              body
+            )
+            values (
+              $1::text,
+              $2::text,
+              $3::text,
+              $4::text
+            )
+            returning id
+          )
+
+        insert into email_attachments (
+          email_id,
+          content_type,
+          file_name,
+          file_contents
+        )
+        select
+          inserted.id,
+          'text/calendar',
+          'invitation.ics',
+          $5::bytea
+        from inserted
+      |]
+
     body =
-      Mail.htmlPart
-        [__i|
+      [__i|
           #{description}
           <br>
           <br>
@@ -112,22 +151,47 @@ sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId}
         |]
 
 
-sendEventUpdateEmail :: EmailData -> SmtpConfig -> Event -> IO ()
-sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId} SmtpConfig{server, port, login, password} event@Event{title, id = eid, description} = do
-  let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address (Just recipientName) email]
-  let cc         = []
-  let bcc        = []
-  let subject    = title
-  let attachment = Mail.filePartBS "text/calendar" "invitation.ics" $ eventToICalendarString emailHostUrl email event
 
-  let mail = SMTP.simpleMail from to cc bcc subject [body, attachment]
-
-  SMTP.sendMailWithLogin' server port login password mail
+sendEventUpdateEmail :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => EmailData -> Event -> m ()
+sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, id = eid, description} = do
+  let icalendarString = eventToICalendarString emailHostUrl email event
+  Db.queryDbOr undefined (Db.statement (email, recipientName, title, body, icalendarString) statement)
   where
+    statement =
+      [resultlessStatement|
+        with
+          inserted as (
+            insert into emails (
+              recipient_email,
+              recipient_name,
+              subject,
+              body
+            )
+            values (
+              $1::text,
+              $2::text,
+              $3::text,
+              $4::text
+            )
+            returning id
+          )
+
+        insert into email_attachments (
+          email_id,
+          content_type,
+          file_name,
+          file_contents
+        )
+        select
+          inserted.id,
+          'text/calendar',
+          'invitation.ics',
+          $5::bytea
+        from inserted
+      |]
+
     body =
-      Mail.htmlPart
-        [__i|
+      [__i|
           #{description}
           <br>
           <br>
@@ -138,7 +202,6 @@ sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId
             If you never want to receive an email from this event again, <a href="#{emailHostUrl}/unsubscribe/#{unsubscribeId}">click here to unsubscribe</a>. Warning, this can not be undone
           </div>
         |]
-
 
 formatICalendarTimestamp :: UTCTime -> String
 formatICalendarTimestamp = formatTime defaultTimeLocale "%Y%m%dT%k%M%SZ"
@@ -150,24 +213,31 @@ data CommentNotificationRecipient =
     }
     deriving (Eq, Show)
 
-sendCommentNotifications :: EmailData -> SmtpConfig -> CommentInput -> CommentNotificationRecipient -> IO ()
+sendCommentNotifications :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => EmailData -> CommentInput -> CommentNotificationRecipient -> m ()
 sendCommentNotifications
   EmailData{emailHostUrl, email, recipientName, unsubscribeId}
-  SmtpConfig{server, port, login, password}
   CommentInput{eventId, name, comment}
   CommentNotificationRecipient{eventTitle, forcePush}
   = do
-  let from       = SMTP.Address Nothing "noreply@organize.party"
-  let cc         = []
-  let bcc        = []
-  let subject    = [__i|#{name} has left a comment on #{eventTitle}|]
-  let to    = [SMTP.Address (Just recipientName) email]
-  let mail  = SMTP.simpleMail from to cc bcc subject [emailBody]
-
-  SMTP.sendMailWithLogin' server port login password mail
+    let subject    = [__i|#{name} has left a comment on #{eventTitle}|]
+    Db.queryDbOr undefined (Db.statement (email, recipientName, subject, emailBody) statement)
   where
+    statement =
+      [resultlessStatement|
+        insert into emails (
+          recipient_email,
+          recipient_name,
+          subject,
+          body
+        )
+        values (
+          $1::text,
+          $2::text,
+          $3::text,
+          $4::text
+        )
+      |]
     emailBody =
-      Mail.htmlPart
         [__i|
           <b>#{name}</b> has left a comment on <a href="#{emailHostUrl}/e/#{eventId}">#{eventTitle}</a>
           <br>
@@ -200,30 +270,34 @@ sendCommentNotifications
             |]
 
 
-sendForgetMeConfirmation :: String -> SmtpConfig -> UUID -> Text -> IO ()
-sendForgetMeConfirmation hostUrl SmtpConfig{server, port, login, password} forgetMeRequestId email = do
-  let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address Nothing email]
-  let cc         = []
-  let bcc        = []
-  let subject    = title
-
-  let mail = SMTP.simpleMail from to cc bcc "Forget me request" [body]
-
-  SMTP.sendMailWithLogin' server port login password mail
+sendForgetMeConfirmation :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => String -> UUID -> Text -> m ()
+sendForgetMeConfirmation hostUrl forgetMeRequestId email = do
+  let subject = "Forget me request"
+  Db.queryDbOr undefined (Db.statement (email, subject, body) statement)
   where
     body =
-      Mail.htmlPart
-        [__i|
-          A request to delete your data has been received. If you did not make
-          this request, please ignore this email.
-          <br>
-          <br>
-          If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
-          <br>
-          <a href="#{hostUrl}/forget-me/#{forgetMeRequestId}">#{hostUrl}/forget-me/#{forgetMeRequestId}</a>
-          <br>
-          <br>
-          It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
-        |]
-
+      [__i|
+        A request to delete your data has been received. If you did not make
+        this request, please ignore this email.
+        <br>
+        <br>
+        If you did make this request, please click the link below to confirm. <b>Warning: this will delete all your data, it cannot be undone</b>
+        <br>
+        <a href="#{hostUrl}/forget-me/#{forgetMeRequestId}">#{hostUrl}/forget-me/#{forgetMeRequestId}</a>
+        <br>
+        <br>
+        It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
+      |]
+    statement =
+      [resultlessStatement|
+        insert into emails (
+          recipient_email,
+          subject,
+          body
+        )
+        values (
+          $1::text,
+          $2::text,
+          $3::text
+        )
+      |]

@@ -37,3 +37,11 @@ tables/commenters [tables/commenters@forgetme-feature] 2024-02-21T18:24:36Z root
 @unsubscribe-feature 2024-03-30T10:42:04Z root <root@a43631d5b343> # unsubscribe feature
 tables/attendees [tables/attendees@unsubscribe-feature] 2024-03-30T10:42:32Z root <root@a43631d5b343> # add unsubscribed_at column
 functions/add_attendee_data [functions/add_attendee_data@unsubscribe-feature] 2024-04-01T12:17:25Z root <root@a43631d5b343> # add unsubscribe_id
+queued_worker_jobs 2025-12-16T21:49:50Z Axel Ulmestig,,, <axel@desktop> # queued worker jobs
+triggers/queued_worker_jobs/notify_worker 2025-12-13T21:19:36Z Axel Ulmestig,,, <axel@desktop> # notify worker
+tables/emails 2025-12-17T22:04:19Z Axel Ulmestig,,, <axel@desktop> # emails
+tables/email_attachments 2025-12-17T22:10:32Z Axel Ulmestig,,, <axel@desktop> # email attachments
+tables/in_progress_worker_jobs 2025-12-22T13:26:04Z Axel Ulmestig,,, <axel@desktop> # in progress worker jobs
+tables/failed_worker_jobs 2025-12-22T13:28:36Z Axel Ulmestig,,, <axel@desktop> # failed worker jobs
+tables/completed_worker_jobs 2025-12-22T13:32:03Z Axel Ulmestig,,, <axel@desktop> # completed worker jobs
+triggers/emails/queue_email_job 2025-12-23T19:42:21Z Axel Ulmestig,,, <axel@desktop> # queue_email_job

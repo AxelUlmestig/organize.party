@@ -10,7 +10,6 @@ import qualified Op.Db            as Db
 
 data AppEnv = AppEnv
   { connectionPool :: Pool Connection
-  , smtpConfig     :: SmtpConfig
   , hostUrl        :: String
   }
 
@@ -22,8 +21,7 @@ data SmtpConfig = SmtpConfig
   , password :: String
   }
 
-instance Db.HasConnectionPool AppEnv where
-    getConnectionPool = connectionPool
+instance Db.HasDbConnection AppEnv where
+    withDbConnection AppEnv{connectionPool} f = do
+      Db.withDbConnection connectionPool f
 
-instance Db.HasConnectionPool (Pool Connection) where
-    getConnectionPool = id

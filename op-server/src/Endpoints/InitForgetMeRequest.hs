@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Endpoints.InitForgetMeRequest (initForgetMe) where
 
 import           Control.Concurrent     (forkIO)
@@ -24,13 +26,13 @@ import           Servant                (ServerError (errBody), err400, err404,
                                          err500)
 
 import qualified Email
+import qualified Op.Db                  as Db
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import qualified Types.Attendee         as Attendee
 import           Types.Attendee         (Attendee, writeStatus)
 import           Types.Event            (Event)
 import           Types.ForgetMeRequest  (InitForgetMeInput (..),
                                          InitForgetMeResult (..))
-import qualified Op.Db                 as Db
 
 initForgetMe ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
@@ -39,9 +41,8 @@ initForgetMe ::
 initForgetMe InitForgetMeInput{email} = do
   (forgetMeRequestId, email) <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement email statement)
 
-  smtpConf <- asks smtpConfig
   hostUrl' <- asks hostUrl
-  void . liftIO . forkIO $ Email.sendForgetMeConfirmation hostUrl' smtpConf forgetMeRequestId email
+  Email.sendForgetMeConfirmation hostUrl' forgetMeRequestId email
 
   pure $ InitForgetMeResult
     { initForgetMeResultEmail = email

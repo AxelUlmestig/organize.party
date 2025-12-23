@@ -49,6 +49,7 @@ executable op-server
                      , network >= 3.1
                      , profunctors >= 5.6 && < 6.0
                      , resource-pool
+                     , rio
                      , servant >= 0.20 && < 0.21
                      , servant-server >= 0.20 && < 0.21
                      , smtp-mail >= 0.3 && <= 0.4

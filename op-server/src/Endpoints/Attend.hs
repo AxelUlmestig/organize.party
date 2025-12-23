@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Endpoints.Attend (attend) where
 
 import           Control.Concurrent     (forkIO)
@@ -23,13 +25,13 @@ import           Servant                (ServerError (errBody), err400, err404,
                                          err500)
 
 import qualified Email
+import qualified Op.Db                  as Db
 import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
 import qualified Types.Attendee         as Attendee
 import           Types.Attendee         (Attendee, writeStatus)
 import qualified Types.AttendInput      as VP
 import           Types.AttendInput      (AttendInput (..))
 import           Types.Event            (Event)
-import qualified Op.Db                             as Db
 
 
 attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
@@ -54,11 +56,9 @@ attend eventId attendee' = do
   event <- getEvent eventId
 
   when shouldSendEmail $ do
-    smtpConf <- asks smtpConfig
     emailHostUrl <- asks hostUrl
-    void . liftIO . forkIO $
-      let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
-      in sendEmailInvitation emailData smtpConf event
+    let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
+    sendEmailInvitation emailData event
   pure event
   where
     handleErr err = do

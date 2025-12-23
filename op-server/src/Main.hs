@@ -135,6 +135,7 @@ getDbConnectionSettings = do
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
       pure $ [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
 
+{-
 getSmtpConfig :: IO (Either String SmtpConfig)
 getSmtpConfig = do
   mServer <- lookupEnv "SMTP_SERVER"
@@ -147,6 +148,7 @@ getSmtpConfig = do
     login <- maybeToEither "Error: Missing env variable SMTP_LOGIN" mLogin
     password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
     pure SmtpConfig {server, port, login, password}
+-}
 
 getHostUrl :: IO (Either String String)
 getHostUrl = do
@@ -156,15 +158,16 @@ getHostUrl = do
 main :: IO ()
 main = do
   dbSettings <- getDbConnectionSettings >>= either die pure
-  smtpConfig <- getSmtpConfig >>= either die pure
+  -- smtpConfig <- getSmtpConfig >>= either die pure
   hostUrl <- getHostUrl >>= either die pure
   connectionPool <- Db.createPool dbSettings
   let port = 8081
 
   putStrLn [i|listening on port #{port}...|]
-  run port $ app AppEnv { connectionPool, smtpConfig, hostUrl }
+  run port $ app AppEnv { connectionPool, hostUrl }
 
 -- util
+maybeToEither :: err -> Maybe a -> Either err a
 maybeToEither _ (Just a)  = Right a
 maybeToEither err Nothing = Left err
 

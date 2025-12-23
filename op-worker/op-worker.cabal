@@ -1,0 +1,58 @@
+cabal-version:      3.0
+
+name:               op-worker
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Axel Ulmestig
+maintainer:         axel.ulmestig@gmail.com
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+executable op-worker
+    import:           warnings
+    main-is:          Main.hs
+    other-modules:    Op.Worker.Job
+                    , Op.Worker.Jobs.Email
+    build-depends:    base ^>=4.19.2.0
+                    , aeson
+                    , bytestring
+                    , hasql
+                    , hasql-notifications
+                    , hasql-pool
+                    , hasql-th
+                    , hasql-transaction
+                    , mime-mail
+                    , mtl
+                    , network
+                    , op-db
+                    , resource-pool
+                    , string-interpolate
+                    , text
+                    , time
+                    , utf8-string
+                    , uuid
+                    , vector
+                    , rio
+                    , smtp-mail
+    hs-source-dirs:   src
+    default-language: GHC2021
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N -O2
+
+    default-extensions:
+                      BlockArguments
+                    , DataKinds
+                    , DeriveGeneric
+                    , FlexibleContexts
+                    , FlexibleInstances
+                    , MultiParamTypeClasses
+                    , NamedFieldPuns
+                    , OverloadedRecordDot
+                    , OverloadedStrings
+                    , RecordWildCards
+                    , QuasiQuotes
+                    , TypeOperators
+                    , TemplateHaskell

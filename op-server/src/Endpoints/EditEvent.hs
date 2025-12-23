@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE QuasiQuotes         #-}
+
 module Endpoints.EditEvent (editEvent) where
 
 import           Control.Concurrent      (forkIO)
@@ -20,12 +23,12 @@ import           Servant                 (ServerError (..), err403, err404,
 import           Email                   (EmailData (..), sendEventUpdateEmail)
 import           Endpoints.GetEvent      (getAttendeesStatement,
                                           getCommentsStatement)
+import qualified Op.Db                   as Db
 import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
 import           Types.Attendee          (Attendee (..), readStatus)
 import           Types.CreateEventInput
 import qualified Types.Event             as Event
 import           Types.Event             (Event)
-import qualified Op.Db                 as Db
 
 data EditResult
   = Success Event
@@ -40,7 +43,6 @@ editEvent eventId input = do
     Forbidden -> throwError err403 { errBody = "Password didn't match" }
     NotFound -> throwError err404 { errBody = "Event not found" }
     Success event -> do
-      smtpConf <- asks smtpConfig
       sendEmailUpdate event
       pure event
 
@@ -139,10 +141,9 @@ updateEventDataStatement =
 sendEmailUpdate event = do
   attendees <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (Event.id event) statement)
 
-  smtpConf <- asks smtpConfig
   emailHostUrl <- asks hostUrl
-  liftIO $ forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
-    forkIO $ sendEventUpdateEmail EmailData{..} smtpConf event
+  forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
+    sendEventUpdateEmail EmailData{..} event
   where
     statement = fmap to <$>
       [vectorStatement|

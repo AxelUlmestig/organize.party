@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Endpoints.Comment (addComment) where
 
 import           Control.Concurrent      (forkIO)
@@ -25,13 +27,13 @@ import           Servant                 (ServerError (errBody), err400, err404,
                                           err500)
 
 import qualified Email
+import qualified Op.Db                   as Db
 import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
 import qualified Types.Attendee          as Attendee
 import           Types.Attendee          (Attendee, writeStatus)
 import qualified Types.CommentInput      as CommentInput
 import           Types.CommentInput      (CommentInput (..))
 import           Types.Event             (Event)
-import qualified Op.Db                             as Db
 
 
 addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event
@@ -103,7 +105,6 @@ sendEmailUpdate commentInput = do
 
   subscribers <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement)
 
-  smtpConf <- asks smtpConfig
-  liftIO $ forM_ subscribers $ \(emailData, subscriber) -> do
-    forkIO $ Email.sendCommentNotifications emailData smtpConf commentInput subscriber
+  forM_ subscribers $ \(emailData, subscriber) -> do
+    Email.sendCommentNotifications emailData commentInput subscriber
 

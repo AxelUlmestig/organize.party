@@ -1,3 +1,14 @@
 packages:
-  op-server
   op-db
+  op-server
+  op-worker
+
+program-options
+  ghc-options:
+    -XOverloadedRecordDot
+    -XOverloadedStrings
+    -XQuasiQuotes
+    -XRecordWildCards
+    -Wall
+    -Wunused-packages
+    +RTS -A64m -N -RTS
