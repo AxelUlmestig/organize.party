@@ -56,3 +56,4 @@ executable op-worker
                     , QuasiQuotes
                     , TypeOperators
                     , TemplateHaskell
+                    , NoImplicitPrelude

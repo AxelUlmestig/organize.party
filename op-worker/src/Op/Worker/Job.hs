@@ -14,9 +14,9 @@ import           Data.Text              (Text)
 import qualified Data.UUID              as UUID
 import           Hasql.Connection       (Connection)
 import qualified Op.Db                  as Db
-import qualified RIO
+import           RIO
 
-type Job env a = Except.ExceptT JobErr (RIO.RIO env) a
+type Job env a = Except.ExceptT JobErr (RIO env) a
 
 data JobErr
   = RetryableError Text

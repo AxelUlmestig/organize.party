@@ -29,7 +29,7 @@ import           Hasql.TH                 (maybeStatement, vectorStatement)
 import qualified Network.Mail.Mime        as Mail
 import qualified Network.Mail.SMTP        as SMTP
 import           Network.Socket           (PortNumber)
-import qualified RIO
+import           RIO
 
 import qualified Op.Db                    as Db
 import qualified Op.Worker.Job            as Job
@@ -103,7 +103,7 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
               where id = $1::uuid
             |]
 
-        RIO.for mEmail \(recipientEmail, recipientName, subject, body) -> do
+        for mEmail \(recipientEmail, recipientName, subject, body) -> do
           rawAttachments <- Vector.toList <$> do
             Db.statement
               emailId

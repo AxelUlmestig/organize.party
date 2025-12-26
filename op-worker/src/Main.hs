@@ -26,12 +26,13 @@ import qualified Data.Aeson                          as Aeson
 import           Data.Aeson.TH
 import qualified Data.UUID                           as UUID
 import           GHC.Generics
-import qualified RIO
+import           Prelude                             (putStrLn)
+import           RIO
 
 import qualified Op.Worker.Job                       as Job
 import qualified Op.Worker.Jobs.Email                as Email
 
-failedAttemptsLimit :: RIO.Int32
+failedAttemptsLimit :: Int32
 failedAttemptsLimit = 5
 
 main :: IO ()
@@ -56,18 +57,18 @@ main = do
 checkJobQueue :: Pool.Pool Connection -> Email.SmtpConfig -> IO ()
 checkJobQueue connectionPool smtpConfig = do
   checkAgain <- do
-    RIO.runRIO connectionPool do
+    runRIO connectionPool do
       Db.withDbConnection connectionPool \connection -> do
         -- We need to make sure that we use the same transaction to open and
         -- close the transaction, that's why the extra runRIO with one
         -- specific connection is needed
-        RIO.runRIO connection do
+        runRIO connection do
           Db.beginTransactionOr undefined
-          mJob <- Db.queryDbOr (RIO.liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
+          mJob <- Db.queryDbOr (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
 
           case mJob of
             Nothing -> do
-              RIO.liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
+              liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
               Db.commitTransactionOr undefined
               pure False; -- Don't check the queue for more jobs
 
@@ -94,12 +95,12 @@ checkJobQueue connectionPool smtpConfig = do
                           Job.RetryableError message->
                             (Just message, returnJobToQueueStatement)
 
-              RIO.void $ RIO.liftIO $ RIO.for mErrorMessage (putStrLn . Text.unpack)
+              void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
               Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
               Db.commitTransactionOr undefined
               pure True -- Do check the queue for more jobs
 
-  RIO.when checkAgain do
+  when checkAgain do
     checkJobQueue connectionPool smtpConfig
   where
     checkJobQueueStatement =
