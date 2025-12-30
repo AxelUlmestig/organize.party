@@ -16,6 +16,7 @@ executable op-worker
     import:           warnings
     main-is:          Main.hs
     other-modules:    Op.Worker.Job
+                    , Op.Worker.JobLogistics
                     , Op.Worker.Jobs.Email
     build-depends:    base ^>=4.19.2.0
                     , aeson
@@ -30,9 +31,12 @@ executable op-worker
                     , network
                     , op-db
                     , resource-pool
+                    , stm
                     , string-interpolate
                     , text
                     , time
+                    , unix
+                    , unliftio
                     , utf8-string
                     , uuid
                     , vector

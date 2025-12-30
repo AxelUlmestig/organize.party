@@ -4,10 +4,15 @@
 
 module Main where
 
+import           Control.Concurrent                  (forkIO)
+import qualified Data.Aeson                          as Aeson
+import           Data.Aeson.TH
 import           Data.ByteString.UTF8                as BSU
 import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
 import qualified Data.Text                           as Text
+import qualified Data.UUID                           as UUID
+import           GHC.Generics
 import           Hasql.Connection                    (Connection, acquire)
 import qualified Hasql.Connection.Setting            as ConnectionSetting
 import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
@@ -18,18 +23,20 @@ import           Hasql.TH                            (maybeStatement,
                                                       resultlessStatement,
                                                       singletonStatement)
 import qualified Op.Db                               as Db
-import           System.Environment                  (lookupEnv)
-import           System.Exit                         (die)
-import           Text.Read                           (readMaybe)
-
-import qualified Data.Aeson                          as Aeson
-import           Data.Aeson.TH
-import qualified Data.UUID                           as UUID
-import           GHC.Generics
 import           Prelude                             (putStrLn)
 import           RIO
+import           System.Environment                  (lookupEnv)
+import           System.Exit                         (die)
+import           System.Posix.Signals                (Handler (..),
+                                                      installHandler, sigINT)
+import           Text.Read                           (readMaybe)
 
 import qualified Op.Worker.Job                       as Job
+import           Op.Worker.JobLogistics              (SharedWorkerState,
+                                                      awaitShutdown,
+                                                      initSharedWorkerState,
+                                                      initiateShutDown,
+                                                      runLimitedParallelJobs)
 import qualified Op.Worker.Jobs.Email                as Email
 
 failedAttemptsLimit :: Int32
@@ -48,60 +55,74 @@ main = do
   -- we're listening and we won't get any notifications
   listenDbSettings <- getListenDbConnectionSettings >>= either die pure
 
+  -- Initiate a shard state that keeps track of how many parallel jobs are
+  -- running and if the worker is shutting down
+  sharedWorkerState <- initSharedWorkerState
+
+  -- Tell the worker to stop accepting new jobs on sigINT
+  void $ installHandler sigINT (Catch (initiateShutDown sharedWorkerState)) Nothing
+
   connection <- acquire listenDbSettings >>= either (die . show) pure
   Notifications.listen connection (Notifications.toPgIdentifier "new_worker_job")
 
-  let handler _channel _payload = checkJobQueue connectionPool smtpConfig
-  Notifications.waitForNotifications handler connection
+  do
+    let handler _channel _payload = checkJobQueue sharedWorkerState connectionPool smtpConfig
+    void $ forkIO $ Notifications.waitForNotifications handler connection
 
-checkJobQueue :: Pool.Pool Connection -> Email.SmtpConfig -> IO ()
-checkJobQueue connectionPool smtpConfig = do
+  awaitShutdown sharedWorkerState
+  putStrLn "Gracefully shutting down..."
+
+checkJobQueue :: SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
+checkJobQueue sharedWorkerState connectionPool smtpConfig = do
   checkAgain <- do
-    runRIO connectionPool do
-      Db.withDbConnection connectionPool \connection -> do
-        -- We need to make sure that we use the same transaction to open and
-        -- close the transaction, that's why the extra runRIO with one
-        -- specific connection is needed
-        runRIO connection do
-          Db.beginTransactionOr undefined
-          mJob <- Db.queryDbOr (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
+    -- False is the value returned if `runLimitedParallelJobs` early returns
+    -- instead running the provided do block
+    runLimitedParallelJobs False sharedWorkerState do
+      runRIO connectionPool do
+        Db.withDbConnection connectionPool \connection -> do
+          -- We need to make sure that we use the same transaction to open and
+          -- close the transaction, that's why the extra runRIO with one
+          -- specific connection is needed
+          runRIO connection do
+            Db.beginTransactionOr undefined
+            mJob <- Db.queryDbOr (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
 
-          case mJob of
-            Nothing -> do
-              liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
-              Db.commitTransactionOr undefined
-              pure False; -- Don't check the queue for more jobs
+            case mJob of
+              Nothing -> do
+                liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
+                Db.commitTransactionOr undefined
+                pure False; -- Don't check the queue for more jobs
 
-            Just (jobId, failedAttempts, rawJobDefinition) -> do
-              (mErrorMessage, updateJobStatement) <- do
-                case Aeson.fromJSON rawJobDefinition of
-                  Aeson.Error err -> do
-                    pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
+              Just (jobId, failedAttempts, rawJobDefinition) -> do
+                (mErrorMessage, updateJobStatement) <- do
+                  case Aeson.fromJSON rawJobDefinition of
+                    Aeson.Error err -> do
+                      pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
 
-                  Aeson.Success (workerJob :: WorkerJob) -> do
-                    eResult <- do
-                      let workerEnv = WorkerEnv{jobId, connectionPool, smtpConfig}
-                      Job.runJob workerEnv do
-                        Job.processJob workerJob
+                    Aeson.Success (workerJob :: WorkerJob) -> do
+                      eResult <- do
+                        let workerEnv = WorkerEnv{jobId, connectionPool, smtpConfig}
+                        Job.runJob workerEnv do
+                          Job.processJob workerJob
 
-                    pure $ case eResult of
-                      Right () -> (Nothing, moveToCompletedJobStatement)
-                      Left err ->
-                        case err of
-                          Job.NonRetryableError message ->
-                            (Just message, moveToFailedJobStatement)
-                          Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 ->
-                            (Just message, moveToFailedJobStatement)
-                          Job.RetryableError message->
-                            (Just message, returnJobToQueueStatement)
+                      pure $ case eResult of
+                        Right () -> (Nothing, moveToCompletedJobStatement)
+                        Left err ->
+                          case err of
+                            Job.NonRetryableError message ->
+                              (Just message, moveToFailedJobStatement)
+                            Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 ->
+                              (Just message, moveToFailedJobStatement)
+                            Job.RetryableError message->
+                              (Just message, returnJobToQueueStatement)
 
-              void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
-              Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
-              Db.commitTransactionOr undefined
-              pure True -- Do check the queue for more jobs
+                void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
+                Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
+                Db.commitTransactionOr undefined
+                pure True -- Do check the queue for more jobs
 
   when checkAgain do
-    checkJobQueue connectionPool smtpConfig
+    checkJobQueue sharedWorkerState connectionPool smtpConfig
   where
     checkJobQueueStatement =
       [maybeStatement|
