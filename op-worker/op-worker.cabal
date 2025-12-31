@@ -17,6 +17,7 @@ executable op-worker
     main-is:          Main.hs
     other-modules:    Op.Worker.Job
                     , Op.Worker.JobLogistics
+                    , Op.Worker.Jobs.Debug
                     , Op.Worker.Jobs.Email
     build-depends:    base ^>=4.19.2.0
                     , aeson

@@ -37,6 +37,7 @@ import           Op.Worker.JobLogistics              (SharedWorkerState,
                                                       initSharedWorkerState,
                                                       initiateShutDown,
                                                       runLimitedParallelJobs)
+import qualified Op.Worker.Jobs.Debug                as DebugJob
 import qualified Op.Worker.Jobs.Email                as Email
 
 failedAttemptsLimit :: Int32
@@ -44,36 +45,45 @@ failedAttemptsLimit = 5
 
 main :: IO ()
 main = do
-  connectionPool <- do
-    dbSettings <- getDbConnectionSettings >>= either die pure
-    Db.createPool dbSettings
+  withLogFunction $ \logFunc -> do
+    connectionPool <- do
+      dbSettings <- getDbConnectionSettings >>= either die pure
+      Db.createPool dbSettings
 
-  smtpConfig <- getSmtpSettings >>= either die pure
+    smtpConfig <- getSmtpSettings >>= either die pure
 
-  -- We need a dedicated DB connection for listening for pg_notify. It can't go
-  -- through PG Bouncer or connection pools or the connection will drop while
-  -- we're listening and we won't get any notifications
-  listenDbSettings <- getListenDbConnectionSettings >>= either die pure
+    -- We need a dedicated DB connection for listening for pg_notify. It can't go
+    -- through PG Bouncer or connection pools or the connection will drop while
+    -- we're listening and we won't get any notifications
+    listenDbSettings <- getListenDbConnectionSettings >>= either die pure
 
-  -- Initiate a shard state that keeps track of how many parallel jobs are
-  -- running and if the worker is shutting down
-  sharedWorkerState <- initSharedWorkerState
+    -- Initiate a shard state that keeps track of how many parallel jobs are
+    -- running and if the worker is shutting down
+    sharedWorkerState <- initSharedWorkerState
 
-  -- Tell the worker to stop accepting new jobs on sigINT
-  void $ installHandler sigINT (Catch (initiateShutDown sharedWorkerState)) Nothing
+    -- Tell the worker to stop accepting new jobs on sigINT
+    void $ installHandler sigINT (Catch (initiateShutDown sharedWorkerState)) Nothing
 
-  connection <- acquire listenDbSettings >>= either (die . show) pure
-  Notifications.listen connection (Notifications.toPgIdentifier "new_worker_job")
+    connection <- acquire listenDbSettings >>= either (die . show) pure
+    Notifications.listen connection (Notifications.toPgIdentifier "new_worker_job")
 
-  do
-    let handler _channel _payload = checkJobQueue sharedWorkerState connectionPool smtpConfig
-    void $ forkIO $ Notifications.waitForNotifications handler connection
+    do
+      let handler _channel _payload = checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
+      void $ forkIO $ Notifications.waitForNotifications handler connection
 
-  awaitShutdown sharedWorkerState
-  putStrLn "Gracefully shutting down..."
+    awaitShutdown sharedWorkerState
+    putStrLn "Gracefully shutting down..."
 
-checkJobQueue :: SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
-checkJobQueue sharedWorkerState connectionPool smtpConfig = do
+withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
+withLogFunction action = do
+  logOptions <- setLogUseTime True
+                  . setLogUseLoc True
+                  . setLogMinLevel LevelDebug
+                  <$> logOptionsHandle stderr True
+  withLogFunc logOptions action
+
+checkJobQueue :: LogFunc -> SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
+checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
   checkAgain <- do
     -- False is the value returned if `runLimitedParallelJobs` early returns
     -- instead running the provided do block
@@ -101,7 +111,7 @@ checkJobQueue sharedWorkerState connectionPool smtpConfig = do
 
                     Aeson.Success (workerJob :: WorkerJob) -> do
                       eResult <- do
-                        let workerEnv = WorkerEnv{jobId, connectionPool, smtpConfig}
+                        let workerEnv = WorkerEnv{jobId, connectionPool, smtpConfig, logFunc}
                         Job.runJob workerEnv do
                           Job.processJob workerJob
 
@@ -122,7 +132,7 @@ checkJobQueue sharedWorkerState connectionPool smtpConfig = do
                 pure True -- Do check the queue for more jobs
 
   when checkAgain do
-    checkJobQueue sharedWorkerState connectionPool smtpConfig
+    checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
   where
     checkJobQueueStatement =
       [maybeStatement|
@@ -274,7 +284,11 @@ data WorkerEnv = WorkerEnv
   { connectionPool :: Pool.Pool Connection
   , jobId          :: UUID.UUID
   , smtpConfig     :: Email.SmtpConfig
+  , logFunc        :: LogFunc
   }
+
+instance HasLogFunc WorkerEnv where
+  logFuncL = lens logFunc (\env f -> env { logFunc = f })
 
 instance Email.HasSmtpConfig WorkerEnv where
   getSmtpConfig = smtpConfig
@@ -286,14 +300,14 @@ instance Db.HasDbConnection WorkerEnv where
 
 data WorkerJob
   = SendEmail Email.SendEmailJob
-  | Foo -- note to future me, if there's only one constructor then TH omits the WorkerJob layer when doing the JSON transformation
+  | Debug DebugJob.DebugJob
   deriving (Generic, Show)
 
 instance Job.JobDefinition WorkerEnv WorkerJob where
   processJob wj =
     case wj of
       SendEmail sendEmail -> Job.processJob sendEmail
-      Foo                 -> undefined
+      Debug debugJob      -> Job.processJob debugJob
 
 instance Aeson.ToJSON WorkerJob where
   toJSON = Aeson.genericToJSON defaultOptions
