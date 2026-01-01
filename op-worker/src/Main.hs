@@ -81,8 +81,6 @@ withLogFunction action = do
                   <$> logOptionsHandle stderr True
   withLogFunc logOptions action
 
--- checkJobQueue :: LogFunc -> SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
--- checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
 checkJobQueue :: RIO WorkerEnv ()
 checkJobQueue = do
   checkAgain <- do
@@ -105,13 +103,13 @@ claimJobWithTransaction processJob = do
   env <- ask
   Db.withDbConnection env \connection -> do
     runRIO env do
-      Db.beginTransactionOr connection undefined
+      Db.beginTransactionOr connection handleDbError
       mJob <- Db.queryDbOr' connection (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
 
       case mJob of
         Nothing -> do
           logDebug [i|No more jobs, going back to sleep|]
-          Db.commitTransactionOr connection undefined
+          Db.commitTransactionOr connection handleDbError
           pure False; -- Don't check the queue for more jobs
 
         Just (jobId, failedAttempts, rawJobDefinition) -> do
@@ -138,8 +136,8 @@ claimJobWithTransaction processJob = do
 
           for_ mErrorMessage logError
 
-          Db.queryDbOr' connection undefined (Hasql.statement jobId updateJobStatement)
-          Db.commitTransactionOr connection undefined
+          Db.queryDbOr' connection handleDbError (Hasql.statement jobId updateJobStatement)
+          Db.commitTransactionOr connection handleDbError
 
           pure True -- Do check the queue for more jobs
   where
@@ -333,3 +331,5 @@ instance Aeson.FromJSON WorkerJob where
     { sumEncoding = TaggedObject "type" "payload"
     }
 
+handleDbError :: Hasql.SessionError -> a
+handleDbError err = error [i|Unexpected database error: #{err}|]
