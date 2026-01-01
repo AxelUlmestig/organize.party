@@ -1,5 +1,6 @@
 module Op.Db (
   queryDbOr,
+  queryDbOr',
   printAndThrow500,
   createPool,
   beginTransactionOr,
@@ -7,6 +8,7 @@ module Op.Db (
   rollbackTransactionOr,
   HasDbConnection(..),
   Hasql.statement,
+  module Hasql.TH
 ) where
 
 import           Control.Monad.Except     (MonadError (..))
@@ -18,14 +20,14 @@ import           Hasql.Connection         (Connection)
 import qualified Hasql.Connection         as Hasql
 import           Hasql.Connection.Setting (Setting)
 import qualified Hasql.Session            as Hasql
+import           Hasql.TH
 import           Servant                  (ServerError (..), err500)
+
 
 class HasDbConnection a where
     withDbConnection :: MonadIO m => a -> (Connection -> IO b) -> m b
-    -- getConnectionPool :: a -> Pool Connection
 
 instance HasDbConnection (Pool Connection) where
-    -- getConnectionPool = id
     withDbConnection connectionPool f = do
       liftIO $ Pool.withResource connectionPool f
 
@@ -40,10 +42,6 @@ queryDbOr
   -> Hasql.Session a
   -> m a
 queryDbOr onErr statement = do
-  -- connectionPool <- asks getConnectionPool
-  --
-  -- eResult <- liftIO $ Pool.withResource connectionPool $ \connection ->
-  --    Hasql.run statement connection
   env <- ask
   eResult <- withDbConnection env \connection -> do
     Hasql.run statement connection
@@ -52,26 +50,43 @@ queryDbOr onErr statement = do
     Left err    -> onErr err
     Right event -> pure event
 
+queryDbOr'
+  :: MonadIO m
+  => Connection
+  -> (Hasql.SessionError -> m a)
+  -> Hasql.Session a
+  -> m a
+queryDbOr' connection onErr statement = do
+  eResult <- liftIO do
+    Hasql.run statement connection
+
+  case eResult of
+    Left err    -> onErr err
+    Right event -> pure event
+
 beginTransactionOr
-  :: (HasDbConnection env, MonadIO m, MonadReader env m)
-  => (Hasql.SessionError -> m ())
+  :: MonadIO m
+  => Connection
+  -> (Hasql.SessionError -> m ())
   -> m ()
-beginTransactionOr onErr = do
-  queryDbOr onErr (Hasql.sql "begin")
+beginTransactionOr connection onErr = do
+  queryDbOr' connection onErr (Hasql.sql "begin")
 
 commitTransactionOr
-  :: (HasDbConnection env, MonadIO m, MonadReader env m)
-  => (Hasql.SessionError -> m ())
+  :: MonadIO m
+  => Connection
+  -> (Hasql.SessionError -> m ())
   -> m ()
-commitTransactionOr onErr = do
-  queryDbOr onErr (Hasql.sql "commit")
+commitTransactionOr connection onErr = do
+  queryDbOr' connection onErr (Hasql.sql "commit")
 
 rollbackTransactionOr
-  :: (HasDbConnection env, MonadIO m, MonadReader env m)
-  => (Hasql.SessionError -> m ())
+  :: MonadIO m
+  => Connection
+  -> (Hasql.SessionError -> m ())
   -> m ()
-rollbackTransactionOr onErr = do
-  queryDbOr onErr (Hasql.sql "rollback")
+rollbackTransactionOr connection onErr = do
+  queryDbOr' connection onErr (Hasql.sql "rollback")
 
 printAndThrow500
   :: (MonadError ServerError m, MonadIO m)

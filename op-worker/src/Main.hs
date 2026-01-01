@@ -11,17 +11,12 @@ import           Data.ByteString.UTF8                as BSU
 import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
 import qualified Data.Text                           as Text
-import qualified Data.UUID                           as UUID
 import           GHC.Generics
 import           Hasql.Connection                    (Connection, acquire)
 import qualified Hasql.Connection.Setting            as ConnectionSetting
 import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
 import qualified Hasql.Notifications                 as Notifications
 import qualified Hasql.Session                       as Hasql
-import           Hasql.Statement                     (Statement)
-import           Hasql.TH                            (maybeStatement,
-                                                      resultlessStatement,
-                                                      singletonStatement)
 import qualified Op.Db                               as Db
 import           Prelude                             (putStrLn)
 import           RIO
@@ -29,7 +24,6 @@ import           System.Environment                  (lookupEnv)
 import           System.Exit                         (die)
 import           System.Posix.Signals                (Handler (..),
                                                       installHandler, sigINT)
-import           Text.Read                           (readMaybe)
 
 import qualified Op.Worker.Job                       as Job
 import           Op.Worker.JobLogistics              (SharedWorkerState,
@@ -52,11 +46,6 @@ main = do
 
     smtpConfig <- getSmtpSettings >>= either die pure
 
-    -- We need a dedicated DB connection for listening for pg_notify. It can't go
-    -- through PG Bouncer or connection pools or the connection will drop while
-    -- we're listening and we won't get any notifications
-    listenDbSettings <- getListenDbConnectionSettings >>= either die pure
-
     -- Initiate a shard state that keeps track of how many parallel jobs are
     -- running and if the worker is shutting down
     sharedWorkerState <- initSharedWorkerState
@@ -64,12 +53,21 @@ main = do
     -- Tell the worker to stop accepting new jobs on sigINT
     void $ installHandler sigINT (Catch (initiateShutDown sharedWorkerState)) Nothing
 
-    connection <- acquire listenDbSettings >>= either (die . show) pure
-    Notifications.listen connection (Notifications.toPgIdentifier "new_worker_job")
+    listenConnection <- do
+      -- We need a dedicated DB connection for listening for pg_notify. It can't go
+      -- through PG Bouncer or connection pools or the connection will drop while
+      -- we're listening and we won't get any notifications
+      listenDbSettings <- getListenDbConnectionSettings >>= either die pure
+      acquire listenDbSettings >>= either (die . show) pure
+
+    Notifications.listen listenConnection (Notifications.toPgIdentifier "new_worker_job")
+
+    let workerEnv = WorkerEnv{..}
 
     do
-      let handler _channel _payload = checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
-      void $ forkIO $ Notifications.waitForNotifications handler connection
+      -- let handler _channel _payload = checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
+      let handler _channel _payload = runRIO workerEnv checkJobQueue
+      void $ forkIO $ Notifications.waitForNotifications handler listenConnection
 
     awaitShutdown sharedWorkerState
     putStrLn "Gracefully shutting down..."
@@ -82,60 +80,68 @@ withLogFunction action = do
                   <$> logOptionsHandle stderr True
   withLogFunc logOptions action
 
-checkJobQueue :: LogFunc -> SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
-checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
+-- checkJobQueue :: LogFunc -> SharedWorkerState -> Pool.Pool Connection -> Email.SmtpConfig -> IO ()
+-- checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
+checkJobQueue :: RIO WorkerEnv ()
+checkJobQueue = do
   checkAgain <- do
+    sharedWorkerState <- asks sharedWorkerState
+
     -- False is the value returned if `runLimitedParallelJobs` early returns
     -- instead running the provided do block
     runLimitedParallelJobs False sharedWorkerState do
-      runRIO connectionPool do
-        Db.withDbConnection connectionPool \connection -> do
-          -- We need to make sure that we use the same transaction to open and
-          -- close the transaction, that's why the extra runRIO with one
-          -- specific connection is needed
-          runRIO connection do
-            Db.beginTransactionOr undefined
-            mJob <- Db.queryDbOr (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
-
-            case mJob of
-              Nothing -> do
-                liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
-                Db.commitTransactionOr undefined
-                pure False; -- Don't check the queue for more jobs
-
-              Just (jobId, failedAttempts, rawJobDefinition) -> do
-                (mErrorMessage, updateJobStatement) <- do
-                  case Aeson.fromJSON rawJobDefinition of
-                    Aeson.Error err -> do
-                      pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
-
-                    Aeson.Success (workerJob :: WorkerJob) -> do
-                      eResult <- do
-                        let workerEnv = WorkerEnv{jobId, connectionPool, smtpConfig, logFunc}
-                        Job.runJob workerEnv do
-                          Job.processJob workerJob
-
-                      pure $ case eResult of
-                        Right () -> (Nothing, moveToCompletedJobStatement)
-                        Left err ->
-                          case err of
-                            Job.NonRetryableError message ->
-                              (Just message, moveToFailedJobStatement)
-                            Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 ->
-                              (Just message, moveToFailedJobStatement)
-                            Job.RetryableError message->
-                              (Just message, returnJobToQueueStatement)
-
-                void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
-                Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
-                Db.commitTransactionOr undefined
-                pure True -- Do check the queue for more jobs
+      claimJobWithTransaction \workerJob -> do
+        Job.processJob workerJob
 
   when checkAgain do
-    checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
+    checkJobQueue
+
+claimJobWithTransaction
+  :: (MonadIO m, Db.HasDbConnection env, MonadReader env m)
+  => (WorkerJob -> Job.Job env ())
+  -> m Bool
+claimJobWithTransaction processJob = do
+  env <- ask
+  Db.withDbConnection env \connection -> do
+    runRIO env do
+      Db.beginTransactionOr connection undefined
+      mJob <- Db.queryDbOr' connection (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
+
+      case mJob of
+        Nothing -> do
+          liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
+          Db.commitTransactionOr connection undefined
+          pure False; -- Don't check the queue for more jobs
+
+        Just (jobId, failedAttempts, rawJobDefinition) -> do
+          (mErrorMessage, updateJobStatement) <- do
+            case Aeson.fromJSON rawJobDefinition of
+              Aeson.Error err -> do
+                pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
+
+              Aeson.Success (workerJob :: WorkerJob) -> do
+                eResult <- do
+                  Job.runJob env do
+                    processJob workerJob
+
+                pure $ case eResult of
+                  Right () -> (Nothing, moveToCompletedJobStatement)
+                  Left err ->
+                    case err of
+                      Job.NonRetryableError message ->
+                        (Just message, moveToFailedJobStatement)
+                      Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 ->
+                        (Just message, moveToFailedJobStatement)
+                      Job.RetryableError message->
+                        (Just message, returnJobToQueueStatement)
+
+          void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
+          Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
+          Db.commitTransactionOr connection undefined
+          pure True -- Do check the queue for more jobs
   where
     checkJobQueueStatement =
-      [maybeStatement|
+      [Db.maybeStatement|
         with jobs as (
           delete from queued_worker_jobs
           where id = (
@@ -168,7 +174,7 @@ checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
       |]
 
     moveToCompletedJobStatement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         with
           jobs as (
             delete from in_progress_worker_jobs
@@ -191,7 +197,7 @@ checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
       |]
 
     moveToFailedJobStatement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         with
           jobs as (
             delete from in_progress_worker_jobs
@@ -214,7 +220,7 @@ checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig = do
       |]
 
     returnJobToQueueStatement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         with
           jobs as (
             delete from in_progress_worker_jobs
@@ -281,10 +287,11 @@ maybeToEither _ (Just a)  = Right a
 maybeToEither err Nothing = Left err
 
 data WorkerEnv = WorkerEnv
-  { connectionPool :: Pool.Pool Connection
-  , jobId          :: UUID.UUID
-  , smtpConfig     :: Email.SmtpConfig
-  , logFunc        :: LogFunc
+  { connectionPool    :: Pool.Pool Connection
+  -- , jobId          :: UUID.UUID
+  , smtpConfig        :: Email.SmtpConfig
+  , logFunc           :: LogFunc
+  , sharedWorkerState :: SharedWorkerState
   }
 
 instance HasLogFunc WorkerEnv where
