@@ -4,13 +4,11 @@
 
 module Main where
 
-import           Control.Concurrent                  (forkIO)
 import qualified Data.Aeson                          as Aeson
 import           Data.Aeson.TH
 import           Data.ByteString.UTF8                as BSU
 import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
-import qualified Data.Text                           as Text
 import           GHC.Generics
 import           Hasql.Connection                    (Connection, acquire)
 import qualified Hasql.Connection.Setting            as ConnectionSetting
@@ -18,12 +16,12 @@ import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnect
 import qualified Hasql.Notifications                 as Notifications
 import qualified Hasql.Session                       as Hasql
 import qualified Op.Db                               as Db
-import           Prelude                             (putStrLn)
 import           RIO
 import           System.Environment                  (lookupEnv)
 import           System.Exit                         (die)
 import           System.Posix.Signals                (Handler (..),
                                                       installHandler, sigINT)
+import           UnliftIO.Concurrent                 (forkIO)
 
 import qualified Op.Worker.Job                       as Job
 import           Op.Worker.JobLogistics              (SharedWorkerState,
@@ -65,12 +63,15 @@ main = do
     let workerEnv = WorkerEnv{..}
 
     do
-      -- let handler _channel _payload = checkJobQueue logFunc sharedWorkerState connectionPool smtpConfig
       let handler _channel _payload = runRIO workerEnv checkJobQueue
       void $ forkIO $ Notifications.waitForNotifications handler listenConnection
 
-    awaitShutdown sharedWorkerState
-    putStrLn "Gracefully shutting down..."
+    runRIO workerEnv do
+      logInfo "Ready to process jobs"
+      void $ forkIO checkJobQueue
+
+      awaitShutdown sharedWorkerState
+      logInfo "Gracefully shutting down..."
 
 withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
 withLogFunction action = do
@@ -97,7 +98,7 @@ checkJobQueue = do
     checkJobQueue
 
 claimJobWithTransaction
-  :: (MonadIO m, Db.HasDbConnection env, MonadReader env m)
+  :: (HasLogFunc env, MonadIO m, Db.HasDbConnection env, MonadReader env m)
   => (WorkerJob -> Job.Job env ())
   -> m Bool
 claimJobWithTransaction processJob = do
@@ -109,7 +110,7 @@ claimJobWithTransaction processJob = do
 
       case mJob of
         Nothing -> do
-          liftIO $ putStrLn [i|Didn't find any job, going back to sleep|]
+          logInfo [i|Didn't find any job, going back to sleep|]
           Db.commitTransactionOr connection undefined
           pure False; -- Don't check the queue for more jobs
 
@@ -135,9 +136,11 @@ claimJobWithTransaction processJob = do
                       Job.RetryableError message->
                         (Just message, returnJobToQueueStatement)
 
-          void $ liftIO $ for mErrorMessage (putStrLn . Text.unpack)
+          for_ mErrorMessage logError
+
           Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
           Db.commitTransactionOr connection undefined
+
           pure True -- Do check the queue for more jobs
   where
     checkJobQueueStatement =

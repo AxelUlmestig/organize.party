@@ -9,8 +9,6 @@ module Op.Worker.JobLogistics (
 import qualified Control.Concurrent.STM as STM
 import           RIO
 
-import           Op.Worker.Job          (Job, finallyJ)
-
 maxNumberOfParallelJobs :: Int
 maxNumberOfParallelJobs = 5
 
@@ -37,7 +35,7 @@ initiateShutDown (SharedWorkerState tvar) = do
 
 -- | This will block until the worker is stopping and no jobs are in progress.
 -- Every time the shared worker state is updated it will check again
-awaitShutdown :: SharedWorkerState -> IO ()
+awaitShutdown :: MonadIO m => SharedWorkerState -> m ()
 awaitShutdown (SharedWorkerState tvar) = do
   atomically $ do
     state <- readTVar tvar
