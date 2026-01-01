@@ -119,7 +119,13 @@ claimJobWithTransaction processJob = do
                 pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
 
               Aeson.Success (workerJob :: WorkerJob) -> do
-                eResult <- do
+                let onErr exception = pure $ Left $ Job.RetryableError
+                        [i|
+                        Unexpected exception when processing job: #{exception}
+
+                        Job context: #{Aeson.encode workerJob}
+                        |]
+                eResult <- handleAny onErr do
                   Job.runJob env do
                     processJob workerJob
 
@@ -129,8 +135,14 @@ claimJobWithTransaction processJob = do
                     case err of
                       Job.NonRetryableError message ->
                         (Just message, moveToFailedJobStatement)
-                      Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 ->
-                        (Just message, moveToFailedJobStatement)
+                      Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
+                        let newMessage =
+                              [i|
+                              Giving up after #{failedAttemptsLimit} failed attempts
+
+                              Error: #{textDisplay message}
+                              |]
+                        (Just newMessage, moveToFailedJobStatement)
                       Job.RetryableError message->
                         (Just message, returnJobToQueueStatement)
 
