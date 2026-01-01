@@ -63,7 +63,7 @@ main = do
     let workerEnv = WorkerEnv{..}
 
     do
-      let handler _channel _payload = runRIO workerEnv checkJobQueue
+      let handler _channel _payload = void $ forkIO $ runRIO workerEnv checkJobQueue
       void $ forkIO $ Notifications.waitForNotifications handler listenConnection
 
     runRIO workerEnv do
@@ -110,7 +110,7 @@ claimJobWithTransaction processJob = do
 
       case mJob of
         Nothing -> do
-          logInfo [i|Didn't find any job, going back to sleep|]
+          logDebug [i|No more jobs, going back to sleep|]
           Db.commitTransactionOr connection undefined
           pure False; -- Don't check the queue for more jobs
 
