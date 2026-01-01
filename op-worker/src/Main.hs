@@ -138,7 +138,7 @@ claimJobWithTransaction processJob = do
 
           for_ mErrorMessage logError
 
-          Db.queryDbOr undefined (Hasql.statement jobId updateJobStatement)
+          Db.queryDbOr' connection undefined (Hasql.statement jobId updateJobStatement)
           Db.commitTransactionOr connection undefined
 
           pure True -- Do check the queue for more jobs
@@ -188,12 +188,14 @@ claimJobWithTransaction processJob = do
         insert into completed_worker_jobs (
           id,
           run_at,
+          picked_up_at,
           failed_attempts,
           definition
         )
         select
           id,
           run_at,
+          picked_up_at,
           failed_attempts,
           definition
         from jobs
@@ -211,12 +213,14 @@ claimJobWithTransaction processJob = do
         insert into failed_worker_jobs (
           id,
           run_at,
+          picked_up_at,
           failed_attempts,
           definition
         )
         select
           id,
           run_at,
+          picked_up_at,
           failed_attempts + 1,
           definition
         from jobs
