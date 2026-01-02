@@ -4,8 +4,10 @@
 
 module Main where
 
+import           Control.Concurrent.Async.Every      (every)
 import qualified Data.Aeson                          as Aeson
 import           Data.Aeson.TH
+import qualified Data.ByteString.Lazy                as LBS
 import           Data.ByteString.UTF8                as BSU
 import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
@@ -35,6 +37,9 @@ import qualified Op.Worker.Jobs.Email                as Email
 failedAttemptsLimit :: Int32
 failedAttemptsLimit = 5
 
+microsecondsBetweenJobQueuePoll :: Int
+microsecondsBetweenJobQueuePoll = 10 * 1000 * 1000
+
 main :: IO ()
 main = do
   withLogFunction $ \logFunc -> do
@@ -61,17 +66,33 @@ main = do
     Notifications.listen listenConnection (Notifications.toPgIdentifier "new_worker_job")
 
     let workerEnv = WorkerEnv{..}
-
-    do
-      let handler _channel _payload = void $ forkIO $ runRIO workerEnv checkJobQueue
-      void $ forkIO $ Notifications.waitForNotifications handler listenConnection
+    void $ forkIO $ Notifications.waitForNotifications (handler workerEnv) listenConnection
 
     runRIO workerEnv do
       logInfo "Ready to process jobs"
-      void $ forkIO checkJobQueue
 
+      -- poll the job queue every 10 seconds (with 0 time until the first check)
+      void $ liftIO $ every microsecondsBetweenJobQueuePoll (Just 0) do
+        runRIO workerEnv do
+          checkJobQueue
+
+      -- block here on shutdown until no more jobs are in progress
       awaitShutdown sharedWorkerState
       logInfo "Gracefully shutting down..."
+    where
+      handler workerEnv _channel payload = do
+        void $ forkIO do
+          runRIO workerEnv do
+            case Aeson.decode (LBS.fromStrict payload) of
+              Nothing                                      -> do
+                logError [i|Unexpected payload in db 'new_worker_job' notification: #{payload}|]
+              Just (DbNotification microsecondsUntilRunAt) -> do
+                -- just rely on the polling if the run_at is too far into the future
+                when (microsecondsUntilRunAt < 2 * microsecondsBetweenJobQueuePoll) do
+                  when (microsecondsUntilRunAt > 0) do
+                    threadDelay microsecondsUntilRunAt
+
+                  checkJobQueue
 
 withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
 withLogFunction action = do
@@ -345,3 +366,9 @@ instance Aeson.FromJSON WorkerJob where
 
 handleDbError :: Hasql.SessionError -> a
 handleDbError err = error [i|Unexpected database error: #{err}|]
+
+newtype DbNotification =
+  DbNotification { microsecondsUntilRunAt :: Int }
+  deriving (Generic, Show)
+
+instance Aeson.FromJSON DbNotification
