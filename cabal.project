@@ -1,6 +1,6 @@
 packages:
   op-db
-  op-server
+  op-webapi
   op-worker
 
 program-options

@@ -1,4 +1,4 @@
-name:                op-server
+name:                op-webapi
 version:             0.1.0.0
 -- synopsis:
 -- description:
@@ -12,7 +12,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 -- extra-source-files:  README.md
 
-executable op-server
+executable op-webapi
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Email
