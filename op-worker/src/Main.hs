@@ -96,11 +96,19 @@ main = do
 
 withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
 withLogFunction action = do
+  logLevel <- getLogLevelFromEnv
   logOptions <- setLogUseTime True
                   . setLogUseLoc True
-                  . setLogMinLevel LevelDebug
+                  . setLogMinLevel logLevel
                   <$> logOptionsHandle stderr True
   withLogFunc logOptions action
+  where
+    getLogLevelFromEnv = do
+      mLogLevel <- liftIO $ lookupEnv "LOG_LEVEL" <&> fmap readMaybe
+      case mLogLevel of
+        Nothing              -> pure LevelInfo
+        Just Nothing         -> error "Couldn't parse LOG_LEVEL argument"
+        Just (Just logLevel) -> pure logLevel
 
 checkJobQueue :: RIO WorkerEnv ()
 checkJobQueue = do
