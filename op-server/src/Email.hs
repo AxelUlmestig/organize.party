@@ -108,7 +108,7 @@ sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId}
       [resultlessStatement|
         with
           inserted as (
-            insert into emails (
+            insert into email.emails (
               recipient_email,
               recipient_name,
               subject,
@@ -123,7 +123,7 @@ sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId}
             returning id
           )
 
-        insert into email_attachments (
+        insert into email.email_attachments (
           email_id,
           content_type,
           file_name,
@@ -161,7 +161,7 @@ sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId
       [resultlessStatement|
         with
           inserted as (
-            insert into emails (
+            insert into email.emails (
               recipient_email,
               recipient_name,
               subject,
@@ -176,7 +176,7 @@ sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId
             returning id
           )
 
-        insert into email_attachments (
+        insert into email.email_attachments (
           email_id,
           content_type,
           file_name,
@@ -224,7 +224,7 @@ sendCommentNotifications
   where
     statement =
       [resultlessStatement|
-        insert into emails (
+        insert into email.emails (
           recipient_email,
           recipient_name,
           subject,
@@ -290,7 +290,7 @@ sendForgetMeConfirmation hostUrl forgetMeRequestId email = do
       |]
     statement =
       [resultlessStatement|
-        insert into emails (
+        insert into email.emails (
           recipient_email,
           subject,
           body

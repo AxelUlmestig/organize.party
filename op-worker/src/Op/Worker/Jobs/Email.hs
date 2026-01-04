@@ -99,7 +99,7 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
                 recipient_name::text?,
                 subject::text,
                 body::text
-              from emails
+              from email.emails
               where id = $1::uuid
             |]
 
@@ -112,7 +112,7 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
                   content_type::text,
                   file_name::text,
                   file_contents::bytea
-                from email_attachments
+                from email.email_attachments
                 where email_id = $1::uuid
               |]
 

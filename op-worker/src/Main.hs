@@ -177,10 +177,10 @@ claimJobWithTransaction processJob = do
     checkJobQueueStatement =
       [Db.maybeStatement|
         with jobs as (
-          delete from queued_worker_jobs
+          delete from job_queue.queued_worker_jobs
           where id = (
             select id
-            from queued_worker_jobs
+            from job_queue.queued_worker_jobs
             where run_at <= now()
             order by run_at asc, id
             limit 1
@@ -189,7 +189,7 @@ claimJobWithTransaction processJob = do
           returning *
         )
 
-        insert into in_progress_worker_jobs (
+        insert into job_queue.in_progress_worker_jobs (
           id,
           run_at,
           failed_attempts,
@@ -211,12 +211,12 @@ claimJobWithTransaction processJob = do
       [Db.resultlessStatement|
         with
           jobs as (
-            delete from in_progress_worker_jobs
+            delete from job_queue.in_progress_worker_jobs
             where id = $1::uuid
             returning *
           )
 
-        insert into completed_worker_jobs (
+        insert into job_queue.completed_worker_jobs (
           id,
           run_at,
           picked_up_at,
@@ -236,12 +236,12 @@ claimJobWithTransaction processJob = do
       [Db.resultlessStatement|
         with
           jobs as (
-            delete from in_progress_worker_jobs
+            delete from job_queue.in_progress_worker_jobs
             where id = $1::uuid
             returning *
           )
 
-        insert into failed_worker_jobs (
+        insert into job_queue.failed_worker_jobs (
           id,
           run_at,
           picked_up_at,
@@ -261,12 +261,12 @@ claimJobWithTransaction processJob = do
       [Db.resultlessStatement|
         with
           jobs as (
-            delete from in_progress_worker_jobs
+            delete from job_queue.in_progress_worker_jobs
             where id = $1::uuid
             returning *
           )
 
-        insert into queued_worker_jobs (
+        insert into job_queue.queued_worker_jobs (
           id,
           run_at,
           failed_attempts,
