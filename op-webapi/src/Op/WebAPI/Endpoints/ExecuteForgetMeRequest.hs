@@ -1,37 +1,17 @@
-module Endpoints.ExecuteForgetMeRequest (executeForgetMeRequest) where
+{-# LANGUAGE QuasiQuotes #-}
 
-import           Control.Concurrent      (forkIO)
-import           Control.Monad           (forM_, void, when)
-import           Control.Monad.Except    (MonadError (throwError))
-import           Control.Monad.IO.Class  (MonadIO, liftIO)
-import           Control.Monad.Reader    (MonadReader, asks)
-import           Data.Profunctor         (dimap, lmap)
-import           Data.String.Interpolate (i)
-import qualified Data.Text               as Text
-import           Data.Types.Injective    (to)
-import           Data.UUID               (UUID)
-import           Email                   (CommentNotificationRecipient (..),
-                                          sendEmailInvitation)
-import           Endpoints.GetEvent      (getEvent)
-import           Hasql.Connection        (Connection)
-import           Hasql.Session           (CommandError (ResultError),
-                                          ResultError (ServerError),
-                                          SessionError (QueryError))
-import qualified Hasql.Session           as Hasql
-import           Hasql.Statement         (Statement)
-import           Hasql.TH                (maybeStatement, resultlessStatement,
-                                          singletonStatement, vectorStatement)
-import qualified Op.Db                   as Db
-import           Servant                 (ServerError (errBody), err400, err404,
-                                          err500)
+module Op.WebAPI.Endpoints.ExecuteForgetMeRequest (executeForgetMeRequest) where
 
-import qualified Email
-import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
-import qualified Types.Attendee          as Attendee
-import           Types.Attendee          (Attendee, writeStatus)
-import           Types.Event             (Event)
-import           Types.ForgetMeRequest   (ExecuteForgetMeResult (..),
-                                          InitForgetMeInput (..))
+import           Control.Monad.Except            (MonadError (throwError))
+import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.Reader            (MonadReader)
+import           Data.UUID                       (UUID)
+import qualified Hasql.Session                   as Hasql
+import           Servant                         (ServerError (errBody), err404)
+
+import qualified Op.Db                           as Db
+import           Op.WebAPI.Types.AppEnv          (AppEnv (..))
+import           Op.WebAPI.Types.ForgetMeRequest (ExecuteForgetMeResult (..))
 
 executeForgetMeRequest ::
   (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
@@ -47,7 +27,7 @@ executeForgetMeRequest forgetMeRequestId = do
   where
     session = do
       mDeletedAt <- Hasql.statement forgetMeRequestId
-          [maybeStatement|
+          [Db.maybeStatement|
             select
               email::text?,
               deleted_at::timestamptz?
@@ -59,9 +39,10 @@ executeForgetMeRequest forgetMeRequestId = do
       case mDeletedAt of
         Nothing -> pure Nothing
         Just (Nothing, Just deletedAt) -> pure $ Just deletedAt
+        Just (Nothing, Nothing) -> error "Impossible: constraint prevents both from being null at the same time"
         Just (Just email, _) -> do
           Hasql.statement (email, forgetMeRequestId)
-            [singletonStatement|
+            [Db.singletonStatement|
               with
                 attendee_ids as (
                   update attendees set

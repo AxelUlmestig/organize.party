@@ -1,62 +1,47 @@
 {-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TypeOperators         #-}
 
 module Main where
 
-import           Control.Monad.IO.Class              (liftIO)
-import           Control.Monad.Trans.Reader          (ReaderT (..))
-import qualified Data.ByteString                     as BS
-import qualified Data.ByteString.Lazy                as LBS
-import           Data.ByteString.UTF8                as BSU
-import           Data.Int                            (Int64)
-import qualified Data.Pool                           as Pool
-import           Data.String.Interpolate             (i)
-import           Data.Text                           (Text, pack)
-import           Data.UUID                           (UUID)
-import           Hasql.Connection                    (Connection, acquire)
-import qualified Hasql.Connection.Setting            as ConnectionSetting
-import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
-import qualified Hasql.Session                       as Hasql
-import           Hasql.Statement                     (Statement)
-import           Hasql.TH                            (maybeStatement,
-                                                      resultlessStatement,
-                                                      singletonStatement)
-import           Network.HTTP.Media                  ((//), (/:))
-import           Network.Wai.Handler.Warp            (run)
-import           Network.Wai.Middleware.Cors         (simpleCors)
+import           Control.Monad.Trans.Reader                 (ReaderT (..))
+import           Data.ByteString.UTF8                       as BSU
+import           Data.String.Interpolate                    (i)
+import           Data.UUID                                  (UUID)
+import qualified Hasql.Connection.Setting                   as ConnectionSetting
+import qualified Hasql.Connection.Setting.Connection        as ConnectionSettingConnection
+import           Network.Wai.Handler.Warp                   (run)
+import           Network.Wai.Middleware.Cors                (simpleCors)
 import           Servant
-import           Servant.API
-import           System.Environment                  (lookupEnv)
-import           System.Exit                         (die)
-import           Text.Read                           (readMaybe)
+import           System.Environment                         (lookupEnv)
+import           System.Exit                                (die)
+import           Text.Read                                  (readMaybe)
 
-import qualified Email
-import qualified Endpoints.Attend
-import qualified Endpoints.Comment
-import qualified Endpoints.CreateEvent
-import qualified Endpoints.EditEvent
-import qualified Endpoints.ExecuteForgetMeRequest
-import qualified Endpoints.GetEvent
-import qualified Endpoints.InitForgetMeRequest
-import qualified Endpoints.Unsubscribe
-import qualified Endpoints.ViewForgetMeRequest
-import           Html                                (HTML, RawHtml, eventPage,
-                                                      frontPage)
-import           Types.AppEnv                        (AppEnv (..),
-                                                      SmtpConfig (..))
-import           Types.Attendee                      (Attendee)
-import           Types.AttendInput                   (AttendInput)
-import           Types.CommentInput                  (CommentInput)
-import           Types.CreateEventInput              (CreateEventInput)
-import           Types.Event                         (Event)
-import           Types.ForgetMeRequest               (ExecuteForgetMeResult (..),
-                                                      ForgetMeRequest (..),
-                                                      InitForgetMeInput (..),
-                                                      InitForgetMeResult (..))
-import           Types.Unsubscribe                   (UnsubscribeResult)
-import qualified Op.Db                  as Db
+import qualified Op.Db                                      as Db
+import qualified Op.WebAPI.Endpoints.Attend
+import qualified Op.WebAPI.Endpoints.Comment
+import qualified Op.WebAPI.Endpoints.CreateEvent
+import qualified Op.WebAPI.Endpoints.EditEvent
+import qualified Op.WebAPI.Endpoints.ExecuteForgetMeRequest
+import qualified Op.WebAPI.Endpoints.GetEvent
+import qualified Op.WebAPI.Endpoints.InitForgetMeRequest
+import qualified Op.WebAPI.Endpoints.Unsubscribe
+import qualified Op.WebAPI.Endpoints.ViewForgetMeRequest
+import           Op.WebAPI.Html                             (HTML, RawHtml,
+                                                             eventPage,
+                                                             frontPage)
+import           Op.WebAPI.Types.AppEnv                     (AppEnv (..))
+import           Op.WebAPI.Types.AttendInput                (AttendInput)
+import           Op.WebAPI.Types.CommentInput               (CommentInput)
+import           Op.WebAPI.Types.CreateEventInput           (CreateEventInput)
+import           Op.WebAPI.Types.Event                      (Event)
+import           Op.WebAPI.Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
+                                                             ForgetMeRequest (..),
+                                                             InitForgetMeInput (..),
+                                                             InitForgetMeResult (..))
+import           Op.WebAPI.Types.Unsubscribe                (UnsubscribeResult)
 
 type API
   = GetEventAPI
@@ -106,15 +91,15 @@ app :: AppEnv -> Application
 app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantServer
   where
     servantServer =
-        Endpoints.GetEvent.getEvent
-        :<|> Endpoints.EditEvent.editEvent
-        :<|> Endpoints.CreateEvent.createEvent
-        :<|> Endpoints.Attend.attend
-        :<|> Endpoints.Comment.addComment
-        :<|> Endpoints.InitForgetMeRequest.initForgetMe
-        :<|> Endpoints.ViewForgetMeRequest.viewForgetMeRequest
-        :<|> Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
-        :<|> Endpoints.Unsubscribe.unsubscribe
+        Op.WebAPI.Endpoints.GetEvent.getEvent
+        :<|> Op.WebAPI.Endpoints.EditEvent.editEvent
+        :<|> Op.WebAPI.Endpoints.CreateEvent.createEvent
+        :<|> Op.WebAPI.Endpoints.Attend.attend
+        :<|> Op.WebAPI.Endpoints.Comment.addComment
+        :<|> Op.WebAPI.Endpoints.InitForgetMeRequest.initForgetMe
+        :<|> Op.WebAPI.Endpoints.ViewForgetMeRequest.viewForgetMeRequest
+        :<|> Op.WebAPI.Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
+        :<|> Op.WebAPI.Endpoints.Unsubscribe.unsubscribe
         :<|> frontPage
         :<|> eventPage -- view event
         :<|> eventPage -- edit event
@@ -133,22 +118,8 @@ getDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
+      pure [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
 
-{-
-getSmtpConfig :: IO (Either String SmtpConfig)
-getSmtpConfig = do
-  mServer <- lookupEnv "SMTP_SERVER"
-  mPort <- lookupEnv "SMTP_PORT"
-  mLogin <- lookupEnv "SMTP_LOGIN"
-  mPassword <- lookupEnv "SMTP_PASSWORD"
-  pure do
-    server <- maybeToEither "Error: Missing env variable SMTP_SERVER" mServer
-    port <- maybeToEither "Error: Missing env variable SMTP_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from SMTP_PORT" . readMaybe
-    login <- maybeToEither "Error: Missing env variable SMTP_LOGIN" mLogin
-    password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
-    pure SmtpConfig {server, port, login, password}
--}
 
 getHostUrl :: IO (Either String String)
 getHostUrl = do

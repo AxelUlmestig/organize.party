@@ -1,4 +1,4 @@
-module Types.AppEnv (
+module Op.WebAPI.Types.AppEnv (
   AppEnv(..),
   SmtpConfig(..),
 ) where

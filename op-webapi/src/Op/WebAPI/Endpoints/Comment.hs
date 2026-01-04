@@ -1,39 +1,32 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Endpoints.Comment (addComment) where
+module Op.WebAPI.Endpoints.Comment (addComment) where
 
-import           Control.Concurrent      (forkIO)
-import           Control.Monad           (forM_, void, when)
-import           Control.Monad.Except    (MonadError (throwError))
-import           Control.Monad.IO.Class  (MonadIO, liftIO)
-import           Control.Monad.Reader    (MonadReader, asks)
-import           Data.Profunctor         (dimap, lmap)
-import           Data.String.Interpolate (i)
-import qualified Data.Text               as Text
-import           Data.Types.Injective    (to)
-import           Data.UUID               (UUID)
-import           Email                   (CommentNotificationRecipient (..),
-                                          EmailData (..), sendEmailInvitation)
-import           Endpoints.GetEvent      (getEvent)
-import           Hasql.Connection        (Connection)
-import           Hasql.Session           (CommandError (ResultError),
-                                          ResultError (ServerError),
-                                          SessionError (QueryError))
-import qualified Hasql.Session           as Hasql
-import           Hasql.Statement         (Statement)
-import           Hasql.TH                (maybeStatement, resultlessStatement,
-                                          singletonStatement, vectorStatement)
-import           Servant                 (ServerError (errBody), err400, err404,
-                                          err500)
+import           Control.Monad                (forM_, when)
+import           Control.Monad.Except         (MonadError (throwError))
+import           Control.Monad.IO.Class       (MonadIO, liftIO)
+import           Control.Monad.Reader         (MonadReader, asks)
+import           Data.Profunctor              (lmap)
+import           Data.String.Interpolate      (i)
+import           Data.Types.Injective         (to)
+import           Data.UUID                    (UUID)
+import           Hasql.Session                (CommandError (ResultError),
+                                               ResultError (ServerError),
+                                               SessionError (QueryError))
+import qualified Hasql.Session                as Hasql
+import           Hasql.Statement              (Statement)
+import           Servant                      (ServerError (errBody), err400,
+                                               err404, err500)
 
-import qualified Email
-import qualified Op.Db                   as Db
-import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
-import qualified Types.Attendee          as Attendee
-import           Types.Attendee          (Attendee, writeStatus)
-import qualified Types.CommentInput      as CommentInput
-import           Types.CommentInput      (CommentInput (..))
-import           Types.Event             (Event)
+import qualified Op.Db                        as Db
+import           Op.WebAPI.Email              (CommentNotificationRecipient (..),
+                                               EmailData (..))
+import qualified Op.WebAPI.Email              as Email
+import           Op.WebAPI.Endpoints.GetEvent (getEvent)
+import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
+import           Op.WebAPI.Types.CommentInput (CommentInput (..))
+import qualified Op.WebAPI.Types.CommentInput as CommentInput
+import           Op.WebAPI.Types.Event        (Event)
 
 
 addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event
@@ -58,7 +51,7 @@ addComment eventId commentInput' = do
 insertCommentStatement :: Statement CommentInput ()
 insertCommentStatement =
   lmap to
-    [resultlessStatement|
+    [Db.resultlessStatement|
       insert into comments (comment, force_notification_on_comment, attendee_id, event_id)
       select
         $4::text as comment,
@@ -73,12 +66,19 @@ insertCommentStatement =
         )
     |]
 
+
+sendEmailUpdate ::
+  (MonadError ServerError m,
+  MonadReader AppEnv m,
+  MonadIO m) =>
+  CommentInput ->
+  m ()
 sendEmailUpdate commentInput = do
   emailHostUrl <- asks hostUrl
 
   let toEmailRecipient (email, recipientName, eventTitle, forcePush, unsubscribeId) = (EmailData{..}, CommentNotificationRecipient{..})
   let statement = fmap toEmailRecipient <$>
-        [vectorStatement|
+        [Db.vectorStatement|
           select
             attendees.email::text,
             attendee_data.name::text,

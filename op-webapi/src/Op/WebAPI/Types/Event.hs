@@ -1,12 +1,12 @@
-module Types.Event (Event(..), Attendee, Comment(..)) where
+module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..)) where
 
-import           Data.Aeson            (ToJSON)
-import           Data.Text             (Text)
-import           Data.Time.Clock       (UTCTime)
-import           Data.Types.Isomorphic (Injective (to), Iso)
-import           Data.UUID             (UUID)
-import           GHC.Generics          (Generic)
-import           Types.Attendee        (AttendeeStatus (..), readStatus)
+import           Data.Aeson               (ToJSON)
+import           Data.Text                (Text)
+import           Data.Time.Clock          (UTCTime)
+import           Data.Types.Isomorphic    (Injective (to), Iso)
+import           Data.UUID                (UUID)
+import           GHC.Generics             (Generic)
+import           Op.WebAPI.Types.Attendee (AttendeeStatus (..), readStatus)
 
 data Event
   = Event

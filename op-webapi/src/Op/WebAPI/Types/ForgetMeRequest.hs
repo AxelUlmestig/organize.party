@@ -1,4 +1,4 @@
-module Types.ForgetMeRequest (
+module Op.WebAPI.Types.ForgetMeRequest (
   InitForgetMeInput(..),
   InitForgetMeResult(..),
   ForgetMeRequest(..),

@@ -1,4 +1,4 @@
-module Types.CreateEventInput (CreateEventInput(..)) where
+module Op.WebAPI.Types.CreateEventInput (CreateEventInput(..)) where
 
 import           Data.Aeson            (FromJSON, ToJSON)
 import           Data.Text

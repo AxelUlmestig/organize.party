@@ -1,23 +1,20 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Endpoints.CreateEvent (createEvent) where
+module Op.WebAPI.Endpoints.CreateEvent (createEvent) where
 
-import           Control.Monad.Except   (MonadError (..))
-import           Control.Monad.IO.Class (MonadIO (liftIO))
-import           Control.Monad.Reader   (MonadReader, asks)
-import           Data.Profunctor        (dimap)
-import           Data.Types.Isomorphic  (to)
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (singletonStatement)
-import           Servant                (ServerError (..), err500)
+import           Control.Monad.Except             (MonadError (..))
+import           Control.Monad.IO.Class           (MonadIO)
+import           Control.Monad.Reader             (MonadReader)
+import           Data.Profunctor                  (dimap)
+import           Data.Types.Isomorphic            (to)
+import qualified Hasql.Session                    as Hasql
+import           Hasql.Statement                  (Statement)
+import           Servant                          (ServerError (..))
 
-import qualified Op.Db                  as Db
-import           Types.AppEnv
-import qualified Types.CreateEventInput as CE
-import           Types.CreateEventInput (CreateEventInput)
-import qualified Types.Event            as E
-import           Types.Event            (Event)
+import qualified Op.Db                            as Db
+import           Op.WebAPI.Types.AppEnv
+import           Op.WebAPI.Types.CreateEventInput (CreateEventInput)
+import           Op.WebAPI.Types.Event            (Event)
 
 
 createEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => CreateEventInput -> m Event
@@ -26,7 +23,7 @@ createEvent input = do
   where
     statement :: Statement CreateEventInput Event
     statement = dimap to to
-      [singletonStatement|
+      [Db.singletonStatement|
         with
           event as (
             insert into events (password_salt, password_hash)

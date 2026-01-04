@@ -1,4 +1,4 @@
-module Types.CommentInput (CommentInput(..), emailToLowerCase) where
+module Op.WebAPI.Types.CommentInput (CommentInput(..), emailToLowerCase) where
 
 import           Data.Aeson            (FromJSON)
 import           Data.Int              (Int64)

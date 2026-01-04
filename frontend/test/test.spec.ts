@@ -136,6 +136,7 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /yes, forget me/i }).click()
 
   // return to the event page and verify that the organizer is deleted
+  await page.waitForTimeout(100); // wait a bit so the data is deleted
   await page.goto(eventUrl)
   await expect(page.getByText(deletedCommentText)).toHaveText(deletedCommentText)
   await expect(page.getByText(organizerName)).toHaveCount(0)

@@ -1,4 +1,6 @@
-module Endpoints.GetEvent (
+{-# LANGUAGE QuasiQuotes #-}
+
+module Op.WebAPI.Endpoints.GetEvent (
   getEvent,
   maybeGetEvent,
   getAttendees,
@@ -6,24 +8,19 @@ module Endpoints.GetEvent (
   getCommentsStatement
 ) where
 
-import           Control.Monad.Except    (MonadError (throwError))
-import           Control.Monad.IO.Class  (MonadIO, liftIO)
-import           Control.Monad.Reader    (MonadReader, asks)
-import           Data.String.Interpolate (i)
-import           Data.Types.Injective    (to)
-import           Data.UUID               (UUID)
-import qualified Data.Vector             as Vector
-import           Hasql.Connection        (Connection)
-import           Hasql.Session           (CommandError (ResultError),
-                                          ResultError (UnexpectedAmountOfRows))
-import qualified Hasql.Session           as Hasql
-import           Hasql.Statement         (Statement)
-import           Hasql.TH                (maybeStatement, vectorStatement)
-import           Servant                 (ServerError (..), err404, err500)
+import           Control.Monad.Except   (MonadError (throwError))
+import           Control.Monad.IO.Class (MonadIO)
+import           Control.Monad.Reader   (MonadReader)
+import           Data.Types.Injective   (to)
+import           Data.UUID              (UUID)
+import qualified Data.Vector            as Vector
+import qualified Hasql.Session          as Hasql
+import           Hasql.Statement        (Statement)
+import           Servant                (ServerError (..), err404)
 
-import           Types.AppEnv
-import           Types.Event             (Attendee, Comment (..), Event (..))
-import qualified Op.Db                             as Db
+import qualified Op.Db                  as Db
+import           Op.WebAPI.Types.AppEnv
+import           Op.WebAPI.Types.Event  (Attendee, Comment (..), Event (..))
 
 getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
 getEvent eventId = do
@@ -51,7 +48,7 @@ maybeGetEvent eventId = do
 getEventStatement :: Statement UUID (Maybe Event)
 getEventStatement =
   fmap to <$>
-    [maybeStatement|
+    [Db.maybeStatement|
       select
          event_data.id::uuid,
          event_data.title::text,
@@ -71,7 +68,7 @@ getEventStatement =
     |]
 
 getAttendees :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => Event -> m Event
-getAttendees event@Event{Types.Event.id} = do
+getAttendees event@Event{Op.WebAPI.Types.Event.id} = do
   attendees <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement id getAttendeesStatement)
   return $ event { attendees = attendees }
 
@@ -79,7 +76,7 @@ getAttendees event@Event{Types.Event.id} = do
 getAttendeesStatement :: Statement UUID [Attendee]
 getAttendeesStatement =
   fmap to . Vector.toList <$>
-    [vectorStatement|
+    [Db.vectorStatement|
       select
         attendee_data.name::text,
         attendee_data.status::text,
@@ -100,7 +97,7 @@ getAttendeesStatement =
 getCommentsStatement :: Statement UUID [Comment]
 getCommentsStatement =
   fmap to . Vector.toList <$>
-    [vectorStatement|
+    [Db.vectorStatement|
       select
         attendee_data.name::text,
         comments.comment::text,

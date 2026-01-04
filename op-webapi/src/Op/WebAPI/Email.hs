@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Email (
+module Op.WebAPI.Email (
   sendEmailInvitation,
   sendEventUpdateEmail,
   sendCommentNotifications,
@@ -9,30 +9,27 @@ module Email (
   sendForgetMeConfirmation,
 ) where
 
-import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Lazy     as LBS
-import           Data.Foldable            (for_)
-import           Data.Maybe               (fromMaybe)
-import           Data.String.Interpolate  (__i)
+import qualified Data.ByteString              as BS
+import           Data.Maybe                   (fromMaybe)
+import           Data.String.Interpolate      (__i)
 import           Data.Text
-import           Data.Text.Lazy           (fromStrict)
-import qualified Data.Text.Lazy           as LT
-import           Data.Time.Clock          (UTCTime, addUTCTime, nominalDay,
-                                           secondsToNominalDiffTime)
-import           Data.Time.Format         (defaultTimeLocale, formatTime)
-import           Data.Time.Format.ISO8601 (iso8601Show)
+import qualified Data.Text.Lazy               as LT
+import           Data.Time.Clock              (UTCTime, addUTCTime,
+                                               secondsToNominalDiffTime)
+import           Data.Time.Format             (defaultTimeLocale, formatTime)
+import           Data.Time.Format.ISO8601     (iso8601Show)
 import           Data.UUID
-import           Hasql.TH                 (resultlessStatement)
-import qualified Network.Mail.Mime        as Mail
-import           Network.Socket           (PortNumber)
+import           Hasql.TH                     (resultlessStatement)
+import qualified Network.Mail.Mime            as Mail
+import           Network.Socket               (PortNumber)
 import qualified RIO
 
-import qualified Op.Db                    as Db
-import           Types.AppEnv             (SmtpConfig (..))
-import           Types.Attendee           (Attendee (..))
-import           Types.CommentInput       (CommentInput (..))
-import qualified Types.Event              as Event
-import           Types.Event              (Event (..))
+import qualified Op.Db                        as Db
+import           Op.WebAPI.Types.AppEnv       (SmtpConfig (..))
+import           Op.WebAPI.Types.Attendee     (Attendee (..))
+import           Op.WebAPI.Types.CommentInput (CommentInput (..))
+import           Op.WebAPI.Types.Event        (Event (..))
+import qualified Op.WebAPI.Types.Event        as Event
 
 data EmailData
   = EmailData

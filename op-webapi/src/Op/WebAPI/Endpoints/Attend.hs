@@ -1,37 +1,35 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Endpoints.Attend (attend) where
+module Op.WebAPI.Endpoints.Attend (attend) where
 
-import           Control.Concurrent     (forkIO)
-import           Control.Monad          (void, when)
-import           Control.Monad.Except   (MonadError (throwError))
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Reader   (MonadReader, asks)
-import           Data.Profunctor        (dimap, lmap)
-import qualified Data.Text              as Text
-import           Data.Types.Injective   (to)
-import           Data.UUID              (UUID)
-import           Email                  (EmailData (..), sendEmailInvitation)
-import           Endpoints.GetEvent     (getEvent)
-import           Hasql.Connection       (Connection)
-import           Hasql.Session          (CommandError (ResultError),
-                                         ResultError (ServerError),
-                                         SessionError (QueryError))
-import qualified Hasql.Session          as Hasql
-import           Hasql.Statement        (Statement)
-import           Hasql.TH               (maybeStatement, resultlessStatement,
-                                         singletonStatement)
-import           Servant                (ServerError (errBody), err400, err404,
-                                         err500)
+import           Control.Monad                (when)
+import           Control.Monad.Except         (MonadError (throwError))
+import           Control.Monad.IO.Class       (MonadIO, liftIO)
+import           Control.Monad.Reader         (MonadReader, asks)
+import           Data.Profunctor              (dimap, lmap)
+import qualified Data.Text                    as Text
+import           Data.Types.Injective         (to)
+import           Data.UUID                    (UUID)
+import           Hasql.Session                (CommandError (ResultError),
+                                               ResultError (ServerError),
+                                               SessionError (QueryError))
+import qualified Hasql.Session                as Hasql
+import           Hasql.Statement              (Statement)
+import           Hasql.TH                     (maybeStatement,
+                                               singletonStatement)
+import           Servant                      (ServerError (errBody), err400,
+                                               err404, err500)
 
-import qualified Email
-import qualified Op.Db                  as Db
-import           Types.AppEnv           (AppEnv (..), SmtpConfig (..))
-import qualified Types.Attendee         as Attendee
-import           Types.Attendee         (Attendee, writeStatus)
-import qualified Types.AttendInput      as VP
-import           Types.AttendInput      (AttendInput (..))
-import           Types.Event            (Event)
+import qualified Op.Db                        as Db
+import           Op.WebAPI.Email              (EmailData (..),
+                                               sendEmailInvitation)
+import           Op.WebAPI.Endpoints.GetEvent (getEvent)
+import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
+import           Op.WebAPI.Types.Attendee     (Attendee)
+import qualified Op.WebAPI.Types.Attendee     as Attendee
+import           Op.WebAPI.Types.AttendInput  (AttendInput (..))
+import qualified Op.WebAPI.Types.AttendInput  as VP
+import           Op.WebAPI.Types.Event        (Event)
 
 
 attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
@@ -91,9 +89,6 @@ findExistingStatement =
         and attendee_data.get_notified_on_comments = $6::bool
         and attendee_data.superseded_at is null
     |]
-  where
-    toAttendee (unsubscribeId, eventId, email, name, status, plusOne, rsvpAt) = (unsubscribeId, to (eventId, email, name, status, plusOne, rsvpAt))
-    toTuple AttendInput{eventId, email, status, plusOne} = (eventId, email, writeStatus status, plusOne)
 
 insertAttendeeStatement :: Statement AttendInput Attendee
 insertAttendeeStatement =

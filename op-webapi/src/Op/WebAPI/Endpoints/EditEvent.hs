@@ -1,34 +1,31 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QuasiQuotes         #-}
 
-module Endpoints.EditEvent (editEvent) where
+module Op.WebAPI.Endpoints.EditEvent (editEvent) where
 
-import           Control.Concurrent      (forkIO)
-import           Control.Monad           (forM_)
-import           Control.Monad.Except    (MonadError (..))
-import           Control.Monad.IO.Class  (MonadIO (liftIO))
-import           Control.Monad.Reader    (MonadReader, asks)
-import           Data.Profunctor         (dimap)
-import           Data.String.Interpolate (i)
-import           Data.Text               (Text)
-import           Data.Types.Isomorphic   (to)
-import           Data.UUID               (UUID)
-import qualified Hasql.Session           as Hasql
-import           Hasql.Statement         (Statement)
-import           Hasql.TH                (maybeStatement, resultlessStatement,
-                                          singletonStatement, vectorStatement)
-import           Servant                 (ServerError (..), err403, err404,
-                                          err500)
+import           Control.Monad                    (forM_)
+import           Control.Monad.Except             (MonadError (..))
+import           Control.Monad.IO.Class           (MonadIO)
+import           Control.Monad.Reader             (MonadReader, asks)
+import           Data.Profunctor                  (dimap)
+import           Data.Text                        (Text)
+import           Data.Types.Isomorphic            (to)
+import           Data.UUID                        (UUID)
+import qualified Hasql.Session                    as Hasql
+import           Hasql.Statement                  (Statement)
+import           Servant                          (ServerError (..), err403,
+                                                   err404)
 
-import           Email                   (EmailData (..), sendEventUpdateEmail)
-import           Endpoints.GetEvent      (getAttendeesStatement,
-                                          getCommentsStatement)
-import qualified Op.Db                   as Db
-import           Types.AppEnv            (AppEnv (..), SmtpConfig (..))
-import           Types.Attendee          (Attendee (..), readStatus)
-import           Types.CreateEventInput
-import qualified Types.Event             as Event
-import           Types.Event             (Event)
+import qualified Op.Db                            as Db
+import           Op.WebAPI.Email                  (EmailData (..),
+                                                   sendEventUpdateEmail)
+import           Op.WebAPI.Endpoints.GetEvent     (getAttendeesStatement,
+                                                   getCommentsStatement)
+import           Op.WebAPI.Types.AppEnv           (AppEnv (..))
+import           Op.WebAPI.Types.Attendee         (Attendee (..))
+import           Op.WebAPI.Types.CreateEventInput
+import           Op.WebAPI.Types.Event            (Event)
+import qualified Op.WebAPI.Types.Event            as Event
 
 data EditResult
   = Success Event
@@ -49,7 +46,7 @@ editEvent eventId input = do
 
 session :: (UUID, CreateEventInput) -> Hasql.Session EditResult
 session (eventId, input) = do
-  editValidityStatus <- Hasql.statement (eventId, Types.CreateEventInput.password input) existsStatement
+  editValidityStatus <- Hasql.statement (eventId, Op.WebAPI.Types.CreateEventInput.password input) existsStatement
   case editValidityStatus of
     EventNotFound -> pure NotFound
     IncorrectPassword -> pure Forbidden
@@ -70,7 +67,7 @@ data EditValidityStatus
 existsStatement :: Statement (UUID, Text) EditValidityStatus
 existsStatement =
   parse <$>
-    [maybeStatement|
+    [Db.maybeStatement|
       select
         (password_hash = digest($2::text|| password_salt, 'sha256')::text)::bool
       from events
@@ -86,7 +83,7 @@ existsStatement =
 updateEventDataStatement :: Statement (UUID, CreateEventInput) Event
 updateEventDataStatement =
   dimap f to
-  [singletonStatement|
+  [Db.singletonStatement|
     with
       previous_event_data as (
         update event_data
@@ -134,10 +131,14 @@ updateEventDataStatement =
       on events.id = inserted_event_data.id
   |]
   where
-    f (eventId, CreateEventInput{title, description, startTime, endTime, location, googleMapsLink, Types.CreateEventInput.password}) =
+    f (eventId, CreateEventInput{title, description, startTime, endTime, location, googleMapsLink}) =
       (eventId, title, description, startTime, endTime, location, googleMapsLink)
 
 
+sendEmailUpdate ::
+  (MonadReader AppEnv m, MonadIO m, MonadError ServerError m) =>
+  Event ->
+  m ()
 sendEmailUpdate event = do
   attendees <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (Event.id event) statement)
 
@@ -146,7 +147,7 @@ sendEmailUpdate event = do
     sendEventUpdateEmail EmailData{..} event
   where
     statement = fmap to <$>
-      [vectorStatement|
+      [Db.vectorStatement|
         select
           attendees.event_id::uuid,
           attendees.email::text,

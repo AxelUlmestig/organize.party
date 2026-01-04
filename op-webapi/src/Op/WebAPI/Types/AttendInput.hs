@@ -1,14 +1,12 @@
-module Types.AttendInput (AttendInput(..)) where
+module Op.WebAPI.Types.AttendInput (AttendInput(..)) where
 
-import           Data.Aeson            (FromJSON)
-import           Data.Int              (Int64)
-import           Data.Text             (Text, pack)
-import           Data.Time             (UTCTime)
-import           Data.Types.Isomorphic (Injective (to))
-import           Data.UUID             (UUID)
-import           GHC.Generics          (Generic)
+import           Data.Aeson               (FromJSON)
+import           Data.Text                (Text)
+import           Data.Types.Isomorphic    (Injective (to))
+import           Data.UUID                (UUID)
+import           GHC.Generics             (Generic)
 
-import           Types.Attendee        (AttendeeStatus (..), writeStatus)
+import           Op.WebAPI.Types.Attendee (AttendeeStatus (..), writeStatus)
 
 data AttendInput = AttendInput
                    { eventId               :: UUID

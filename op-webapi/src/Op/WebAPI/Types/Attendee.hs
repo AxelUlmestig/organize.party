@@ -1,4 +1,6 @@
-module Types.Attendee (Attendee(..), AttendeeStatus(..), readStatus, writeStatus) where
+{-# LANGUAGE QuasiQuotes #-}
+
+module Op.WebAPI.Types.Attendee (Attendee(..), AttendeeStatus(..), readStatus, writeStatus) where
 
 import           Data.Aeson              (FromJSON, ToJSON)
 import           Data.Int                (Int64)

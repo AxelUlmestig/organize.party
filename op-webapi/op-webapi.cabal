@@ -15,34 +15,32 @@ cabal-version:       >=1.10
 executable op-webapi
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Email
-                     , Endpoints.Attend
-                     , Endpoints.Comment
-                     , Endpoints.CreateEvent
-                     , Endpoints.EditEvent
-                     , Endpoints.GetEvent
-                     , Endpoints.InitForgetMeRequest
-                     , Endpoints.ViewForgetMeRequest
-                     , Endpoints.ExecuteForgetMeRequest
-                     , Endpoints.Unsubscribe
-                     , Html
-                     , Types.AppEnv
-                     , Types.Attendee
-                     , Types.AttendInput
-                     , Types.CommentInput
-                     , Types.CreateEventInput
-                     , Types.Event
-                     , Types.ForgetMeRequest
-                     , Types.Unsubscribe
+  other-modules:       Op.WebAPI.Email
+                     , Op.WebAPI.Endpoints.Attend
+                     , Op.WebAPI.Endpoints.Comment
+                     , Op.WebAPI.Endpoints.CreateEvent
+                     , Op.WebAPI.Endpoints.EditEvent
+                     , Op.WebAPI.Endpoints.GetEvent
+                     , Op.WebAPI.Endpoints.InitForgetMeRequest
+                     , Op.WebAPI.Endpoints.ViewForgetMeRequest
+                     , Op.WebAPI.Endpoints.ExecuteForgetMeRequest
+                     , Op.WebAPI.Endpoints.Unsubscribe
+                     , Op.WebAPI.Html
+                     , Op.WebAPI.Types.AppEnv
+                     , Op.WebAPI.Types.Attendee
+                     , Op.WebAPI.Types.AttendInput
+                     , Op.WebAPI.Types.CommentInput
+                     , Op.WebAPI.Types.CreateEventInput
+                     , Op.WebAPI.Types.Event
+                     , Op.WebAPI.Types.ForgetMeRequest
+                     , Op.WebAPI.Types.Unsubscribe
   default-language:    GHC2021
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:       aeson >= 2.1 && < 3.0
                      , base >= 4.0
                      , bytestring >= 0.11
                      , hasql >=1.9.0.1
-                     , hasql-pool >= 0.10
                      , hasql-th >= 0.4
-                     , hasql-transaction >= 1.0
                      , http-media >= 0.8 && < 0.9
                      , mime-mail >= 0.5 && <= 0.6
                      , mtl >= 2.3 && <= 3.0
@@ -50,9 +48,7 @@ executable op-webapi
                      , profunctors >= 5.6 && < 6.0
                      , resource-pool
                      , rio
-                     , servant >= 0.20 && < 0.21
                      , servant-server >= 0.20 && < 0.21
-                     , smtp-mail >= 0.3 && <= 0.4
                      , stringsearch >= 0.3.6.6
                      , string-interpolate >= 0.3 && < 0.4
                      , text >= 2.0 && < 3.0
@@ -62,7 +58,6 @@ executable op-webapi
                      , uuid >= 1.3 && <= 2.0
                      , utf8-string >= 1.0 && < 1.1
                      , vector >= 0.13
-                     , wai >= 3.2 && <= 3.3
                      , wai-cors >= 0.2 && <= 0.3
                      , warp >= 3.3 && < 3.4
                      , op-db

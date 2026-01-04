@@ -1,4 +1,6 @@
-module Html (
+{-# LANGUAGE QuasiQuotes #-}
+
+module Op.WebAPI.Html (
   HTML,
   RawHtml,
   frontPage,
@@ -6,21 +8,19 @@ module Html (
 ) where
 
 
-import           Control.Monad.Except        (MonadError)
-import           Control.Monad.IO.Class      (MonadIO, liftIO)
-import           Control.Monad.Reader        (MonadReader, asks)
-import qualified Data.ByteString             as BS
-import qualified Data.ByteString.Lazy        as LBS
-import           Data.ByteString.Lazy.Search (replace)
-import           Data.ByteString.UTF8        as BSU
-import           Data.String.Interpolate     (__i)
-import           Data.UUID                   (UUID)
-import qualified Endpoints.GetEvent
-import           Network.HTTP.Media          ((//), (/:))
+import           Control.Monad.Except         (MonadError)
+import           Control.Monad.IO.Class       (MonadIO, liftIO)
+import           Control.Monad.Reader         (MonadReader, asks)
+import qualified Data.ByteString.Lazy         as LBS
+import           Data.ByteString.Lazy.Search  (replace)
+import           Data.ByteString.UTF8         as BSU
+import           Data.String.Interpolate      (__i)
+import           Data.UUID                    (UUID)
+import           Network.HTTP.Media           ((//), (/:))
+import qualified Op.WebAPI.Endpoints.GetEvent
+import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
+import           Op.WebAPI.Types.Event        (Event (..))
 import           Servant
-import           Servant.API
-import           Types.AppEnv                (AppEnv (..), SmtpConfig (..))
-import           Types.Event                 (Event (..))
 
 -- type shenanigans to enable serving raw html
 
@@ -82,7 +82,7 @@ eventPage eventId = do
   hostUrl <- asks hostUrl
 
   openGraphData <- do
-    mEvent <- Endpoints.GetEvent.maybeGetEvent eventId
+    mEvent <- Op.WebAPI.Endpoints.GetEvent.maybeGetEvent eventId
     pure $ case mEvent of
       Just event -> eventPageOg event hostUrl
       Nothing    -> frontPageOg hostUrl
