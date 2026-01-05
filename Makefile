@@ -1,15 +1,17 @@
-.PHONY: start-dev-webapi
-start-dev-webapi:
-	docker compose up -d pgbouncer mailhog
+.PHONY: deploy-database
+deploy-database:
+	docker compose up -d pgbouncer
 	./scripts/wait-for-db.sh
+	docker compose exec db sqitch --chdir /repo/statecharts -t postgres://postgres:postgres@localhost:5432/events deploy
 	docker compose exec db sqitch --chdir db deploy
+
+.PHONY: start-dev-webapi
+start-dev-webapi: deploy-database
 	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=6432 cabal run op-webapi
 
 .PHONY: start-dev-worker
-start-dev-worker:
-	docker compose up -d pgbouncer mailhog
-	./scripts/wait-for-db.sh
-	docker compose exec db sqitch --chdir db deploy
+start-dev-worker: deploy-database
+	docker compose up -d mailhog
 	LOG_LEVEL=LevelDebug DB_HOST=localhost DB_PORT=6432 LISTEN_DB_HOST=localhost LISTEN_DB_PORT=5432 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run op-worker
 
 .PHONY: build-frontend
