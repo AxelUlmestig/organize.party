@@ -59,3 +59,7 @@ run-tests:
 .PHONY: lint
 lint:
 	hlint -X QuasiQuotes -X OverloadedRecordDot .
+
+.PHONY: gen-charts
+gen-charts:
+	cabal run generate-statecharts
