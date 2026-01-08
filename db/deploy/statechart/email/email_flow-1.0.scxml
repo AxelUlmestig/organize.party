@@ -1,0 +1,52 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml"
+              name="email.email_flow"
+              version="1.0"
+              initial="queued">
+
+  <state id="queued" name="QUEUED">
+    <transition event="email.sent" target="sent"/>
+    <transition event="email.dont_send" target="not_sent"/>
+
+    <onentry>
+      <script src="email.materialize_email_status" />
+      <script src="email.enqueue_send_email_job" />
+    </onentry>
+  </state>
+
+  <state id="sent" name="SENT">
+    <transition event="email.received" target="received"/>
+    <transition event="email.bounced" target="bounced"/>
+    <transition event="email.marked_as_spam" target="marked_as_spam"/>
+
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </state>
+
+  <state id="received" name="RECEIVED">
+    <transition event="email.marked_as_spam" target="marked_as_spam"/>
+
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </state>
+
+  <final id="not_sent" name="NOT_SENT">
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </final>
+
+  <final id="bounced" name="BOUNCED">
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </final>
+
+  <final id="marked_as_spam" name="MARKED_AS_SPAM">
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </final>
+
+</scxml>

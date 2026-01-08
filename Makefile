@@ -3,7 +3,7 @@ deploy-database:
 	docker compose up -d pgbouncer
 	./scripts/wait-for-db.sh
 	docker compose exec db sqitch --chdir /repo/statecharts -t postgres://postgres:postgres@localhost:5432/events deploy
-	docker compose exec db sqitch --chdir db deploy
+	docker compose exec db sqitch --chdir db deploy --mode change
 
 .PHONY: start-dev-webapi
 start-dev-webapi: deploy-database

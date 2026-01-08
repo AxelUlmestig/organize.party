@@ -7,32 +7,21 @@ module Op.Worker.Jobs.Email (
   HasSmtpConfig(..),
 ) where
 
-import           Control.Monad.IO.Class   (MonadIO, liftIO)
-import           Control.Monad.Reader     (asks)
-import qualified Data.Aeson               as Aeson
-import qualified Data.ByteString.Lazy     as LBS
-import           Data.Foldable            (for_)
-import           Data.Maybe               (fromMaybe)
-import           Data.String.Interpolate  (__i, i)
+import qualified Data.Aeson              as Aeson
+import qualified Data.ByteString.Lazy    as LBS
+import           Data.String.Interpolate (i)
 import           Data.Text
-import           Data.Text.Lazy           (fromStrict)
-import qualified Data.Text.Lazy           as LT
-import           Data.Time.Clock          (UTCTime, addUTCTime, nominalDay,
-                                           secondsToNominalDiffTime)
-import           Data.Time.Format         (defaultTimeLocale, formatTime)
-import           Data.Time.Format.ISO8601 (iso8601Show)
+import           Data.Text.Lazy          (fromStrict)
 import           Data.UUID
-import qualified Data.Vector              as Vector
-import           GHC.Generics             (Generic)
-import qualified Hasql.Session            as Hasql
-import           Hasql.TH                 (maybeStatement, vectorStatement)
-import qualified Network.Mail.Mime        as Mail
-import qualified Network.Mail.SMTP        as SMTP
-import           Network.Socket           (PortNumber)
+import qualified Data.Vector             as Vector
+import qualified Hasql.Session           as Hasql
+import qualified Network.Mail.Mime       as Mail
+import qualified Network.Mail.SMTP       as SMTP
+import           Network.Socket          (PortNumber)
 import           RIO
 
-import qualified Op.Db                    as Db
-import qualified Op.Worker.Job            as Job
+import qualified Op.Db                   as Db
+import qualified Op.Worker.Job           as Job
 
 
 data SmtpConfig = SmtpConfig
@@ -82,18 +71,33 @@ instance Aeson.FromJSON SendEmailJob
 
 instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env SendEmailJob where
   processJob (SendEmailJob emailId) = do
-    mEmail <- Db.queryDbOr retryDbErr session
-    case mEmail of
-      Nothing -> Job.giveUpJob [i|Couldn't find email with id: #{emailId}|]
-      Just email -> do
-        smtpConfig <- asks getSmtpConfig
-        sendEmail smtpConfig email
+    email <- do
+      mEmail <- Db.queryDbOr retryDbErr getEmailSession
+      case mEmail of
+        Nothing    -> Job.giveUpJob [i|Couldn't find email with id: #{emailId}|]
+        Just email -> pure email
+
+    smtpConfig <- asks getSmtpConfig
+    sendEmail smtpConfig email
+
+    Db.queryDbOr retryDbErr do
+      Db.statement
+        emailId
+        [Db.resultlessStatement|
+          select fsm.notify_state_machine(
+            shard => 1,
+            machine => state_machine_id,
+            event => 'email.sent'
+          )::text
+          from email.emails
+          where id = $1::uuid
+        |]
     where
-      session = do
+      getEmailSession = do
         mEmail <- do
           Db.statement
             emailId
-            [maybeStatement|
+            [Db.maybeStatement|
               select
                 recipient_email::text,
                 recipient_name::text?,
@@ -107,7 +111,7 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
           rawAttachments <- Vector.toList <$> do
             Db.statement
               emailId
-              [vectorStatement|
+              [Db.vectorStatement|
                 select
                   content_type::text,
                   file_name::text,

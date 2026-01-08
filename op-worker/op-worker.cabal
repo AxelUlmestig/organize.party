@@ -25,9 +25,6 @@ executable op-worker
                     , every
                     , hasql
                     , hasql-notifications
-                    , hasql-pool
-                    , hasql-th
-                    , hasql-transaction
                     , mime-mail
                     , mtl
                     , network
@@ -36,7 +33,6 @@ executable op-worker
                     , stm
                     , string-interpolate
                     , text
-                    , time
                     , unix
                     , unliftio
                     , utf8-string
