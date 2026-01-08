@@ -35,8 +35,8 @@ data EditResult
 
 editEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CreateEventInput -> m Event
 editEvent eventId input = do
-  event <- Db.queryDbOr Db.printAndThrow500 (session (eventId, input))
-  case event of
+  mEvent <- Db.queryDbOr Db.printAndThrow500 (session (eventId, input))
+  case mEvent of
     Forbidden -> throwError err403 { errBody = "Password didn't match" }
     NotFound -> throwError err404 { errBody = "Event not found" }
     Success event -> do
@@ -144,7 +144,7 @@ sendEmailUpdate event = do
 
   emailHostUrl <- asks hostUrl
   forM_ attendees $ \Attendee{email, name = recipientName, unsubscribeId} -> do
-    sendEventUpdateEmail EmailData{..} event
+    sendEventUpdateEmail Db.printAndThrow500 EmailData{..} event
   where
     statement = fmap to <$>
       [Db.vectorStatement|

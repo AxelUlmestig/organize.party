@@ -56,7 +56,7 @@ attend eventId attendee' = do
   when shouldSendEmail $ do
     emailHostUrl <- asks hostUrl
     let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
-    sendEmailInvitation emailData event
+    sendEmailInvitation handleErr emailData event
   pure event
   where
     handleErr err = do

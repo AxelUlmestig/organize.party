@@ -19,6 +19,7 @@ import           Data.Time.Clock              (UTCTime, addUTCTime,
 import           Data.Time.Format             (defaultTimeLocale, formatTime)
 import           Data.Time.Format.ISO8601     (iso8601Show)
 import           Data.UUID
+import qualified Hasql.Session                as Hasql
 import           Hasql.TH                     (resultlessStatement)
 import qualified Network.Mail.Mime            as Mail
 import           Network.Socket               (PortNumber)
@@ -92,13 +93,14 @@ sendEmailInvitation
     RIO.MonadIO m,
     RIO.MonadReader env m
   ) =>
+  (Hasql.SessionError -> m ()) ->
   EmailData ->
   Event ->
   m ()
-sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, description, id = eid} = do
+sendEmailInvitation onError EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, description, id = eid} = do
   let icalendarString = eventToICalendarString emailHostUrl email event
 
-  Db.queryDbOr (error . show) (Db.statement (email, recipientName, title, body, icalendarString) statement)
+  Db.queryDbOr onError (Db.statement (email, recipientName, title, body, icalendarString) statement)
 
   where
     statement =
@@ -149,10 +151,15 @@ sendEmailInvitation EmailData{email, recipientName, emailHostUrl, unsubscribeId}
 
 
 
-sendEventUpdateEmail :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => EmailData -> Event -> m ()
-sendEventUpdateEmail EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, id = eid, description} = do
+sendEventUpdateEmail ::
+  (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
+  (Hasql.SessionError -> m ()) ->
+  EmailData ->
+  Event ->
+  m ()
+sendEventUpdateEmail onError EmailData{email, recipientName, emailHostUrl, unsubscribeId} event@Event{title, id = eid, description} = do
   let icalendarString = eventToICalendarString emailHostUrl email event
-  Db.queryDbOr undefined (Db.statement (email, recipientName, title, body, icalendarString) statement)
+  Db.queryDbOr onError (Db.statement (email, recipientName, title, body, icalendarString) statement)
   where
     statement =
       [resultlessStatement|
@@ -210,14 +217,21 @@ data CommentNotificationRecipient =
     }
     deriving (Eq, Show)
 
-sendCommentNotifications :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => EmailData -> CommentInput -> CommentNotificationRecipient -> m ()
+sendCommentNotifications ::
+  (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
+  (Hasql.SessionError -> m ()) ->
+  EmailData ->
+  CommentInput ->
+  CommentNotificationRecipient ->
+  m ()
 sendCommentNotifications
+  onError
   EmailData{emailHostUrl, email, recipientName, unsubscribeId}
   CommentInput{eventId, name, comment}
   CommentNotificationRecipient{eventTitle, forcePush}
   = do
     let subject    = [__i|#{name} has left a comment on #{eventTitle}|]
-    Db.queryDbOr undefined (Db.statement (email, recipientName, subject, emailBody) statement)
+    Db.queryDbOr onError (Db.statement (email, recipientName, subject, emailBody) statement)
   where
     statement =
       [resultlessStatement|
@@ -267,10 +281,16 @@ sendCommentNotifications
             |]
 
 
-sendForgetMeConfirmation :: (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) => String -> UUID -> Text -> m ()
-sendForgetMeConfirmation hostUrl forgetMeRequestId email = do
+sendForgetMeConfirmation ::
+  (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
+  (Hasql.SessionError -> m ()) ->
+  String ->
+  UUID ->
+  Text ->
+  m ()
+sendForgetMeConfirmation onError hostUrl forgetMeRequestId email = do
   let subject = "Forget me request"
-  Db.queryDbOr undefined (Db.statement (email, subject, body) statement)
+  Db.queryDbOr onError (Db.statement (email, subject, body) statement)
   where
     body =
       [__i|

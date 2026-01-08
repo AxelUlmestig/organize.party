@@ -23,7 +23,7 @@ initForgetMe InitForgetMeInput{email} = do
   (forgetMeRequestId, email) <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement email statement)
 
   hostUrl' <- asks hostUrl
-  Email.sendForgetMeConfirmation hostUrl' forgetMeRequestId email
+  Email.sendForgetMeConfirmation Db.printAndThrow500 hostUrl' forgetMeRequestId email
 
   pure $ InitForgetMeResult
     { initForgetMeResultEmail = email

@@ -106,5 +106,5 @@ sendEmailUpdate commentInput = do
   subscribers <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement (commentInput.eventId, commentInput.email, commentInput.forceNotificationOnComment) statement)
 
   forM_ subscribers $ \(emailData, subscriber) -> do
-    Email.sendCommentNotifications emailData commentInput subscriber
+    Email.sendCommentNotifications Db.printAndThrow500 emailData commentInput subscriber
 
