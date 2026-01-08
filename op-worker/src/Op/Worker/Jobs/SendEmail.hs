@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE QuasiQuotes   #-}
 
-module Op.Worker.Jobs.Email (
+module Op.Worker.Jobs.SendEmail (
   SendEmailJob,
   SmtpConfig(..),
   HasSmtpConfig(..),

@@ -32,7 +32,7 @@ import           Op.Worker.JobLogistics              (SharedWorkerState,
                                                       initiateShutDown,
                                                       runLimitedParallelJobs)
 import qualified Op.Worker.Jobs.Debug                as DebugJob
-import qualified Op.Worker.Jobs.Email                as Email
+import qualified Op.Worker.Jobs.SendEmail            as SendEmail
 
 failedAttemptsLimit :: Int32
 failedAttemptsLimit = 5
@@ -313,7 +313,7 @@ getDbConnectionSettings = do
       pure [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
 
 
-getSmtpSettings :: IO (Either String Email.SmtpConfig)
+getSmtpSettings :: IO (Either String SendEmail.SmtpConfig)
 getSmtpSettings = do
     mServer <- lookupEnv "SMTP_SERVER"
     mPort <- lookupEnv "SMTP_PORT"
@@ -325,7 +325,7 @@ getSmtpSettings = do
       login <- maybeToEither "Error: Missing env variable SMTP_LOGIN" mLogin
       password <- maybeToEither "Error: Missing env variable SMTP_PASSWORD" mPassword
 
-      pure Email.SmtpConfig{..}
+      pure SendEmail.SmtpConfig{..}
 
 
 maybeToEither :: err -> Maybe a -> Either err a
@@ -335,7 +335,7 @@ maybeToEither err Nothing = Left err
 data WorkerEnv = WorkerEnv
   { connectionPool    :: Pool.Pool Connection
   -- , jobId          :: UUID.UUID
-  , smtpConfig        :: Email.SmtpConfig
+  , smtpConfig        :: SendEmail.SmtpConfig
   , logFunc           :: LogFunc
   , sharedWorkerState :: SharedWorkerState
   }
@@ -343,7 +343,7 @@ data WorkerEnv = WorkerEnv
 instance HasLogFunc WorkerEnv where
   logFuncL = lens logFunc (\env f -> env { logFunc = f })
 
-instance Email.HasSmtpConfig WorkerEnv where
+instance SendEmail.HasSmtpConfig WorkerEnv where
   getSmtpConfig = smtpConfig
 
 instance Db.HasDbConnection WorkerEnv where
@@ -352,7 +352,7 @@ instance Db.HasDbConnection WorkerEnv where
 
 
 data WorkerJob
-  = SendEmail Email.SendEmailJob
+  = SendEmail SendEmail.SendEmailJob
   | Debug DebugJob.DebugJob
   deriving (Generic, Show)
 
