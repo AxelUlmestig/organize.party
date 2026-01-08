@@ -20,6 +20,7 @@
 
     <onentry>
       <script src="email.materialize_email_status" />
+      <script src="email.update_email_sent_at" />
     </onentry>
   </state>
 
