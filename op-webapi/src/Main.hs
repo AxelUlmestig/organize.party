@@ -6,42 +6,44 @@
 
 module Main where
 
-import           Control.Monad.Trans.Reader                 (ReaderT (..))
-import           Data.ByteString.UTF8                       as BSU
-import           Data.String.Interpolate                    (i)
-import           Data.UUID                                  (UUID)
-import qualified Hasql.Connection.Setting                   as ConnectionSetting
-import qualified Hasql.Connection.Setting.Connection        as ConnectionSettingConnection
-import           Network.Wai.Handler.Warp                   (run)
-import           Network.Wai.Middleware.Cors                (simpleCors)
+import           Control.Monad.Trans.Reader                  (ReaderT (..))
+import           Data.ByteString.UTF8                        as BSU
+import           Data.String.Interpolate                     (i)
+import           Data.Text                                   (Text)
+import           Data.UUID                                   (UUID)
+import qualified Hasql.Connection.Setting                    as ConnectionSetting
+import qualified Hasql.Connection.Setting.Connection         as ConnectionSettingConnection
+import           Network.Wai.Handler.Warp                    (run)
+import           Network.Wai.Middleware.Cors                 (simpleCors)
 import           Servant
-import           System.Environment                         (lookupEnv)
-import           System.Exit                                (die)
-import           Text.Read                                  (readMaybe)
+import           System.Environment                          (lookupEnv)
+import           System.Exit                                 (die)
+import           Text.Read                                   (readMaybe)
 
-import qualified Op.Db                                      as Db
+import qualified Op.Db                                       as Db
 import qualified Op.WebAPI.Endpoints.Attend
 import qualified Op.WebAPI.Endpoints.Comment
 import qualified Op.WebAPI.Endpoints.CreateEvent
 import qualified Op.WebAPI.Endpoints.EditEvent
 import qualified Op.WebAPI.Endpoints.ExecuteForgetMeRequest
 import qualified Op.WebAPI.Endpoints.GetEvent
+import qualified Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns
 import qualified Op.WebAPI.Endpoints.InitForgetMeRequest
 import qualified Op.WebAPI.Endpoints.Unsubscribe
 import qualified Op.WebAPI.Endpoints.ViewForgetMeRequest
-import           Op.WebAPI.Html                             (HTML, RawHtml,
-                                                             eventPage,
-                                                             frontPage)
-import           Op.WebAPI.Types.AppEnv                     (AppEnv (..))
-import           Op.WebAPI.Types.AttendInput                (AttendInput)
-import           Op.WebAPI.Types.CommentInput               (CommentInput)
-import           Op.WebAPI.Types.CreateEventInput           (CreateEventInput)
-import           Op.WebAPI.Types.Event                      (Event)
-import           Op.WebAPI.Types.ForgetMeRequest            (ExecuteForgetMeResult (..),
-                                                             ForgetMeRequest (..),
-                                                             InitForgetMeInput (..),
-                                                             InitForgetMeResult (..))
-import           Op.WebAPI.Types.Unsubscribe                (UnsubscribeResult)
+import           Op.WebAPI.Html                              (HTML, RawHtml,
+                                                              eventPage,
+                                                              frontPage)
+import           Op.WebAPI.Types.AppEnv                      (AppEnv (..))
+import           Op.WebAPI.Types.AttendInput                 (AttendInput)
+import           Op.WebAPI.Types.CommentInput                (CommentInput)
+import           Op.WebAPI.Types.CreateEventInput            (CreateEventInput)
+import           Op.WebAPI.Types.Event                       (Event)
+import           Op.WebAPI.Types.ForgetMeRequest             (ExecuteForgetMeResult (..),
+                                                              ForgetMeRequest (..),
+                                                              InitForgetMeInput (..),
+                                                              InitForgetMeResult (..))
+import           Op.WebAPI.Types.Unsubscribe                 (UnsubscribeResult)
 
 type API
   = GetEventAPI
@@ -51,6 +53,8 @@ type API
   :<|> CommentAPI
   :<|> InitForgetMeRequestApi
   :<|> ViewForgetMeRequestApi
+  :<|> AwsSnsWebhookApi
+  :<|> TestApi -- TODO remove me
   :<|> ExecuteForgetMeRequestApi
   :<|> UnsubscribeApi
   :<|> CreateEventHtml
@@ -73,6 +77,9 @@ type ViewForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_
 type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forgetme_request_id" UUID :> Delete '[JSON] ExecuteForgetMeResult
 
 type UnsubscribeApi = "api" :> "v1" :> "unsubscribe" :> Capture "unsubscribe_id" UUID :> Put '[JSON] UnsubscribeResult
+
+type AwsSnsWebhookApi = "api" :> "v1" :> "incoming-webhook" :> "aws-sns" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
+type TestApi = "test" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
@@ -98,6 +105,8 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> Op.WebAPI.Endpoints.Comment.addComment
         :<|> Op.WebAPI.Endpoints.InitForgetMeRequest.initForgetMe
         :<|> Op.WebAPI.Endpoints.ViewForgetMeRequest.viewForgetMeRequest
+        :<|> Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns.handleAwsSnsWebhook
+        :<|> undefined
         :<|> Op.WebAPI.Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
         :<|> Op.WebAPI.Endpoints.Unsubscribe.unsubscribe
         :<|> frontPage

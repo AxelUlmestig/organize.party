@@ -21,6 +21,7 @@ executable op-webapi
                      , Op.WebAPI.Endpoints.CreateEvent
                      , Op.WebAPI.Endpoints.EditEvent
                      , Op.WebAPI.Endpoints.GetEvent
+                     , Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns
                      , Op.WebAPI.Endpoints.InitForgetMeRequest
                      , Op.WebAPI.Endpoints.ViewForgetMeRequest
                      , Op.WebAPI.Endpoints.ExecuteForgetMeRequest
