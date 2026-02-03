@@ -112,14 +112,14 @@ withLogFunction action = do
 
 checkJobQueue :: RIO WorkerEnv ()
 checkJobQueue = do
-  checkAgain <- do
-    sharedWorkerState <- asks sharedWorkerState
+  sharedWorkerState <- asks sharedWorkerState
 
-    -- False is the value returned if `runLimitedParallelJobs` early returns
-    -- instead running the provided do block
-    runLimitedParallelJobs False sharedWorkerState do
+  mCheckAgain <- do
+    runLimitedParallelJobs sharedWorkerState do
       claimJobWithTransaction \workerJob -> do
         Job.processJob workerJob
+
+  let checkAgain = fromMaybe False mCheckAgain
 
   when checkAgain do
     checkJobQueue

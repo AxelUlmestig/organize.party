@@ -45,15 +45,17 @@ awaitShutdown (SharedWorkerState tvar) = do
 
 -- | Ensures that there is a limit to how many jobs we run in parallel. It also
 -- checks if the worker is shutting down and prevents new jobs from being
--- processed if that's the case
-runLimitedParallelJobs :: (MonadIO m, MonadUnliftIO m) => a -> SharedWorkerState -> m a -> m a
-runLimitedParallelJobs defaultValue (SharedWorkerState tvar) job = do
+-- processed if that's the case.
+--
+-- Returns Nothing if no job is run
+runLimitedParallelJobs :: (MonadIO m, MonadUnliftIO m) => SharedWorkerState -> m a -> m (Maybe a)
+runLimitedParallelJobs (SharedWorkerState tvar) job = do
   workerAction <- liftIO $ STM.atomically $ STM.stateTVar tvar checkWorkerStatus
   case workerAction of
-    DoNothing -> pure defaultValue
+    DoNothing -> pure Nothing
     DoJob     -> do
       finally
-        job
+        (Just <$> job)
         (liftIO $ STM.atomically $ STM.modifyTVar tvar restoreWorkerStatus)
   where
     checkWorkerStatus state =
