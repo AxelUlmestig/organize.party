@@ -48,17 +48,21 @@ data EmailAttachment = EmailAttachment
   , fileContents :: LBS.ByteString
   }
 
-sendEmail :: MonadIO m => SmtpConfig -> EmailContents -> m ()
-sendEmail SmtpConfig{server, port, login, password} EmailContents{recipientEmail, recipientName, subject, body, attachments} = do
-  let from       = SMTP.Address Nothing "noreply@organize.party"
-  let to         = [SMTP.Address recipientName recipientEmail]
-  let cc         = []
-  let bcc        = []
+sendEmail :: MonadIO m => SmtpConfig -> UUID -> EmailContents -> m ()
+sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipientEmail, recipientName, subject, body, attachments} = do
+  let mailFrom       = SMTP.Address Nothing "noreply@organize.party"
+  let mailTo         = [SMTP.Address recipientName recipientEmail]
+  let mailCc         = []
+  let mailBcc        = []
 
-  let attachments' = (\EmailAttachment{contentType, fileName, fileContents} -> Mail.filePartBS contentType fileName fileContents) <$> attachments
-  let body' = Mail.htmlPart $ fromStrict body
+  let mailParts =
+        let attachments' = (\EmailAttachment{contentType, fileName, fileContents} -> Mail.filePartBS contentType fileName fileContents) <$> attachments
+            body' = Mail.htmlPart $ fromStrict body
+        in [body' : attachments']
 
-  let mail = SMTP.simpleMail from to cc bcc subject (body' : attachments')
+  let mailHeaders = [("Subject", subject), ("X-OP-EMAIL-ID", tshow emailId)]
+
+  let mail = Mail.Mail {..}
 
   liftIO $ SMTP.sendMailWithLogin' server port login password mail
 
@@ -78,7 +82,7 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
         Just email -> pure email
 
     smtpConfig <- asks getSmtpConfig
-    sendEmail smtpConfig email
+    sendEmail smtpConfig emailId email
 
     Db.queryDbOr retryDbErr do
       Db.statement

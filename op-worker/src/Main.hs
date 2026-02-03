@@ -133,13 +133,13 @@ claimJobWithTransaction processJob = do
   Db.withDbConnection env \connection -> do
     runRIO env do
       Db.beginTransactionOr connection handleDbError
-      mJob <- Db.queryDbOr' connection (liftIO . die . show) (Hasql.statement () checkJobQueueStatement)
+      mJob <- Db.queryDbOr' connection handleDbError (Hasql.statement () checkJobQueueStatement)
 
       case mJob of
         Nothing -> do
           logDebug [i|No more jobs, going back to sleep|]
           Db.commitTransactionOr connection handleDbError
-          pure False; -- Don't check the queue for more jobs
+          pure False -- Don't check the queue for more jobs
 
         Just (jobId, failedAttempts, rawJobDefinition) -> do
           (mErrorMessage, updateJobStatement) <- do
@@ -154,6 +154,7 @@ claimJobWithTransaction processJob = do
 
                         Job context: #{Aeson.encode workerJob}
                         |]
+
                 eResult <- handleAny onErr do
                   Job.runJob env do
                     processJob workerJob
