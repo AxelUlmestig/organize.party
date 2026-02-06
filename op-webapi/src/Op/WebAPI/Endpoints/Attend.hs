@@ -10,9 +10,11 @@ import           Data.Profunctor              (dimap, lmap)
 import qualified Data.Text                    as Text
 import           Data.Types.Injective         (to)
 import           Data.UUID                    (UUID)
+{-
 import           Hasql.Session                (CommandError (ResultError),
                                                ResultError (ServerError),
                                                SessionError (QueryError))
+-}
 import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
 import           Hasql.TH                     (maybeStatement,
@@ -62,7 +64,8 @@ attend eventId attendee' = do
     handleErr err = do
       liftIO $ print err
       case err of
-        QueryError _ _ (ResultError (ServerError "23503" _ _ _ _)) -> throwError err404 { errBody = "Event not found" }
+        -- TODO: Look up the error types in the Hasql API
+        -- QueryError _ _ (ResultError (ServerError "23503" _ _ _ _)) -> throwError err404 { errBody = "Event not found" }
         _                                                        -> throwError err500 { errBody = "Something went wrong" }
 
 findExistingStatement :: Statement AttendInput (Maybe Attendee)

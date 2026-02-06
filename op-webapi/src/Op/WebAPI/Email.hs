@@ -17,17 +17,10 @@ import qualified Data.Text.Lazy               as LT
 import           Data.Time.Clock              (UTCTime, addUTCTime,
                                                secondsToNominalDiffTime)
 import           Data.Time.Format             (defaultTimeLocale, formatTime)
-import           Data.Time.Format.ISO8601     (iso8601Show)
 import           Data.UUID
-import qualified Hasql.Session                as Hasql
-import           Hasql.TH                     (resultlessStatement)
-import qualified Network.Mail.Mime            as Mail
-import           Network.Socket               (PortNumber)
 import qualified RIO
 
 import qualified Op.Db                        as Db
-import           Op.WebAPI.Types.AppEnv       (SmtpConfig (..))
-import           Op.WebAPI.Types.Attendee     (Attendee (..))
 import           Op.WebAPI.Types.CommentInput (CommentInput (..))
 import           Op.WebAPI.Types.Event        (Event (..))
 import qualified Op.WebAPI.Types.Event        as Event
@@ -93,7 +86,7 @@ sendEmailInvitation
     RIO.MonadIO m,
     RIO.MonadReader env m
   ) =>
-  (Hasql.SessionError -> m ()) ->
+  (Db.SessionError -> m ()) ->
   EmailData ->
   Event ->
   m ()
@@ -104,7 +97,7 @@ sendEmailInvitation onError EmailData{email, recipientName, emailHostUrl, unsubs
 
   where
     statement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         with
           inserted as (
             insert into email.emails (
@@ -153,7 +146,7 @@ sendEmailInvitation onError EmailData{email, recipientName, emailHostUrl, unsubs
 
 sendEventUpdateEmail ::
   (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
-  (Hasql.SessionError -> m ()) ->
+  (Db.SessionError -> m ()) ->
   EmailData ->
   Event ->
   m ()
@@ -162,7 +155,7 @@ sendEventUpdateEmail onError EmailData{email, recipientName, emailHostUrl, unsub
   Db.queryDbOr onError (Db.statement (email, recipientName, title, body, icalendarString) statement)
   where
     statement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         with
           inserted as (
             insert into email.emails (
@@ -219,7 +212,7 @@ data CommentNotificationRecipient =
 
 sendCommentNotifications ::
   (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
-  (Hasql.SessionError -> m ()) ->
+  (Db.SessionError -> m ()) ->
   EmailData ->
   CommentInput ->
   CommentNotificationRecipient ->
@@ -234,7 +227,7 @@ sendCommentNotifications
     Db.queryDbOr onError (Db.statement (email, recipientName, subject, emailBody) statement)
   where
     statement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         insert into email.emails (
           recipient_email,
           recipient_name,
@@ -283,7 +276,7 @@ sendCommentNotifications
 
 sendForgetMeConfirmation ::
   (Db.HasDbConnection env, RIO.MonadIO m, RIO.MonadReader env m) =>
-  (Hasql.SessionError -> m ()) ->
+  (Db.SessionError -> m ()) ->
   String ->
   UUID ->
   Text ->
@@ -306,7 +299,7 @@ sendForgetMeConfirmation onError hostUrl forgetMeRequestId email = do
         It will not delete events created by you, there's no connection between email addresses and events. It's impossible to tell which ones were created by you.
       |]
     statement =
-      [resultlessStatement|
+      [Db.resultlessStatement|
         insert into email.emails (
           recipient_email,
           subject,

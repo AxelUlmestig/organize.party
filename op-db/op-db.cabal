@@ -20,7 +20,7 @@ library
     -- other-modules:
     -- other-extensions:
     build-depends:    base ^>=4.19.2.0
-                    , hasql >=1.9.0.1
+                    , hasql >=1.10
                     , hasql-pool >= 0.10
                     , hasql-th >= 0.4
                     , hasql-transaction >= 1.0

@@ -13,8 +13,7 @@ import qualified Data.Pool                           as Pool
 import           Data.String.Interpolate             (i)
 import           GHC.Generics
 import           Hasql.Connection                    (Connection, acquire)
-import qualified Hasql.Connection.Setting            as ConnectionSetting
-import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
+import qualified Hasql.Connection.Settings           as ConnectionSetting
 import qualified Hasql.Notifications                 as Notifications
 import qualified Hasql.Session                       as Hasql
 import qualified Op.Db                               as Db
@@ -33,6 +32,7 @@ import           Op.Worker.JobLogistics              (SharedWorkerState,
                                                       runLimitedParallelJobs)
 import qualified Op.Worker.Jobs.Debug                as DebugJob
 import qualified Op.Worker.Jobs.SendEmail            as SendEmail
+import qualified Op.Worker.Jobs.ProcessAwsSnsWebhookMessage as ProcessAwsSnsWebhookMessage
 
 failedAttemptsLimit :: Int32
 failedAttemptsLimit = 5
@@ -291,7 +291,7 @@ claimJobWithTransaction processJob = do
 
 
 
-getListenDbConnectionSettings :: IO (Either String [ConnectionSetting.Setting])
+getListenDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
 getListenDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "LISTEN_DB_HOST"
     mPort <- lookupEnv "LISTEN_DB_PORT"
@@ -300,9 +300,9 @@ getListenDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable LISTEN_DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from LISTEN_DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
+      pure $ ConnectionSetting.connectionString connectionString
 
-getDbConnectionSettings :: IO (Either String [ConnectionSetting.Setting])
+getDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
 getDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
@@ -311,7 +311,7 @@ getDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
+      pure $ ConnectionSetting.connectionString connectionString
 
 
 getSmtpSettings :: IO (Either String SendEmail.SmtpConfig)
@@ -354,6 +354,7 @@ instance Db.HasDbConnection WorkerEnv where
 
 data WorkerJob
   = SendEmail SendEmail.SendEmailJob
+  | ProcessAwsSnsWebhookMessage ProcessAwsSnsWebhookMessage.ProcessAwsSnsWebhookMessageJob
   | Debug DebugJob.DebugJob
   deriving (Generic, Show)
 
@@ -362,6 +363,7 @@ instance Job.JobDefinition WorkerEnv WorkerJob where
     case wj of
       SendEmail sendEmail -> Job.processJob sendEmail
       Debug debugJob      -> Job.processJob debugJob
+      ProcessAwsSnsWebhookMessage processAwsSnsWebhookMessage -> Job.processJob processAwsSnsWebhookMessage
 
 instance Aeson.ToJSON WorkerJob where
   toJSON = Aeson.genericToJSON defaultOptions
@@ -373,7 +375,7 @@ instance Aeson.FromJSON WorkerJob where
     { sumEncoding = TaggedObject "type" "payload"
     }
 
-handleDbError :: Hasql.SessionError -> a
+handleDbError :: Db.SessionError -> a
 handleDbError err = error [i|Unexpected database error: #{err}|]
 
 newtype DbNotification =

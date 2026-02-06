@@ -1,8 +1,8 @@
--- Deploy events:tables/failed_worker_jobs to pg
+-- Deploy events:job_queue/tables/failed_worker_jobs to pg
 
 BEGIN;
 
-  create table if not exists failed_worker_jobs(
+  create table if not exists job_queue.failed_worker_jobs(
     id uuid not null,
     run_at timestamptz not null,
     picked_up_at timestamptz not null,

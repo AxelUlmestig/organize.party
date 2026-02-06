@@ -18,6 +18,7 @@ executable op-worker
     other-modules:    Op.Worker.Job
                     , Op.Worker.JobLogistics
                     , Op.Worker.Jobs.Debug
+                    , Op.Worker.Jobs.ProcessAwsSnsWebhookMessage
                     , Op.Worker.Jobs.SendEmail
     build-depends:    base ^>=4.19.2.0
                     , aeson
@@ -25,10 +26,13 @@ executable op-worker
                     , every
                     , hasql
                     , hasql-notifications
+                    , lens-aeson
                     , mime-mail
+                    , modern-uri
                     , mtl
                     , network
                     , op-db
+                    , req
                     , resource-pool
                     , stm
                     , string-interpolate

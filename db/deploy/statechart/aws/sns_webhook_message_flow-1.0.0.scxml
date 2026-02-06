@@ -1,0 +1,29 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml"
+              name="aws.sns_webhook_message_flow"
+              version="1.0.0"
+              initial="queued">
+
+  <state id="queued" name="QUEUED">
+    <transition event="sns_webhook.processed" target="processed"/>
+    <transition event="sns_webhook.processing_failed" target="processing_failed"/>
+
+    <onentry>
+      <script src="aws.materialize_sns_webhook_message_status" />
+      <script src="aws.enqueue_process_sns_webhook_job" />
+    </onentry>
+  </state>
+
+  <state id="processing_failed" name="PROCESSING_FAILED">
+    <transition event="sns_webhook.processed" target="processed"/>
+
+    <onentry>
+      <script src="aws.materialize_sns_webhook_message_status" />
+    </onentry>
+  </state>
+
+  <final id="processed" name="PROCESSED">
+    <onentry>
+      <script src="aws.materialize_sns_webhook_message_status" />
+    </onentry>
+  </final>
+</scxml>

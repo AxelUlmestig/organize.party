@@ -128,5 +128,5 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
 
           pure EmailContents {..}
 
-retryDbErr :: Hasql.SessionError -> Job.Job env a
+retryDbErr :: Db.SessionError -> Job.Job env a
 retryDbErr err = Job.retryJob [i|Error when accessing db for email job: #{err}|]

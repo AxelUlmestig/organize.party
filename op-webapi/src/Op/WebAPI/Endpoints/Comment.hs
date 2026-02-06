@@ -10,9 +10,11 @@ import           Data.Profunctor              (lmap)
 import           Data.String.Interpolate      (i)
 import           Data.Types.Injective         (to)
 import           Data.UUID                    (UUID)
-import           Hasql.Session                (CommandError (ResultError),
+{-
+import           Hasql.Errors                 (CommandError (ResultError),
                                                ResultError (ServerError),
                                                SessionError (QueryError))
+                                            -}
 import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
 import           Servant                      (ServerError (errBody), err400,
@@ -44,8 +46,11 @@ addComment eventId commentInput' = do
     handleErr err = do
       liftIO $ putStrLn [i|Something went wrong when adding comment: #{err}|]
       case err of
+        -- TODO: look up the error types in the new Hasql API
+        {-
         QueryError _ _ (ResultError (ServerError "23503" _ _ _ _))  -> throwError err404 { errBody = "Event not found" }
         QueryError _ _ (ResultError (ServerError "23514" _ _ _ _))  -> throwError err400 { errBody = "Comment can't be empty" }
+        -}
         _                                                           -> throwError err500 { errBody = "Something went wrong" }
 
 insertCommentStatement :: Statement CommentInput ()

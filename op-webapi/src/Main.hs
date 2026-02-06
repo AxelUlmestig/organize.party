@@ -11,8 +11,7 @@ import           Data.ByteString.UTF8                        as BSU
 import           Data.String.Interpolate                     (i)
 import           Data.Text                                   (Text)
 import           Data.UUID                                   (UUID)
-import qualified Hasql.Connection.Setting                    as ConnectionSetting
-import qualified Hasql.Connection.Setting.Connection         as ConnectionSettingConnection
+import qualified Hasql.Connection.Settings                   as ConnectionSetting
 import           Network.Wai.Handler.Warp                    (run)
 import           Network.Wai.Middleware.Cors                 (simpleCors)
 import           Servant
@@ -54,7 +53,6 @@ type API
   :<|> InitForgetMeRequestApi
   :<|> ViewForgetMeRequestApi
   :<|> AwsSnsWebhookApi
-  :<|> TestApi -- TODO remove me
   :<|> ExecuteForgetMeRequestApi
   :<|> UnsubscribeApi
   :<|> CreateEventHtml
@@ -79,7 +77,6 @@ type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forget
 type UnsubscribeApi = "api" :> "v1" :> "unsubscribe" :> Capture "unsubscribe_id" UUID :> Put '[JSON] UnsubscribeResult
 
 type AwsSnsWebhookApi = "api" :> "v1" :> "incoming-webhook" :> "aws-sns" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
-type TestApi = "test" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
@@ -106,7 +103,6 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> Op.WebAPI.Endpoints.InitForgetMeRequest.initForgetMe
         :<|> Op.WebAPI.Endpoints.ViewForgetMeRequest.viewForgetMeRequest
         :<|> Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns.handleAwsSnsWebhook
-        :<|> undefined
         :<|> Op.WebAPI.Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
         :<|> Op.WebAPI.Endpoints.Unsubscribe.unsubscribe
         :<|> frontPage
@@ -118,7 +114,7 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> const frontPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
 
-getDbConnectionSettings :: IO (Either String [ConnectionSetting.Setting])
+getDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
 getDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
@@ -127,7 +123,7 @@ getDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure [ConnectionSetting.connection (ConnectionSettingConnection.string connectionString)]
+      pure $ ConnectionSetting.connectionString connectionString
 
 
 getHostUrl :: IO (Either String String)
@@ -138,7 +134,6 @@ getHostUrl = do
 main :: IO ()
 main = do
   dbSettings <- getDbConnectionSettings >>= either die pure
-  -- smtpConfig <- getSmtpConfig >>= either die pure
   hostUrl <- getHostUrl >>= either die pure
   connectionPool <- Db.createPool dbSettings
   let port = 8081

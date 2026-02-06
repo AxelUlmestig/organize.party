@@ -54,3 +54,11 @@ email/functions/materialize_email_status 2026-01-07T22:59:32Z Axel,,, <axel@axel
 email/functions/enqueue_send_email_job 2026-01-08T13:10:06Z Axel,,, <axel@axel-XPS-13-9380> # enqueue send email job
 email/functions/update_email_sent_at 2026-01-08T20:47:30Z Axel,,, <axel@axel-XPS-13-9380> # update email sent at
 statechart/email/email_flow-1.0 2026-01-08T13:22:20Z Axel,,, <axel@axel-XPS-13-9380> # email flow 1.0
+
+schemas/aws 2026-02-06T11:52:10Z Axel,,, <axel@axel-ThinkPad> # aws schema
+aws/tables/sns_webhook_messages 2026-02-06T11:55:09Z Axel,,, <axel@axel-ThinkPad> # sns webhook messages
+aws/triggers/sns_webhook_messages/create_sns_webhook_message_flow 2026-02-06T12:34:34Z Axel,,, <axel@axel-ThinkPad> # create sns webhook flow trigger
+aws/triggers/sns_webhook_messages/start_sns_webhook_message_flow 2026-02-06T12:35:05Z Axel,,, <axel@axel-ThinkPad> # start sns webhook message flow
+aws/functions/materialize_sns_webhook_message_status 2026-02-06T12:42:16Z Axel,,, <axel@axel-ThinkPad> # materialize sns webhook message status
+aws/functions/enqueue_process_sns_webhook_job 2026-02-06T14:38:02Z Axel,,, <axel@axel-ThinkPad> # enqueue_process_sns_webhook_job
+statechart/aws/sns_webhook_message_flow-1.0 2026-02-06T12:20:26Z Axel,,, <axel@axel-ThinkPad> # aws sns webhook message flow
