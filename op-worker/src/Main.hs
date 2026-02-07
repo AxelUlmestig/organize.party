@@ -71,8 +71,9 @@ main = do
 
       -- poll the job queue every 10 seconds (with 0 time until the first check)
       void $ liftIO $ every microsecondsBetweenJobQueuePoll (Just 0) do
-        runRIO workerEnv do
-          checkJobQueue
+        forkIO do
+          runRIO workerEnv do
+            checkJobQueue
 
       -- block here on shutdown until no more jobs are in progress
       shutDownCircumstances <- JobLogistics.awaitShutdown sharedWorkerState
