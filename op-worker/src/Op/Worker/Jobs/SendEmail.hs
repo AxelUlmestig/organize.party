@@ -14,7 +14,6 @@ import           Data.Text
 import           Data.Text.Lazy          (fromStrict)
 import           Data.UUID
 import qualified Data.Vector             as Vector
-import qualified Hasql.Session           as Hasql
 import qualified Network.Mail.Mime       as Mail
 import qualified Network.Mail.SMTP       as SMTP
 import           Network.Socket          (PortNumber)

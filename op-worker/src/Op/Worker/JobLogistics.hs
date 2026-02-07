@@ -1,9 +1,10 @@
 module Op.Worker.JobLogistics (
   runLimitedParallelJobs,
   initSharedWorkerState,
-  initiateShutDown,
+  initiateShutdown,
   awaitShutdown,
   SharedWorkerState,
+  ShutdownCircumstances (..),
 ) where
 
 import qualified Control.Concurrent.STM as STM
@@ -12,35 +13,44 @@ import           RIO
 maxNumberOfParallelJobs :: Int
 maxNumberOfParallelJobs = 5
 
-data ShutDownState
+data ShutdownState
   = Running
   | Stopping
+  | ForceStopping
   deriving (Eq, Show)
 
-newtype SharedWorkerState = SharedWorkerState (STM.TVar (ShutDownState, Int))
+newtype SharedWorkerState = SharedWorkerState (STM.TVar (ShutdownState, Int))
 
 data WorkerAction
   = DoJob
   | DoNothing
 
+data ShutdownCircumstances
+  = GracefulShutdown
+  | ForcedShutdown
+
 initSharedWorkerState :: MonadIO m => m SharedWorkerState
 initSharedWorkerState = do
   liftIO $ fmap SharedWorkerState $ STM.atomically $ STM.newTVar (Running, 0)
 
-initiateShutDown :: SharedWorkerState -> IO ()
-initiateShutDown (SharedWorkerState tvar) = do
+-- | This will set start gracefully shutting down the first time it's called.
+-- If called again it will force shutdown immeadiately
+initiateShutdown :: SharedWorkerState -> IO ()
+initiateShutdown (SharedWorkerState tvar) = do
   atomically $ modifyTVar' tvar setStopping
   where
-    setStopping (_, activeJobs) =  (Stopping, activeJobs)
+    setStopping (Stopping, activeJobs) =  (ForceStopping, activeJobs)
+    setStopping (_, activeJobs)        =  (Stopping, activeJobs)
 
 -- | This will block until the worker is stopping and no jobs are in progress.
 -- Every time the shared worker state is updated it will check again
-awaitShutdown :: MonadIO m => SharedWorkerState -> m ()
+awaitShutdown :: MonadIO m => SharedWorkerState -> m ShutdownCircumstances
 awaitShutdown (SharedWorkerState tvar) = do
   atomically $ do
     state <- readTVar tvar
     case state of
-      (Stopping, activeJobs) | activeJobs < 1 -> pure ()
+      (ForceStopping, _)                      -> pure ForcedShutdown
+      (Stopping, activeJobs) | activeJobs < 1 -> pure GracefulShutdown
       _                                       -> STM.retry
 
 -- | Ensures that there is a limit to how many jobs we run in parallel. It also
@@ -64,10 +74,5 @@ runLimitedParallelJobs (SharedWorkerState tvar) job = do
           (DoJob, (Running, activeJobs + 1))
         _ ->
           (DoNothing, state)
-    restoreWorkerStatus state =
-      case state of
-        (Running, activeJobs) ->
-          (Running, activeJobs - 1)
-        (Stopping, activeJobs) ->
-          (Stopping, activeJobs - 1)
+    restoreWorkerStatus (shutDownState, activeJobs) = (shutDownState, activeJobs - 1)
 

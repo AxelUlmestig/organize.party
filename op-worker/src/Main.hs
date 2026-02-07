@@ -4,35 +4,33 @@
 
 module Main where
 
-import           Control.Concurrent.Async.Every      (every)
-import qualified Data.Aeson                          as Aeson
+import           Control.Concurrent.Async.Every             (every)
+import qualified Data.Aeson                                 as Aeson
 import           Data.Aeson.TH
-import qualified Data.ByteString.Lazy                as LBS
-import           Data.ByteString.UTF8                as BSU
-import qualified Data.Pool                           as Pool
-import           Data.String.Interpolate             (i)
+import qualified Data.ByteString.Lazy                       as LBS
+import           Data.ByteString.UTF8                       as BSU
+import qualified Data.Pool                                  as Pool
+import           Data.String.Interpolate                    (i)
 import           GHC.Generics
-import           Hasql.Connection                    (Connection, acquire)
-import qualified Hasql.Connection.Settings           as ConnectionSetting
-import qualified Hasql.Notifications                 as Notifications
-import qualified Hasql.Session                       as Hasql
-import qualified Op.Db                               as Db
+import           Hasql.Connection                           (Connection,
+                                                             acquire)
+import qualified Hasql.Connection.Settings                  as ConnectionSetting
+import qualified Hasql.Notifications                        as Notifications
+import qualified Hasql.Session                              as Hasql
+import qualified Op.Db                                      as Db
 import           RIO
-import           System.Environment                  (lookupEnv)
-import           System.Exit                         (die)
-import           System.Posix.Signals                (Handler (..),
-                                                      installHandler, sigINT)
-import           UnliftIO.Concurrent                 (forkIO)
+import           System.Environment                         (lookupEnv)
+import           System.Exit                                (die)
+import           System.Posix.Signals                       (Handler (..),
+                                                             installHandler,
+                                                             sigINT)
+import           UnliftIO.Concurrent                        (forkIO)
 
-import qualified Op.Worker.Job                       as Job
-import           Op.Worker.JobLogistics              (SharedWorkerState,
-                                                      awaitShutdown,
-                                                      initSharedWorkerState,
-                                                      initiateShutDown,
-                                                      runLimitedParallelJobs)
-import qualified Op.Worker.Jobs.Debug                as DebugJob
-import qualified Op.Worker.Jobs.SendEmail            as SendEmail
+import qualified Op.Worker.Job                              as Job
+import qualified Op.Worker.JobLogistics                     as JobLogistics
+import qualified Op.Worker.Jobs.Debug                       as DebugJob
 import qualified Op.Worker.Jobs.ProcessAwsSnsWebhookMessage as ProcessAwsSnsWebhookMessage
+import qualified Op.Worker.Jobs.SendEmail                   as SendEmail
 
 failedAttemptsLimit :: Int32
 failedAttemptsLimit = 5
@@ -51,10 +49,10 @@ main = do
 
     -- Initiate a shard state that keeps track of how many parallel jobs are
     -- running and if the worker is shutting down
-    sharedWorkerState <- initSharedWorkerState
+    sharedWorkerState <- JobLogistics.initSharedWorkerState
 
     -- Tell the worker to stop accepting new jobs on sigINT
-    void $ installHandler sigINT (Catch (initiateShutDown sharedWorkerState)) Nothing
+    void $ installHandler sigINT (Catch (JobLogistics.initiateShutdown sharedWorkerState)) Nothing
 
     listenConnection <- do
       -- We need a dedicated DB connection for listening for pg_notify. It can't go
@@ -77,8 +75,11 @@ main = do
           checkJobQueue
 
       -- block here on shutdown until no more jobs are in progress
-      awaitShutdown sharedWorkerState
-      logInfo "Gracefully shutting down..."
+      shutDownCircumstances <- JobLogistics.awaitShutdown sharedWorkerState
+
+      case shutDownCircumstances of
+        JobLogistics.GracefulShutdown -> logInfo "Gracefully shut down after all in progress jobs were finished"
+        JobLogistics.ForcedShutdown -> logWarn "Forced shutdown, some jobs might have been in progress"
     where
       handler workerEnv _channel payload = do
         void $ forkIO do
@@ -115,7 +116,7 @@ checkJobQueue = do
   sharedWorkerState <- asks sharedWorkerState
 
   mCheckAgain <- do
-    runLimitedParallelJobs sharedWorkerState do
+    JobLogistics.runLimitedParallelJobs sharedWorkerState do
       claimJobWithTransaction \workerJob -> do
         Job.processJob workerJob
 
@@ -338,7 +339,7 @@ data WorkerEnv = WorkerEnv
   -- , jobId          :: UUID.UUID
   , smtpConfig        :: SendEmail.SmtpConfig
   , logFunc           :: LogFunc
-  , sharedWorkerState :: SharedWorkerState
+  , sharedWorkerState :: JobLogistics.SharedWorkerState
   }
 
 instance HasLogFunc WorkerEnv where
