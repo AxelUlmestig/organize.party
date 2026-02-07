@@ -29,6 +29,11 @@ runJob workerEnv = RIO.runRIO workerEnv . Except.runExceptT
 class JobDefinition env a where
   processJob :: a -> Job env ()
 
+  cleanUpJobAfterGivingUp :: a -> RIO env ()
+  cleanUpJobAfterGivingUp _ = pure ()
+
+  {-# MINIMAL processJob #-}
+
 finallyJ ::
   Job env a ->
   RIO env b ->

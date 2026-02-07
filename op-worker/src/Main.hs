@@ -126,11 +126,10 @@ checkJobQueue = do
   when checkAgain do
     checkJobQueue
 
-claimJobWithTransaction
-  :: (HasLogFunc env, MonadIO m, Db.HasDbConnection env, MonadReader env m)
-  => (WorkerJob -> Job.Job env ())
-  -> m Bool
-claimJobWithTransaction processJob = do
+claimJobWithTransaction ::
+  (WorkerJob -> Job.Job WorkerEnv ())
+  -> RIO WorkerEnv Bool
+claimJobWithTransaction processJob' = do
   env <- ask
   Db.withDbConnection env \connection -> do
     runRIO env do
@@ -159,24 +158,29 @@ claimJobWithTransaction processJob = do
 
                 eResult <- handleAny onErr do
                   Job.runJob env do
-                    processJob workerJob
+                    processJob' workerJob
 
-                pure $ case eResult of
-                  Right () -> (Nothing, moveToCompletedJobStatement)
+                case eResult of
+                  Right () -> pure (Nothing, moveToCompletedJobStatement)
                   Left err ->
                     case err of
-                      Job.NonRetryableError message ->
-                        (Just message, moveToFailedJobStatement)
+                      Job.NonRetryableError message -> do
+                        Job.cleanUpJobAfterGivingUp workerJob
+                        pure (Just message, moveToFailedJobStatement)
+
                       Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
+                        Job.cleanUpJobAfterGivingUp workerJob
+
                         let newMessage =
                               [i|
                               Giving up after #{failedAttemptsLimit} failed attempts
 
                               Error: #{textDisplay message}
                               |]
-                        (Just newMessage, moveToFailedJobStatement)
-                      Job.RetryableError message->
-                        (Just message, returnJobToQueueStatement)
+                        pure (Just newMessage, moveToFailedJobStatement)
+
+                      Job.RetryableError message -> do
+                        pure (Just message, returnJobToQueueStatement)
 
           for_ mErrorMessage logError
 
@@ -363,9 +367,15 @@ data WorkerJob
 instance Job.JobDefinition WorkerEnv WorkerJob where
   processJob wj =
     case wj of
-      SendEmail sendEmail -> Job.processJob sendEmail
-      Debug debugJob      -> Job.processJob debugJob
+      SendEmail sendEmail                                     -> Job.processJob sendEmail
+      Debug debugJob                                          -> Job.processJob debugJob
       ProcessAwsSnsWebhookMessage processAwsSnsWebhookMessage -> Job.processJob processAwsSnsWebhookMessage
+
+  cleanUpJobAfterGivingUp wj =
+    case wj of
+      SendEmail sendEmail                                     -> Job.cleanUpJobAfterGivingUp sendEmail
+      Debug debugJob                                          -> Job.cleanUpJobAfterGivingUp debugJob
+      ProcessAwsSnsWebhookMessage processAwsSnsWebhookMessage -> Job.cleanUpJobAfterGivingUp processAwsSnsWebhookMessage
 
 instance Aeson.ToJSON WorkerJob where
   toJSON = Aeson.genericToJSON defaultOptions

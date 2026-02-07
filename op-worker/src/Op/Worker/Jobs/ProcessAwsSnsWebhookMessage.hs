@@ -6,12 +6,12 @@ module Op.Worker.Jobs.ProcessAwsSnsWebhookMessage (
 ) where
 
 import qualified Data.Aeson              as Aeson
-import           Data.UUID (UUID)
+import           Data.UUID               (UUID)
 import           RIO
 -- import qualified Hasql.Session           as Hasql
-import           Data.String.Interpolate (i)
 import           Data.Aeson.Lens
-import qualified Network.HTTP.Req as Req
+import           Data.String.Interpolate (i)
+import qualified Network.HTTP.Req        as Req
 import           Text.URI                (mkURI)
 
 import qualified Op.Db                   as Db
@@ -23,7 +23,7 @@ newtype ProcessAwsSnsWebhookMessageJob = ProcessAwsSnsWebhookMessageJob { awsSns
 instance Aeson.ToJSON ProcessAwsSnsWebhookMessageJob
 instance Aeson.FromJSON ProcessAwsSnsWebhookMessageJob
 
-instance (Db.HasDbConnection env) => Job.JobDefinition env ProcessAwsSnsWebhookMessageJob where
+instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env ProcessAwsSnsWebhookMessageJob where
   processJob (ProcessAwsSnsWebhookMessageJob awsSnsWebhookMessageId) = do
     webhookContents <- do
       mContents <- Db.queryDbOr retryDbErr do
@@ -55,6 +55,29 @@ instance (Db.HasDbConnection env) => Job.JobDefinition env ProcessAwsSnsWebhookM
             from aws.sns_webhook_messages
             where id = $1::uuid
         |]
+
+  cleanUpJobAfterGivingUp (ProcessAwsSnsWebhookMessageJob awsSnsWebhookMessageId) = do
+    Db.queryDbOr printDbError do
+      Db.statement
+        awsSnsWebhookMessageId
+        [Db.resultlessStatement|
+          select fsm.notify_state_machine(
+            shard => 1,
+            machine => state_machine_id,
+            event => 'sns_webhook.processing_failed'
+          )::text
+          from aws.sns_webhook_messages
+          where id = $1::uuid
+        |]
+      where
+        printDbError err =
+          logError
+            [i|
+            Unexpected db error when marking aws.sns_webhook_message processing as failed.
+            aws.sns_webhook_messages.id = #{awsSnsWebhookMessageId}
+            error message: #{err}
+            |]
+
 
 callSubscribeUrl :: Text -> Job.Job env ()
 callSubscribeUrl rawSubscribeUrl = do
