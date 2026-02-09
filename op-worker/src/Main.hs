@@ -10,7 +10,8 @@ import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy                       as LBS
 import           Data.ByteString.UTF8                       as BSU
 import qualified Data.Pool                                  as Pool
-import           Data.String.Interpolate                    (i)
+import           Data.String.Interpolate                    (i, __i'L)
+import           Data.Typeable                              (typeOf)
 import           GHC.Generics
 import           Hasql.Connection                           (Connection,
                                                              acquire)
@@ -133,61 +134,74 @@ claimJobWithTransaction processJob' = do
   env <- ask
   Db.withDbConnection env \connection -> do
     runRIO env do
-      Db.beginTransactionOr connection handleDbError
-      mJob <- Db.queryDbOr' connection handleDbError (Hasql.statement () checkJobQueueStatement)
+      bracket
+        do Db.beginTransactionOr connection handleDbError
+        do const do Db.commitTransactionOr connection handleDbError
+        \_ -> do
+          mJob <- Db.queryDbOr' connection handleDbError (Hasql.statement () checkJobQueueStatement)
 
-      case mJob of
-        Nothing -> do
-          logDebug [i|No more jobs, going back to sleep|]
-          Db.commitTransactionOr connection handleDbError
-          pure False -- Don't check the queue for more jobs
+          case mJob of
+            Nothing -> do
+              logDebug [i|No more jobs, going back to sleep|]
+              pure False -- Don't check the queue for more jobs
 
-        Just (jobId, failedAttempts, rawJobDefinition) -> do
-          (mErrorMessage, updateJobStatement) <- do
-            case Aeson.fromJSON rawJobDefinition of
-              Aeson.Error err -> do
-                pure (Just [i|jobId: #{jobId}, could not be parsed: #{err}|], moveToFailedJobStatement)
+            Just (jobId, failedAttempts, rawJobDefinition) -> do
+              -- Do check the queue for more jobs (Run everything below and then return True)
+              True <$ do
+                case Aeson.fromJSON rawJobDefinition of
+                  Aeson.Error err -> do
+                    logError [i|jobId: #{jobId}, could not be parsed: #{err}|]
+                    Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
 
-              Aeson.Success (workerJob :: WorkerJob) -> do
-                let onErr exception = pure $ Left $ Job.RetryableError
-                        [i|
-                        Unexpected exception when processing job: #{exception}
+                  Aeson.Success (workerJob :: WorkerJob) -> do
+                    let onErr exception = pure $ Left $ Job.RetryableError
+                            [i|
+                            Unexpected exception when processing job: #{exception}
 
-                        Job context: #{Aeson.encode workerJob}
-                        |]
+                            Job context: #{Aeson.encode workerJob}
+                            |]
 
-                eResult <- handleAny onErr do
-                  Job.runJob env do
-                    processJob' workerJob
+                    eResult <- handleAny onErr do
+                      Job.runJob env do
+                        logInfo
+                          [__i'L|
+                          Starting to process #{workerJobName workerJob}...
+                          jobId: #{jobId}
+                          |]
 
-                case eResult of
-                  Right () -> pure (Nothing, moveToCompletedJobStatement)
-                  Left err ->
-                    case err of
-                      Job.NonRetryableError message -> do
-                        Job.cleanUpJobAfterGivingUp workerJob
-                        pure (Just message, moveToFailedJobStatement)
+                        processJob' workerJob
 
-                      Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
-                        Job.cleanUpJobAfterGivingUp workerJob
+                    case eResult of
+                      Right () -> do
+                        logInfo
+                          [__i'L|
+                          Done processing #{workerJobName workerJob}
+                          jobId: #{jobId}
+                          |]
 
-                        let newMessage =
-                              [i|
+                        Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToCompletedJobStatement)
+
+                      Left err ->
+                        case err of
+                          Job.NonRetryableError message -> do
+                            logError message
+                            Job.cleanUpJobAfterGivingUp workerJob
+                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
+
+                          Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
+                            logError
+                              [__i'L|
                               Giving up after #{failedAttemptsLimit} failed attempts
 
                               Error: #{textDisplay message}
                               |]
-                        pure (Just newMessage, moveToFailedJobStatement)
 
-                      Job.RetryableError message -> do
-                        pure (Just message, returnJobToQueueStatement)
+                            Job.cleanUpJobAfterGivingUp workerJob
+                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
 
-          for_ mErrorMessage logError
-
-          Db.queryDbOr' connection handleDbError (Hasql.statement jobId updateJobStatement)
-          Db.commitTransactionOr connection handleDbError
-
-          pure True -- Do check the queue for more jobs
+                          Job.RetryableError message -> do
+                            logError message
+                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId returnJobToQueueStatement)
   where
     checkJobQueueStatement =
       [Db.maybeStatement|
@@ -389,6 +403,14 @@ instance Aeson.FromJSON WorkerJob where
 
 handleDbError :: Db.SessionError -> a
 handleDbError err = error [i|Unexpected database error: #{err}|]
+
+workerJobName :: WorkerJob -> Text
+workerJobName wj =
+  case wj of
+    SendEmail x -> tshow $ typeOf x
+    ProcessAwsSnsWebhookMessage x -> tshow $ typeOf x
+    Debug x -> tshow $ typeOf x
+
 
 newtype DbNotification =
   DbNotification { microsecondsUntilRunAt :: Int }
