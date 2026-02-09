@@ -10,7 +10,7 @@ import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy                       as LBS
 import           Data.ByteString.UTF8                       as BSU
 import qualified Data.Pool                                  as Pool
-import           Data.String.Interpolate                    (i, __i'L)
+import           Data.String.Interpolate                    (__i'L, i)
 import           Data.Typeable                              (typeOf)
 import           GHC.Generics
 import           Hasql.Connection                           (Connection,
@@ -119,18 +119,15 @@ checkJobQueue = do
 
   mCheckAgain <- do
     JobLogistics.runLimitedParallelJobs sharedWorkerState do
-      claimJobWithTransaction \workerJob -> do
-        Job.processJob workerJob
+      processOneJob
 
   let checkAgain = fromMaybe False mCheckAgain
 
   when checkAgain do
     checkJobQueue
 
-claimJobWithTransaction ::
-  (WorkerJob -> Job.Job WorkerEnv ())
-  -> RIO WorkerEnv Bool
-claimJobWithTransaction processJob' = do
+processOneJob :: RIO WorkerEnv Bool
+processOneJob = do
   env <- ask
   Db.withDbConnection env \connection -> do
     runRIO env do
@@ -169,7 +166,7 @@ claimJobWithTransaction processJob' = do
                           jobId: #{jobId}
                           |]
 
-                        processJob' workerJob
+                        Job.processJob workerJob
 
                     case eResult of
                       Right () -> do
@@ -407,9 +404,9 @@ handleDbError err = error [i|Unexpected database error: #{err}|]
 workerJobName :: WorkerJob -> Text
 workerJobName wj =
   case wj of
-    SendEmail x -> tshow $ typeOf x
+    SendEmail x                   -> tshow $ typeOf x
     ProcessAwsSnsWebhookMessage x -> tshow $ typeOf x
-    Debug x -> tshow $ typeOf x
+    Debug x                       -> tshow $ typeOf x
 
 
 newtype DbNotification =
