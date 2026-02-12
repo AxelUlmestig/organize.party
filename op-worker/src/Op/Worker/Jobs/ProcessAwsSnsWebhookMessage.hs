@@ -6,18 +6,19 @@ module Op.Worker.Jobs.ProcessAwsSnsWebhookMessage (
 ) where
 
 import qualified Data.Aeson              as Aeson
-import           Data.UUID               (UUID)
-import           RIO
--- import qualified Hasql.Session           as Hasql
 import           Data.Aeson.Lens
+import qualified Data.ByteString.Lazy    as LBS
+import qualified Data.List
 import           Data.String.Interpolate (i)
+import qualified Data.UUID               as UUID
 import qualified Network.HTTP.Req        as Req
+import           RIO
 import           Text.URI                (mkURI)
 
 import qualified Op.Db                   as Db
 import qualified Op.Worker.Job           as Job
 
-newtype ProcessAwsSnsWebhookMessageJob = ProcessAwsSnsWebhookMessageJob { awsSnsWebhookMessageId :: UUID }
+newtype ProcessAwsSnsWebhookMessageJob = ProcessAwsSnsWebhookMessageJob { awsSnsWebhookMessageId :: UUID.UUID }
   deriving (Generic, Show)
 
 instance Aeson.ToJSON ProcessAwsSnsWebhookMessageJob
@@ -39,9 +40,18 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
         Just contents -> pure contents
         Nothing -> Job.giveUpJob [i|Couldn't find aws.sns_webhook_messages where id = ${awsSnsWebhookMessageId}|]
 
-    case webhookContents ^? key "SubscribeURL" . _String of
-      Just subscribeUrl -> callSubscribeUrl subscribeUrl
-      _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+    let mWebhookType = webhookContents ^? key "Type" . _String
+    let mWebhookMessage = do
+          messageText <- webhookContents ^? key "Message" . _String
+          Aeson.decode . LBS.fromStrict . encodeUtf8 $ messageText
+
+    case (mWebhookType, mWebhookMessage) of
+      (Just "SubscriptionConfirmation", _) -> handleSubscriptionConfirmation webhookContents
+      (Just "Notification", Just message) -> do
+        case message ^? key "notificationType" of
+          Just "Bounce" -> handleSesBounce message
+          _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+      _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook type (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
 
     Db.queryDbOr retryDbErr do
       Db.statement
@@ -78,9 +88,13 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
             error message: #{err}
             |]
 
+handleSubscriptionConfirmation :: Aeson.Value -> Job.Job env ()
+handleSubscriptionConfirmation webhookContents = do
+  rawSubscribeUrl <- do
+    case webhookContents ^? key "SubscribeURL" . _String of
+      Just subscribeUrl -> pure subscribeUrl
+      _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook: #{Aeson.encode webhookContents}|]
 
-callSubscribeUrl :: Text -> Job.Job env ()
-callSubscribeUrl rawSubscribeUrl = do
   (subscribeUrl, options) <- do
     case Req.useHttpsURI =<< mkURI rawSubscribeUrl of
       Just uri -> pure uri
@@ -99,6 +113,34 @@ callSubscribeUrl rawSubscribeUrl = do
   case Req.responseStatusCode response `div` 100 of
     2 -> pure ()
     _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
+
+handleSesBounce :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
+handleSesBounce webhookMessage = do
+  let mEmailId = do
+        headers <- webhookMessage ^? key "mail" . key "headers" . _Array
+        let isEmailIdHeader h = h ^? key "name" . _String == Just "X-OP-EMAIL-ID"
+        emailHeader <- Data.List.find isEmailIdHeader headers
+        emailId <- emailHeader ^? key "value" . _String
+        UUID.fromText emailId
+
+  emailId <- do
+    case mEmailId of
+      Nothing -> Job.giveUpJob [i|No X-OP-EMAIL-ID found among email headers in bounce message from AWS SES: #{Aeson.encode webhookMessage}|]
+      Just emailId -> pure emailId
+
+  Db.queryDbOr retryDbErr do
+    Db.statement
+      emailId
+      [Db.resultlessStatement|
+          select fsm.notify_state_machine(
+            shard => 1,
+            machine => state_machine_id,
+            event => 'email.bounced'
+          )::text
+          from email.emails
+          where id = $1::uuid
+      |]
+
 
 retryDbErr :: Db.SessionError -> Job.Job env a
 retryDbErr err = Job.retryJob [i|Error when accessing db for ProcessAwsSnsWebhookMessage job: #{err}|]
