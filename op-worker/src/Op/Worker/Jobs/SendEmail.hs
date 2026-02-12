@@ -63,7 +63,11 @@ sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipi
 
   let mail = Mail.Mail {..}
 
-  liftIO $ SMTP.sendMailWithLogin' server port login password mail
+  -- AWS SES requires TLS, but when doing local test we can't use TLS
+  case server of
+    "localhost" ->  liftIO $ SMTP.sendMailWithLogin' server port login password mail
+    _ ->            liftIO $ SMTP.sendMailWithLoginTLS' server port login password mail
+
 
 
 newtype SendEmailJob = SendEmailJob { emailId :: UUID }

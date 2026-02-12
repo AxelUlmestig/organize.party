@@ -40,7 +40,7 @@ handleAwsSnsWebhook rawRequestBody = do
           liftIO $ print errorMessage
           throwError err500 { errBody = errorMessage }
 
-  liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
+  -- liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
 
   Db.queryDbOr Db.printAndThrow500 do
     Db.statement
