@@ -6,10 +6,12 @@ import           Control.Monad.Except    (MonadError (..))
 import           Control.Monad.IO.Class  (MonadIO (liftIO))
 import           Control.Monad.Reader    (MonadReader)
 import qualified Data.Aeson              as Aeson
+import           Data.Aeson.Lens
 import qualified Data.ByteString.Lazy    as LBS
 import           Data.String.Interpolate (i)
 import           Data.Text               (Text)
 import           Data.Text.Encoding      (encodeUtf8)
+import           RIO                     ((^?))
 import           Servant                 (ServerError (..), err500)
 
 import qualified Op.Db                   as Db
@@ -30,12 +32,20 @@ handleAwsSnsWebhook rawRequestBody = do
           liftIO $ print errorMessage
           throwError err500 { errBody = errorMessage }
 
+  messageId <- do
+    case requestBody ^? key "MessageId" . _String of
+      Just messageId -> pure messageId
+      Nothing -> do
+          let errorMessage = [i|Unexpected AWS SES request, expected MessageId in request: #{rawRequestBody}|]
+          liftIO $ print errorMessage
+          throwError err500 { errBody = errorMessage }
+
   liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
 
   Db.queryDbOr Db.printAndThrow500 do
     Db.statement
-      requestBody
+      (requestBody, messageId)
       [Db.resultlessStatement|
-      insert into aws.sns_webhook_messages (contents)
-      values ($1::jsonb)
+      insert into aws.sns_webhook_messages (contents, aws_sns_id)
+      values ($1::jsonb, $2::text)
       |]
