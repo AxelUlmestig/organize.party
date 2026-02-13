@@ -63,10 +63,13 @@ sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipi
 
   let mail = Mail.Mail {..}
 
-  -- AWS SES requires TLS, but when doing local test we can't use TLS
-  case server of
-    "localhost" ->  liftIO $ SMTP.sendMailWithLogin' server port login password mail
-    _ ->            liftIO $ SMTP.sendMailWithLoginTLS' server port login password mail
+  -- AWS SES requires TLS, but we can't use TLS when running tests with Mailhog
+  let sendMailWithLogin =
+        case server of
+          "localhost" -> SMTP.sendMailWithLogin'
+          _           -> SMTP.sendMailWithLoginTLS'
+
+  liftIO $ sendMailWithLogin server port login password mail
 
 
 

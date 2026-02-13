@@ -1,15 +1,38 @@
 <scxml xmlns="http://www.w3.org/2005/07/scxml"
               name="email.email_flow"
               version="1.0"
-              initial="queued">
+              initial="checking_if_blocked">
+
+  <state id="checking_if_blocked" name="CHECKING_IF_BLOCKED">
+    <transition event="email.address_not_blocked" target="queued"/>
+    <transition event="email.address_blocked" target="email_address_blocked"/>
+
+    <onentry>
+      <script src="email.check_if_email_address_is_blocked" />
+    </onentry>
+  </state>
+
+  <final id="email_address_blocked" name="EMAIL_ADDRESS_BLOCKED">
+    <onentry>
+      <script src="email.materialize_email_status" />
+    </onentry>
+  </final>
 
   <state id="queued" name="QUEUED">
     <transition event="email.sent" target="sent"/>
-    <transition event="email.dont_send" target="not_sent"/>
+    <transition event="email.failed_to_send" target="failed_to_send"/>
 
     <onentry>
       <script src="email.materialize_email_status" />
       <script src="email.enqueue_send_email_job" />
+    </onentry>
+  </state>
+
+  <state id="failed_to_send" name="FAILED_TO_SEND">
+    <transition event="email.retry" target="checking_if_blocked"/>
+
+    <onentry>
+      <script src="email.materialize_email_status" />
     </onentry>
   </state>
 
@@ -32,21 +55,17 @@
     </onentry>
   </state>
 
-  <final id="not_sent" name="NOT_SENT">
-    <onentry>
-      <script src="email.materialize_email_status" />
-    </onentry>
-  </final>
-
   <final id="bounced" name="BOUNCED">
     <onentry>
       <script src="email.materialize_email_status" />
+      <script src="email.block_bounced_email_address" />
     </onentry>
   </final>
 
   <final id="marked_as_spam" name="MARKED_AS_SPAM">
     <onentry>
       <script src="email.materialize_email_status" />
+      <script src="email.block_email_address_marked_as_spam" />
     </onentry>
   </final>
 

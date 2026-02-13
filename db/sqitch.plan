@@ -53,7 +53,6 @@ email/triggers/emails/start_email_flow 2026-01-07T22:21:49Z Axel,,, <axel@axel-X
 email/functions/materialize_email_status 2026-01-07T22:59:32Z Axel,,, <axel@axel-XPS-13-9380> # materialize email status
 email/functions/enqueue_send_email_job 2026-01-08T13:10:06Z Axel,,, <axel@axel-XPS-13-9380> # enqueue send email job
 email/functions/update_email_sent_at 2026-01-08T20:47:30Z Axel,,, <axel@axel-XPS-13-9380> # update email sent at
-statechart/email/email_flow-1.0 2026-01-08T13:22:20Z Axel,,, <axel@axel-XPS-13-9380> # email flow 1.0
 
 schemas/aws 2026-02-06T11:52:10Z Axel,,, <axel@axel-ThinkPad> # aws schema
 aws/tables/sns_webhook_messages 2026-02-06T11:55:09Z Axel,,, <axel@axel-ThinkPad> # sns webhook messages
@@ -62,3 +61,10 @@ aws/triggers/sns_webhook_messages/start_sns_webhook_message_flow 2026-02-06T12:3
 aws/functions/materialize_sns_webhook_message_status 2026-02-06T12:42:16Z Axel,,, <axel@axel-ThinkPad> # materialize sns webhook message status
 aws/functions/enqueue_process_sns_webhook_job 2026-02-06T14:38:02Z Axel,,, <axel@axel-ThinkPad> # enqueue_process_sns_webhook_job
 statechart/aws/sns_webhook_message_flow-1.0 2026-02-06T12:20:26Z Axel,,, <axel@axel-ThinkPad> # aws sns webhook message flow
+email/tables/block_reasons 2026-02-13T12:40:56Z Axel,,, <axel@axel-ThinkPad> # email block reasons
+email/tables/blocked_email_addresses 2026-02-13T12:44:51Z Axel,,, <axel@axel-ThinkPad> # blocked email addresses
+email/functions/check_if_email_address_is_blocked 2026-02-13T20:09:30Z Axel,,, <axel@axel-ThinkPad> # check if email address is blocked
+email/functions/block_bounced_email_address 2026-02-13T20:26:37Z Axel,,, <axel@axel-ThinkPad> # block bounced email address
+email/functions/block_email_address_marked_as_spam 2026-02-13T20:29:16Z Axel,,, <axel@axel-ThinkPad> # block email address marked as spam
+
+statechart/email/email_flow-1.0 2026-01-08T13:22:20Z Axel,,, <axel@axel-XPS-13-9380> # email flow 1.0
