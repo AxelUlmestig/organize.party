@@ -49,6 +49,7 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
       (Just "SubscriptionConfirmation", _) -> handleSubscriptionConfirmation webhookContents
       (Just "Notification", Just message) -> do
         case message ^? key "notificationType" of
+          Just "Delivery" -> handleSesDelivery message
           Just "Bounce" -> handleSesBounce message
           _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
       _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook type (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
@@ -114,14 +115,42 @@ handleSubscriptionConfirmation webhookContents = do
     2 -> pure ()
     _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
 
+
+extractEmailId :: Aeson.Value -> Maybe UUID.UUID
+extractEmailId webhookMessage = do
+  headers <- webhookMessage ^? key "mail" . key "headers" . _Array
+  let isEmailIdHeader h = h ^? key "name" . _String == Just "X-OP-EMAIL-ID"
+  emailHeader <- Data.List.find isEmailIdHeader headers
+  emailId <- emailHeader ^? key "value" . _String
+  UUID.fromText emailId
+
+
+handleSesDelivery :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
+handleSesDelivery webhookMessage = do
+  let mEmailId = extractEmailId webhookMessage
+
+  emailId <- do
+    case mEmailId of
+      Nothing -> Job.giveUpJob [i|No X-OP-EMAIL-ID found among email headers in delivery message from AWS SES: #{Aeson.encode webhookMessage}|]
+      Just emailId -> pure emailId
+
+  Db.queryDbOr retryDbErr do
+    Db.statement
+      emailId
+      [Db.resultlessStatement|
+          select fsm.notify_state_machine(
+            shard => 1,
+            machine => state_machine_id,
+            event => 'email.received'
+          )::text
+          from email.emails
+          where id = $1::uuid
+      |]
+
+
 handleSesBounce :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
 handleSesBounce webhookMessage = do
-  let mEmailId = do
-        headers <- webhookMessage ^? key "mail" . key "headers" . _Array
-        let isEmailIdHeader h = h ^? key "name" . _String == Just "X-OP-EMAIL-ID"
-        emailHeader <- Data.List.find isEmailIdHeader headers
-        emailId <- emailHeader ^? key "value" . _String
-        UUID.fromText emailId
+  let mEmailId = extractEmailId webhookMessage
 
   emailId <- do
     case mEmailId of
