@@ -51,6 +51,7 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
         case message ^? key "notificationType" of
           Just "Delivery" -> handleSesDelivery message
           Just "Bounce" -> handleSesBounce message
+          Just "Complaint" -> handleSesComplaint message
           _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
       _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook type (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
 
@@ -127,10 +128,8 @@ extractEmailId webhookMessage = do
 
 handleSesDelivery :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
 handleSesDelivery webhookMessage = do
-  let mEmailId = extractEmailId webhookMessage
-
   emailId <- do
-    case mEmailId of
+    case extractEmailId webhookMessage of
       Nothing -> Job.giveUpJob [i|No X-OP-EMAIL-ID found among email headers in delivery message from AWS SES: #{Aeson.encode webhookMessage}|]
       Just emailId -> pure emailId
 
@@ -150,10 +149,8 @@ handleSesDelivery webhookMessage = do
 
 handleSesBounce :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
 handleSesBounce webhookMessage = do
-  let mEmailId = extractEmailId webhookMessage
-
   emailId <- do
-    case mEmailId of
+    case extractEmailId webhookMessage of
       Nothing -> Job.giveUpJob [i|No X-OP-EMAIL-ID found among email headers in bounce message from AWS SES: #{Aeson.encode webhookMessage}|]
       Just emailId -> pure emailId
 
@@ -165,6 +162,27 @@ handleSesBounce webhookMessage = do
             shard => 1,
             machine => state_machine_id,
             event => 'email.bounced'
+          )::text
+          from email.emails
+          where id = $1::uuid
+      |]
+
+
+handleSesComplaint :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
+handleSesComplaint webhookMessage = do
+  emailId <- do
+    case extractEmailId webhookMessage of
+      Nothing -> Job.giveUpJob [i|No X-OP-EMAIL-ID found among email headers in complaint message from AWS SES: #{Aeson.encode webhookMessage}|]
+      Just emailId -> pure emailId
+
+  Db.queryDbOr retryDbErr do
+    Db.statement
+      emailId
+      [Db.resultlessStatement|
+          select fsm.notify_state_machine(
+            shard => 1,
+            machine => state_machine_id,
+            event => 'email.marked_as_spam'
           )::text
           from email.emails
           where id = $1::uuid
