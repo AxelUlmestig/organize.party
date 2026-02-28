@@ -1,3 +1,0 @@
-[submodule "statecharts"]
-	path = statecharts
-	url = git@github.com:kronor-io/statecharts.git

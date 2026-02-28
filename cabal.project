@@ -2,7 +2,6 @@ packages:
   op-db
   op-webapi
   op-worker
-  generate-statecharts
 
 program-options
   ghc-options:
@@ -14,5 +13,3 @@ program-options
     -Wunused-packages
     +RTS -A64m -N -RTS
 
-packages:
-  ./statecharts/sdk

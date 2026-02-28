@@ -7,7 +7,7 @@ do $$
 declare
 chart bigint;
 begin
-insert into fsm.statechart (name, version) values ('email.email_flow', 1.0::semver) returning id into chart;
+insert into fsm.statechart (name, version) values ('email.email_flow', to_semver('1.0')) returning id into chart;
 insert into fsm.state (statechart_id, id, name, parent_id, is_initial, is_final, on_entry, on_exit) values
 (chart, 'checking_if_blocked', 'CHECKING_IF_BLOCKED', null, true, false, array[('email', 'check_if_email_address_is_blocked')]::fsm_callback_name[], array[]::fsm_callback_name[]),
 (chart, 'email_address_blocked', 'EMAIL_ADDRESS_BLOCKED', null, false, true, array[('email', 'materialize_email_status')]::fsm_callback_name[], array[]::fsm_callback_name[]),

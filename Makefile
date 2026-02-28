@@ -2,8 +2,7 @@
 deploy-database:
 	docker compose up -d pgbouncer
 	./scripts/wait-for-db.sh
-	docker compose exec db sqitch --chdir /repo/statecharts -t postgres://postgres:postgres@localhost:5432/events deploy
-	docker compose exec db sqitch --chdir db deploy --mode change
+	docker compose exec db sqitch --chdir db deploy --mode change --verify
 
 .PHONY: start-dev-webapi
 start-dev-webapi: deploy-database
@@ -60,6 +59,17 @@ run-tests:
 lint:
 	hlint -X QuasiQuotes -X OverloadedRecordDot .
 
+define GEN_CHARTS_QUERY
+	select fsm.gen_statechart_sqitch_migrations(
+		source_path => '/repo/db/statechart',
+		sqitch_plan_file_path => '/repo/db/sqitch.plan',
+		recursive => true,
+		file_permission_666 => true
+	);
+endef
+
+export GEN_CHARTS_QUERY
 .PHONY: gen-charts
 gen-charts:
-	cabal run generate-statecharts
+	sudo chmod 666 db/sqitch.plan
+	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events -c "$$GEN_CHARTS_QUERY"

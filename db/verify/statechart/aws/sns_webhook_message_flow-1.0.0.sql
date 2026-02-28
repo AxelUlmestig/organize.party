@@ -1,4 +1,4 @@
--- Verify events:statechart/email/email_flow-1.0 on pg
+-- Verify events:statechart/aws/sns_webhook_message_flow-1.0.0 on pg
 
 -- FILE AUTOMATICALLY GENERATED. MANUAL CHANGES MIGHT BE OVERWRITTEN
 
@@ -8,8 +8,8 @@ BEGIN;
 select 1 / count(*)
 from fsm.statechart
 where
-    name = 'email.email_flow'
-    and version = to_semver('1.0');
+    name = 'aws.sns_webhook_message_flow'
+    and version = to_semver('1.0.0');
 
 -- Verify that the functions that the statechart depends on exist
 do $$
@@ -29,8 +29,8 @@ join fsm.state
     on state.statechart_id = statechart.id
 , lateral unnest(on_entry || on_exit)
 where
-  statechart.name = 'email.email_flow'
-  and statechart.version = to_semver('1.0')
+  statechart.name = 'aws.sns_webhook_message_flow'
+  and statechart.version = to_semver('1.0.0')
   and not exists (
     select 1
     from pg_proc p

@@ -8,7 +8,7 @@ BEGIN;
 with chart as (
     delete from fsm.statechart
     where name = 'email.email_flow'
-    and version = 1.0::semver
+    and version = to_semver('1.0')
     returning id
 )
 delete from fsm.state
