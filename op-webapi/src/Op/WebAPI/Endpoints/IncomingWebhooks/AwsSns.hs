@@ -21,6 +21,7 @@ import qualified Data.X509                as X509
 import qualified Network.HTTP.Req         as Req
 import           RIO                      (ByteString, Generic, Text, unless)
 import           Servant                  (ServerError (..), err400)
+import           Text.Regex.TDFA          ((=~))
 import           Text.URI                 (mkURI)
 
 import qualified Op.Cache                 as Cache
@@ -88,8 +89,6 @@ handleAwsSnsWebhook rawRequestBody = do
       liftIO $ putStrLn "Invalid AWS SNS signature"
       throwError err400 { errBody = "Invalid signature" }
 
-  liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
-
   Db.queryDbOr Db.printAndThrow500 do
     Db.statement
       (requestBodyJson, whMessageId requestBody)
@@ -104,7 +103,13 @@ getSignaturePublicKey
   -> m (Either String PublicKey)
 getSignaturePublicKey rawSigningCertUrl = do
   liftIO $ Except.runExceptT do
-    -- TODO: Verify that the URL points to AWS
+    -- verify that signing cert url comes from AWS
+    do
+      let awsDomainRegex = "https:\\/\\/([a-z0-9-]*\\.)*amazonaws\\.com.*$" :: Text
+      let localhostDomainRegex = "http:\\/\\/localhost(\\/.*)$" :: Text -- allow localhost for testing
+      unless (rawSigningCertUrl =~ awsDomainRegex || rawSigningCertUrl =~ localhostDomainRegex) do
+        liftIO $ putStrLn [i|Illegal signing cert url in AWS SNS webhook: #{rawSigningCertUrl}|]
+        Except.throwError "Illegal signing cert url. Only amazonaws.com is allowed"
 
     (signingCertUrl, options) <- do
       case Req.useHttpsURI =<< mkURI rawSigningCertUrl of
