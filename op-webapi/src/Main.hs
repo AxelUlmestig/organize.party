@@ -19,6 +19,7 @@ import           System.Environment                          (lookupEnv)
 import           System.Exit                                 (die)
 import           Text.Read                                   (readMaybe)
 
+import qualified Op.Cache                                    as Cache
 import qualified Op.Db                                       as Db
 import qualified Op.WebAPI.Endpoints.Attend
 import qualified Op.WebAPI.Endpoints.Comment
@@ -136,10 +137,11 @@ main = do
   dbSettings <- getDbConnectionSettings >>= either die pure
   hostUrl <- getHostUrl >>= either die pure
   connectionPool <- Db.createPool dbSettings
+  awsSnsPubKeyCache <- Cache.initCache
   let port = 8081
 
   putStrLn [i|listening on port #{port}...|]
-  run port $ app AppEnv { connectionPool, hostUrl }
+  run port $ app AppEnv { connectionPool, hostUrl, awsSnsPubKeyCache }
 
 -- util
 maybeToEither :: err -> Maybe a -> Either err a

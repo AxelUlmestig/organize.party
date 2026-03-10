@@ -1,0 +1,34 @@
+cabal-version:      3.14
+name:               op-cache
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Axel Ulmestig
+maintainer:         axel.ulmestig@gmail.com
+-- copyright:
+category:           Control
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  Op.Cache
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    stm
+                    , rio
+    hs-source-dirs:   src
+    default-language: GHC2021
+
+    default-extensions:
+                      BlockArguments
+                    , OverloadedStrings
+                    , RecordWildCards
+                    , QuasiQuotes
+                    , NoImplicitPrelude

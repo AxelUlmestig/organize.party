@@ -3,14 +3,19 @@ module Op.WebAPI.Types.AppEnv (
   SmtpConfig(..),
 ) where
 
-import           Data.Pool        (Pool)
-import           Hasql.Connection (Connection)
-import           Network.Socket   (PortNumber)
-import qualified Op.Db            as Db
+import           Crypto.PubKey.RSA.Types (PublicKey)
+import           Data.Pool               (Pool)
+import           Hasql.Connection        (Connection)
+import           Network.Socket          (PortNumber)
+import           RIO                     (Text)
+
+import qualified Op.Cache                as Cache
+import qualified Op.Db                   as Db
 
 data AppEnv = AppEnv
-  { connectionPool :: Pool Connection
-  , hostUrl        :: String
+  { connectionPool    :: Pool Connection
+  , hostUrl           :: String
+  , awsSnsPubKeyCache :: Cache.Cache Text PublicKey
   }
 
 
@@ -25,3 +30,5 @@ instance Db.HasDbConnection AppEnv where
     withDbConnection AppEnv{connectionPool} f = do
       Db.withDbConnection connectionPool f
 
+instance Cache.HasCache Text PublicKey AppEnv where
+  getCache = awsSnsPubKeyCache

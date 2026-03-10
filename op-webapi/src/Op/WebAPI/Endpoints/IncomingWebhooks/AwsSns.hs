@@ -19,11 +19,11 @@ import qualified Data.Text                as Text
 import           Data.Text.Encoding       (encodeUtf8)
 import qualified Data.X509                as X509
 import qualified Network.HTTP.Req         as Req
-import           RIO                      (ByteString, Generic, Text, ask,
-                                           unless)
+import           RIO                      (ByteString, Generic, Text, unless)
 import           Servant                  (ServerError (..), err400)
 import           Text.URI                 (mkURI)
 
+import qualified Op.Cache                 as Cache
 import qualified Op.Db                    as Db
 import           Op.WebAPI.Types.AppEnv   (AppEnv (..))
 
@@ -57,13 +57,15 @@ handleAwsSnsWebhook rawRequestBody = do
         Right signature -> pure signature
 
     pubKey <- do
-      ePubKey <- getSignaturePublicKey (whSigningCertURL requestBody)
+      let certUrl = whSigningCertURL requestBody
+      Cache.getCachedM certUrl do
+        ePubKey <- getSignaturePublicKey certUrl
 
-      case ePubKey of
-        Left err -> do
-          liftIO $ print err
-          throwError err400 { errBody = "Failed to extract signature public key" }
-        Right pubKey -> pure pubKey
+        case ePubKey of
+          Left err -> do
+            liftIO $ print err
+            throwError err400 { errBody = "Failed to extract signature public key" }
+          Right pubKey -> pure pubKey
 
     let messageToVerify = constructMessageToVerify requestBody
 
@@ -97,11 +99,10 @@ handleAwsSnsWebhook rawRequestBody = do
       |]
 
 getSignaturePublicKey
-  :: (MonadIO m, MonadReader AppEnv m)
+  :: (MonadIO m)
   => Text
   -> m (Either String PublicKey)
 getSignaturePublicKey rawSigningCertUrl = do
-  appEnv <- ask
   liftIO $ Except.runExceptT do
     -- TODO: Verify that the URL points to AWS
 
@@ -135,12 +136,9 @@ getSignaturePublicKey rawSigningCertUrl = do
         Left err -> Except.throwError [i|Couldn't decode AWS SNS signed cert from .pem: #{err}|]
         Right signedCert -> pure . X509.certPubKey . X509.signedObject . X509.getSigned $ signedCert
 
-    rsaPubKey <- do
-      case signedCertificatePubKey of
-        X509.PubKeyRSA rsaPubKey -> pure rsaPubKey
-        _ -> Except.throwError [i|Unexpected AWS SNS signing cert pub key: #{signedCertificatePubKey}|]
-
-    pure rsaPubKey
+    case signedCertificatePubKey of
+      X509.PubKeyRSA rsaPubKey -> pure rsaPubKey
+      _ -> Except.throwError [i|Unexpected AWS SNS signing cert pub key: #{signedCertificatePubKey}|]
 
 -- | The AWS documentation stresses that there shouldn't be a newline at the
 -- end. But it only works when I purposefully add a newline

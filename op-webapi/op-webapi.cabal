@@ -51,6 +51,8 @@ executable op-webapi
                      , modern-uri
                      , mtl >= 2.3 && <= 3.0
                      , network >= 3.1
+                     , op-cache
+                     , op-db
                      , profunctors >= 5.6 && < 6.0
                      , req
                      , resource-pool
@@ -67,7 +69,6 @@ executable op-webapi
                      , vector >= 0.13
                      , wai-cors >= 0.2 && <= 0.3
                      , warp >= 3.3 && < 3.4
-                     , op-db
   default-extensions:  BlockArguments
                      , DataKinds
                      , DeriveGeneric
