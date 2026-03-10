@@ -25,6 +25,7 @@ library
                     , rio
     hs-source-dirs:   src
     default-language: GHC2021
+    ghc-options:      -threaded -O2
 
     default-extensions:
                       BlockArguments

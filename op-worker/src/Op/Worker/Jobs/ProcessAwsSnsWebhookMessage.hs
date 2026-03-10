@@ -100,7 +100,7 @@ handleSubscriptionConfirmation webhookContents = do
   (subscribeUrl, options) <- do
     case Req.useHttpsURI =<< mkURI rawSubscribeUrl of
       Just uri -> pure uri
-      Nothing ->  Job.giveUpJob [i|Couldn't parse AWS SNS subsribe url: #{rawSubscribeUrl}|]
+      Nothing  -> Job.giveUpJob [i|Couldn't parse AWS SNS subsribe url: #{rawSubscribeUrl}|]
 
   response <- do
     liftIO do
