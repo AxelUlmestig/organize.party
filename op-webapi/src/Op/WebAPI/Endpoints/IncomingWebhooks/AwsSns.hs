@@ -2,50 +2,224 @@
 
 module Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns (handleAwsSnsWebhook) where
 
-import           Control.Monad.Except    (MonadError (..))
-import           Control.Monad.IO.Class  (MonadIO (liftIO))
-import           Control.Monad.Reader    (MonadReader)
-import qualified Data.Aeson              as Aeson
-import           Data.Aeson.Lens
-import qualified Data.ByteString.Lazy    as LBS
-import           Data.String.Interpolate (i)
-import           Data.Text               (Text)
-import           Data.Text.Encoding      (encodeUtf8)
-import           RIO                     ((^?))
-import           Servant                 (ServerError (..), err500)
+import           Control.Monad.Except     (MonadError (..))
+import qualified Control.Monad.Except     as Except
+import           Control.Monad.IO.Class   (MonadIO (liftIO))
+import           Control.Monad.Reader     (MonadReader)
+import           Crypto.Hash.Algorithms   (SHA1 (..), SHA256 (..))
+import qualified Crypto.PubKey.RSA.PKCS15 as RSA
+import           Crypto.PubKey.RSA.Types  (PublicKey (..))
+import qualified Data.Aeson               as Aeson
+import           Data.Aeson.Casing        (aesonPrefix, pascalCase)
+import qualified Data.ByteString.Base64   as B64
+import qualified Data.ByteString.Lazy     as LBS
+import qualified Data.PEM                 as PEM
+import           Data.String.Interpolate  (__i, i)
+import qualified Data.Text                as Text
+import           Data.Text.Encoding       (encodeUtf8)
+import qualified Data.X509                as X509
+import qualified Network.HTTP.Req         as Req
+import           RIO                      (ByteString, Generic, Text, ask,
+                                           unless)
+import           Servant                  (ServerError (..), err400)
+import           Text.URI                 (mkURI)
 
-import qualified Op.Db                   as Db
-import           Op.WebAPI.Types.AppEnv  (AppEnv (..))
+import qualified Op.Db                    as Db
+import           Op.WebAPI.Types.AppEnv   (AppEnv (..))
 
 handleAwsSnsWebhook
   :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m)
   => Text
   -> m ()
 handleAwsSnsWebhook rawRequestBody = do
-  -- TODO: verify that it's actually coming from AWS
-
-  requestBody :: Aeson.Value <- do
-      case Aeson.decode $ LBS.fromStrict $ encodeUtf8 rawRequestBody of
-        Just x -> pure x
-        Nothing -> do
-          let errorMessage = [i|Unexpected AWS SES request, expected JSON but got: #{rawRequestBody}|]
-          liftIO $ print errorMessage
-          throwError err500 { errBody = errorMessage }
-
-  messageId <- do
-    case requestBody ^? key "MessageId" . _String of
-      Just messageId -> pure messageId
+  requestBodyJson <- do
+    case Aeson.decode $ LBS.fromStrict $ encodeUtf8 rawRequestBody of
+      Just x -> pure x
       Nothing -> do
-          let errorMessage = [i|Unexpected AWS SES request, expected MessageId in request: #{rawRequestBody}|]
-          liftIO $ print errorMessage
-          throwError err500 { errBody = errorMessage }
+        let errorMessage = [i|Unexpected AWS SES request, expected JSON but got: #{rawRequestBody}|]
+        liftIO $ print errorMessage
+        throwError err400 { errBody = errorMessage }
 
-  -- liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
+  requestBody <- do
+    case Aeson.fromJSON requestBodyJson of
+      Aeson.Success requestBody -> pure requestBody
+      Aeson.Error err -> do
+        liftIO $ putStrLn [i|Failed to parse AWS SES request body: #{err}|]
+        throwError err400 { errBody = "Invalid request body" }
+
+  -- verify signature
+  do
+    signature <- do
+      case B64.decode . encodeUtf8 . whSignature $ requestBody of
+        Left err -> do
+          liftIO $ putStrLn [i|Couldn't base64 decode 'Signature' in AWS SNS webhook request: #{err}|]
+          throwError err400 { errBody = "Couldn't base64 decode 'Signature' in request body" }
+        Right signature -> pure signature
+
+    pubKey <- do
+      ePubKey <- getSignaturePublicKey (whSigningCertURL requestBody)
+
+      case ePubKey of
+        Left err -> do
+          liftIO $ print err
+          throwError err400 { errBody = "Failed to extract signature public key" }
+        Right pubKey -> pure pubKey
+
+    let messageToVerify = constructMessageToVerify requestBody
+
+    let signatureValid =
+          case whSignatureVersion requestBody of
+            Sha1Signature ->
+              RSA.verify
+                (Just SHA1)
+                pubKey
+                messageToVerify
+                signature
+            Sha256Signature ->
+              RSA.verify
+                (Just SHA256)
+                pubKey
+                messageToVerify
+                signature
+
+    unless signatureValid do
+      liftIO $ putStrLn "Invalid AWS SNS signature"
+      throwError err400 { errBody = "Invalid signature" }
+
+  liftIO $ putStrLn [i|Received webhook from AWS SES: #{Aeson.encode requestBody}|]
 
   Db.queryDbOr Db.printAndThrow500 do
     Db.statement
-      (requestBody, messageId)
+      (requestBodyJson, whMessageId requestBody)
       [Db.resultlessStatement|
       insert into aws.sns_webhook_messages (contents, aws_sns_id)
       values ($1::jsonb, $2::text)
       |]
+
+getSignaturePublicKey
+  :: (MonadIO m, MonadReader AppEnv m)
+  => Text
+  -> m (Either String PublicKey)
+getSignaturePublicKey rawSigningCertUrl = do
+  appEnv <- ask
+  liftIO $ Except.runExceptT do
+    -- TODO: Verify that the URL points to AWS
+
+    (signingCertUrl, options) <- do
+      case Req.useHttpsURI =<< mkURI rawSigningCertUrl of
+        Nothing  -> Except.throwError [i|Couldn't parse AWS SNS signing cert url: #{rawSigningCertUrl}|]
+        Just uri -> pure uri
+
+    response <- do
+      liftIO do
+        Req.runReq Req.defaultHttpConfig do
+          Req.req
+            Req.GET
+            signingCertUrl
+            Req.NoReqBody
+            Req.bsResponse
+            options
+
+    case Req.responseStatusCode response `div` 100 of
+      2 -> pure ()
+      _ -> Except.throwError [i|Unexpected HTTP response code when calling AWS SNS signing cert url: #{Req.responseStatusCode response}|]
+
+    pem <- do
+      case PEM.pemParseBS (Req.responseBody response) of
+        Right [pem] -> pure pem
+        Right pems -> Except.throwError [i|Unexpected AWS SNS signing cert PEM: #{pems}|]
+        Left err -> Except.throwError [i|Couldn't parse AWS SNS signing cert .pem: #{err}|]
+
+    signedCertificatePubKey <- do
+      case X509.decodeSignedCertificate (PEM.pemContent pem) of
+        Left err -> Except.throwError [i|Couldn't decode AWS SNS signed cert from .pem: #{err}|]
+        Right signedCert -> pure . X509.certPubKey . X509.signedObject . X509.getSigned $ signedCert
+
+    rsaPubKey <- do
+      case signedCertificatePubKey of
+        X509.PubKeyRSA rsaPubKey -> pure rsaPubKey
+        _ -> Except.throwError [i|Unexpected AWS SNS signing cert pub key: #{signedCertificatePubKey}|]
+
+    pure rsaPubKey
+
+-- | The AWS documentation stresses that there shouldn't be a newline at the
+-- end. But it only works when I purposefully add a newline
+--
+-- https://docs.aws.amazon.com/sns/latest/dg/sns-verify-signature-of-message-verify-message-signature.html
+constructMessageToVerify :: SnsWebhook -> ByteString
+constructMessageToVerify SnsWebhook{..} =
+    [__i|
+      Message
+      #{whMessage}
+      MessageId
+      #{whMessageId}#{subject}#{subscribeUrl}
+      Timestamp
+      #{whTimestamp}#{token}
+      TopicArn
+      #{whTopicArn}
+      Type
+      #{whType}\n
+    |]
+  where
+    subject =
+      case whSubject of
+        Nothing -> ""
+        Just s ->
+          [__i|
+          \nSubject
+          #{s}
+          |] :: Text
+    subscribeUrl =
+      case whSubscribeURL of
+        Nothing -> "" :: Text
+        Just s ->
+          [__i|
+          \nSubscribeURL
+          #{s}
+          |] :: Text
+    token =
+      case whToken of
+        Nothing -> ""
+        Just t ->
+          [__i|
+          \nToken
+          #{t}
+          |] :: Text
+
+data SnsWebhook = SnsWebhook
+  { whType             :: Text
+  , whToken            :: Maybe Text
+  , whMessage          :: Text
+  , whSubject          :: Maybe Text
+  , whTopicArn         :: Text
+  , whMessageId        :: Text
+  , whSignature        :: Text
+  , whTimestamp        :: Text
+  , whSubscribeURL     :: Maybe Text
+  , whSigningCertURL   :: Text
+  , whSignatureVersion :: SnsWebhookSignatureVersion
+  } deriving (Generic, Show)
+
+instance Aeson.FromJSON SnsWebhook where
+   parseJSON = Aeson.genericParseJSON $ aesonPrefix pascalCase
+
+-- TODO: remove unnecessary instance
+instance Aeson.ToJSON SnsWebhook where
+  toJSON = Aeson.genericToJSON $ aesonPrefix pascalCase
+
+data SnsWebhookSignatureVersion
+  = Sha1Signature
+  | Sha256Signature
+  deriving (Generic, Show)
+
+instance Aeson.FromJSON SnsWebhookSignatureVersion where
+  parseJSON = Aeson.withText "SnsWebhookSignatureVersion" $ \t ->
+    case t of
+      "1" -> pure Sha1Signature
+      "2" -> pure Sha256Signature
+      _   -> fail $ "Invalid signature version: " ++ Text.unpack t
+
+instance Aeson.ToJSON SnsWebhookSignatureVersion where
+  toJSON Sha1Signature   = Aeson.String "1"
+  toJSON Sha256Signature = Aeson.String "2"
+

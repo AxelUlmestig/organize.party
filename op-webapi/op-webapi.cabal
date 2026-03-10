@@ -38,15 +38,21 @@ executable op-webapi
   default-language:    GHC2021
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:       aeson >= 2.1 && < 3.0
+                     , aeson-casing
                      , base >= 4.0
+                     , base64-bytestring
                      , bytestring >= 0.11
+                     , crypton
+                     , crypton-pem
+                     , crypton-x509
                      , hasql >=1.9.0.1
                      , hasql-th >= 0.4
                      , http-media >= 0.8 && < 0.9
-                     , lens-aeson
+                     , modern-uri
                      , mtl >= 2.3 && <= 3.0
                      , network >= 3.1
                      , profunctors >= 5.6 && < 6.0
+                     , req
                      , resource-pool
                      , rio
                      , servant-server >= 0.20 && < 0.21
