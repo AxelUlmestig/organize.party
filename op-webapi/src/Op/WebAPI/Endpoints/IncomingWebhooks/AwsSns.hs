@@ -206,10 +206,6 @@ data SnsWebhook = SnsWebhook
 instance Aeson.FromJSON SnsWebhook where
    parseJSON = Aeson.genericParseJSON $ aesonPrefix pascalCase
 
--- TODO: remove unnecessary instance
-instance Aeson.ToJSON SnsWebhook where
-  toJSON = Aeson.genericToJSON $ aesonPrefix pascalCase
-
 data SnsWebhookSignatureVersion
   = Sha1Signature
   | Sha256Signature
@@ -222,7 +218,11 @@ instance Aeson.FromJSON SnsWebhookSignatureVersion where
       "2" -> pure Sha256Signature
       _   -> fail $ "Invalid signature version: " ++ Text.unpack t
 
+{-
+instance Aeson.ToJSON SnsWebhook where
+  toJSON = Aeson.genericToJSON $ aesonPrefix pascalCase
+
 instance Aeson.ToJSON SnsWebhookSignatureVersion where
   toJSON Sha1Signature   = Aeson.String "1"
   toJSON Sha256Signature = Aeson.String "2"
-
+-}
