@@ -70,3 +70,4 @@ aws/functions/materialize_sns_webhook_message_status 2026-02-06T12:42:16Z Axel,,
 aws/functions/enqueue_process_sns_webhook_job 2026-02-06T14:38:02Z Axel,,, <axel@axel-ThinkPad> # enqueue_process_sns_webhook_job
 statechart/aws/sns_webhook_message_flow-1.0.0 2026-02-28T21:59:19Z pg_statecharts <pg_statecharts@postgres> # statechart/aws/sns_webhook_message_flow-1.0.0
 
+email/functions/format_icalendar_string 2026-03-10T20:20:22Z Axel,,, <axel@axel-ThinkPad> # format icalendar string
