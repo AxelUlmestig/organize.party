@@ -15,8 +15,10 @@ import           Hasql.Errors                 (CommandError (ResultError),
                                                ResultError (ServerError),
                                                SessionError (QueryError))
                                             -}
+import qualified Data.Text                    as Text
 import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
+import           RIO                          (Text)
 import           Servant                      (ServerError (errBody), err400,
                                                err404, err500)
 
@@ -38,7 +40,10 @@ addComment eventId commentInput' = do
   when (eventId /= commentInput.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
-  Db.queryDbOr handleErr (Hasql.statement commentInput insertCommentStatement)
+  do
+    emailHostUrl <- asks (Text.pack . hostUrl)
+    Db.queryDbOr handleErr (Hasql.statement (emailHostUrl, commentInput) insertCommentStatement)
+
   sendEmailUpdate commentInput
   getEvent eventId
 
@@ -53,23 +58,27 @@ addComment eventId commentInput' = do
         -}
         _                                                           -> throwError err500 { errBody = "Something went wrong" }
 
-insertCommentStatement :: Statement CommentInput ()
+insertCommentStatement :: Statement (Text, CommentInput) ()
 insertCommentStatement =
-  lmap to
+  lmap to'
     [Db.resultlessStatement|
       insert into comments (comment, force_notification_on_comment, attendee_id, event_id)
       select
-        $4::text as comment,
-        $5::bool as force_notification_on_comment,
-        attendee_id,
+        $5::text as comment,
+        $6::bool as force_notification_on_comment,
+        id,
         event_id
       from
         add_attendee_data(
-          event_id_ => $1::uuid,
-          email_ => $2::text,
-          name_ => $3::text
+          host_url_ => $1::text,
+          event_id_ => $2::uuid,
+          email_ => $3::text,
+          name_ => $4::text
         )
     |]
+  where
+    to' (hostUrl, CommentInput{eventId, email, name, comment, forceNotificationOnComment}) =
+      (hostUrl, eventId, email, name, comment, forceNotificationOnComment)
 
 
 sendEmailUpdate ::

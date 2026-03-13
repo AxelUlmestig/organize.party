@@ -19,6 +19,7 @@ import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
 import           Hasql.TH                     (maybeStatement,
                                                singletonStatement)
+import           RIO                          (Text)
 import           Servant                      (ServerError (errBody), err400,
                                                err404, err500)
 
@@ -41,13 +42,14 @@ attend eventId attendee' = do
   when (eventId /= attendee.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
+  hostUrl' <- asks (Text.pack . hostUrl)
   let session = do
         emailSentAlready <- Hasql.statement attendee emailSentAlreadyStatement
         mExistingAttendee <- Hasql.statement attendee findExistingStatement
 
         insertedAttendee@Attendee.Attendee{Attendee.status} <- case mExistingAttendee of
             Just existingAttendee -> pure existingAttendee
-            Nothing -> Hasql.statement attendee insertAttendeeStatement
+            Nothing -> Hasql.statement (hostUrl', attendee) insertAttendeeStatement
 
         pure (insertedAttendee, not emailSentAlready && status /= Attendee.NotComing)
 
@@ -55,10 +57,11 @@ attend eventId attendee' = do
 
   event <- getEvent eventId
 
+  {-
   when shouldSendEmail $ do
-    emailHostUrl <- asks hostUrl
     let emailData = EmailData {email = attendee.email, recipientName = attendee.name, unsubscribeId = attendee.unsubscribeId, ..}
     sendEmailInvitation handleErr emailData event
+  -}
   pure event
   where
     handleErr err = do
@@ -93,9 +96,9 @@ findExistingStatement =
         and attendee_data.superseded_at is null
     |]
 
-insertAttendeeStatement :: Statement AttendInput Attendee
+insertAttendeeStatement :: Statement (Text, AttendInput) Attendee
 insertAttendeeStatement =
-  dimap to to
+  dimap to' to
     [singletonStatement|
       select
         event_id::uuid,
@@ -106,14 +109,18 @@ insertAttendeeStatement =
         rsvp_at::timestamptz,
         unsubscribe_id::uuid
       from add_attendee_data(
-        event_id_ => $1::uuid,
-        email_ => $2::text,
-        name_ => $3::text,
-        status_ => $4::text::attendee_status,
-        plus_one_ => $5::bool,
-        get_notified_on_comments_ => $6::bool
-      ) as attendee_id
+        host_url_ => $1::text,
+        event_id_ => $2::uuid,
+        email_ => $3::text,
+        name_ => $4::text,
+        status_ => $5::text::attendee_status,
+        plus_one_ => $6::bool,
+        get_notified_on_comments_ => $7::bool
+      )
     |]
+    where
+      to' (hostUrl, AttendInput{..}) =
+        (hostUrl, eventId, email, name, Attendee.writeStatus status, plusOne, getNotifiedOnComments)
 
 emailSentAlreadyStatement :: Statement AttendInput Bool
 emailSentAlreadyStatement = lmap (\AttendInput{eventId, email} -> (eventId, email))
