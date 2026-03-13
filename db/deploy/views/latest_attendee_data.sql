@@ -8,6 +8,7 @@ BEGIN;
       attendees.event_id,
       attendees.email,
       attendees.unsubscribe_id,
+      attendees.unsubscribed_at,
       attendee_data.name,
       attendee_data.status,
       attendee_data.plus_one,

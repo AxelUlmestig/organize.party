@@ -75,3 +75,4 @@ email/functions/format_icalendar_string 2026-03-10T20:20:22Z Axel,,, <axel@axel-
 tables/attendees [tables/attendees@email-rework] 2026-03-12T12:58:43Z Axel,,, <axel@axel-ThinkPad> # track if email has been sent
 views/latest_attendee_data 2026-03-13T12:39:34Z Axel,,, <axel@axel-ThinkPad> # latest attendee data
 functions/add_attendee_data [functions/add_attendee_data@email-rework] 2026-03-12T12:28:55Z Axel,,, <axel@axel-ThinkPad> # include email logic
+functions/add_comment 2026-03-13T13:01:43Z Axel,,, <axel@axel-ThinkPad> # add comment
