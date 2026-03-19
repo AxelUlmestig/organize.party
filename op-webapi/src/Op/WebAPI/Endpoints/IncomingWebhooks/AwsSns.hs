@@ -106,25 +106,16 @@ getSignaturePublicKey rawSigningCertUrl = do
     -- verify that signing cert url comes from AWS
     do
       let awsDomainRegex = "https:\\/\\/([a-z0-9-]*\\.)*amazonaws\\.com.*$" :: Text
-      let localhostDomainRegex = "http:\\/\\/localhost(\\/.*)$" :: Text -- allow localhost for testing
+      let localhostDomainRegex = "http:\\/\\/localhost:8888(\\/.*)$" :: Text -- allow localhost for testing
       unless (rawSigningCertUrl =~ awsDomainRegex || rawSigningCertUrl =~ localhostDomainRegex) do
         liftIO $ putStrLn [i|Illegal signing cert url in AWS SNS webhook: #{rawSigningCertUrl}|]
         Except.throwError "Illegal signing cert url. Only amazonaws.com is allowed"
 
-    (signingCertUrl, options) <- do
-      case Req.useHttpsURI =<< mkURI rawSigningCertUrl of
-        Nothing  -> Except.throwError [i|Couldn't parse AWS SNS signing cert url: #{rawSigningCertUrl}|]
-        Just uri -> pure uri
-
     response <- do
-      liftIO do
-        Req.runReq Req.defaultHttpConfig do
-          Req.req
-            Req.GET
-            signingCertUrl
-            Req.NoReqBody
-            Req.bsResponse
-            options
+      case Req.useURI =<< mkURI rawSigningCertUrl of
+        Nothing  -> Except.throwError [i|Couldn't parse AWS SNS signing cert url: #{rawSigningCertUrl}|]
+        Just (Left url) -> downloadCert url
+        Just (Right url) -> downloadCert url
 
     case Req.responseStatusCode response `div` 100 of
       2 -> pure ()
@@ -144,6 +135,16 @@ getSignaturePublicKey rawSigningCertUrl = do
     case signedCertificatePubKey of
       X509.PubKeyRSA rsaPubKey -> pure rsaPubKey
       _ -> Except.throwError [i|Unexpected AWS SNS signing cert pub key: #{signedCertificatePubKey}|]
+  where
+    downloadCert :: forall a m. MonadIO m => (Req.Url a, Req.Option a) -> m Req.BsResponse
+    downloadCert (url, options) = do
+      Req.runReq Req.defaultHttpConfig do
+        Req.req
+          Req.GET
+          url
+          Req.NoReqBody
+          Req.bsResponse
+          options
 
 -- | The AWS documentation stresses that there shouldn't be a newline at the
 -- end. But it only works when I purposefully add a newline

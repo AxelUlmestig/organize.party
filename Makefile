@@ -19,7 +19,7 @@ build-frontend:
 
 .PHONY: access-database
 access-database:
-	docker compose exec pgbouncer psql postgres://postgres:postgres@pgbouncer:6432/events
+	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events
 
 .PHONY: deploy-migrations
 deploy-migrations:
@@ -53,6 +53,7 @@ run-certbot:
 
 .PHONY: run-tests
 run-tests:
+	docker compose up -d filehost
 	cd frontend/test && npx playwright test --headed test.spec.ts --project chromium
 
 .PHONY: lint

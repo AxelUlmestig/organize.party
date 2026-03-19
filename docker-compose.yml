@@ -156,6 +156,13 @@ services:
       - ./certbot/www/:/var/www/certbot/:rw
       - ./certbot/conf/:/etc/letsencrypt/:rw
 
+  filehost:
+    image: halverneus/static-file-server:latest
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./frontend/test/certs/:/web
+
 volumes:
   dbdata:
 
