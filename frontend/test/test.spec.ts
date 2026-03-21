@@ -250,6 +250,19 @@ test('handle aws email webhooks', async ({ page, request }) => {
 
   const receiver = `${commentEmails[0].To[0].Mailbox}@${commentEmails[0].To[0].Domain}`
   expect(receiver).toEqual(successEmail)
+
+  // Verify that webhooks signed with another key aren't allowed
+  const { privateKey: wrongPrivateKey } = await ses_webhook.generateTestKeyPair()
+
+  const failedBounceResponse = await request.post(
+    `http://localhost:8081/api/v1/incoming-webhook/aws-sns`,
+    {
+      data: ses_webhook.constructEmailBounceWebhook({ privateKey: wrongPrivateKey, emailId: emailIds[bounceEmail], certName }),
+      headers: { 'Content-Type': 'text/plain; charset=UTF-8' }
+    }
+  )
+
+  expect(failedBounceResponse.ok()).toBeFalsy()
 })
 
 const getEmailContents = async (request, recipientEmail, regex) => {
