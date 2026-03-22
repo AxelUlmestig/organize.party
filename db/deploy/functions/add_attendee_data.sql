@@ -114,7 +114,7 @@ BEGIN;
               name_,
               event_data.title,
               event_data.description ||
-              '
+'
 <br>
 <br>
 <a href="' || event_url_ || '">' || event_url_ || '</a>

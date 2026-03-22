@@ -76,3 +76,4 @@ tables/attendees [tables/attendees@email-rework] 2026-03-12T12:58:43Z Axel,,, <a
 views/latest_attendee_data 2026-03-13T12:39:34Z Axel,,, <axel@axel-ThinkPad> # latest attendee data
 functions/add_attendee_data [functions/add_attendee_data@email-rework] 2026-03-12T12:28:55Z Axel,,, <axel@axel-ThinkPad> # include email logic
 functions/add_comment 2026-03-13T13:01:43Z Axel,,, <axel@axel-ThinkPad> # add comment
+functions/edit_event 2026-03-21T11:31:51Z Axel,,, <axel@axel-ThinkPad> # edit event
