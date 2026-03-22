@@ -15,8 +15,7 @@ build-type:          Simple
 executable op-webapi
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Op.WebAPI.Email
-                     , Op.WebAPI.Endpoints.Attend
+  other-modules:       Op.WebAPI.Endpoints.Attend
                      , Op.WebAPI.Endpoints.Comment
                      , Op.WebAPI.Endpoints.CreateEvent
                      , Op.WebAPI.Endpoints.EditEvent
