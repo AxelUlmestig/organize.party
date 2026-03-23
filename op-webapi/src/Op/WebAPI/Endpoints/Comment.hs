@@ -6,16 +6,11 @@ import           Control.Monad.Except         (MonadError (throwError))
 import           Control.Monad.IO.Class       (MonadIO, liftIO)
 import           Control.Monad.Reader         (MonadReader, asks)
 import           Data.String.Interpolate      (i)
-import           Data.UUID                    (UUID)
-{-
-import           Hasql.Errors                 (CommandError (ResultError),
-                                               ResultError (ServerError),
-                                               SessionError (QueryError))
-                                            -}
 import qualified Data.Text                    as Text
+import           Data.UUID                    (UUID)
 import           RIO                          (when)
 import           Servant                      (ServerError (errBody), err400,
-                                               err500)
+                                               err404, err500)
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
@@ -48,12 +43,12 @@ addComment urlEventId CommentInput{..} = do
 
   where
     handleErr err = do
-      liftIO $ putStrLn [i|Something went wrong when adding comment: #{err}|]
       case err of
-        -- TODO: look up the error types in the new Hasql API
-        {-
-        QueryError _ _ (ResultError (ServerError "23503" _ _ _ _))  -> throwError err404 { errBody = "Event not found" }
-        QueryError _ _ (ResultError (ServerError "23514" _ _ _ _))  -> throwError err400 { errBody = "Comment can't be empty" }
-        -}
-        _                                                           -> throwError err500 { errBody = "Something went wrong" }
+        Db.StatementSessionError _ _ _ _ _ (Db.ServerStatementError (Db.ServerError "23514" _ _ _ _)) ->
+          throwError err400 { errBody = "Comment can't be empty" }
+        Db.StatementSessionError _ _ _ _ _ (Db.ServerStatementError (Db.ServerError "23503" _ _ _ _)) ->
+          throwError err404 { errBody = "Event not found" }
+        _ -> do
+          liftIO $ putStrLn [i|Something went wrong when adding comment: #{err}|]
+          throwError err500 { errBody = "Something went wrong" }
 

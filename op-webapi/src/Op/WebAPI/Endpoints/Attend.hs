@@ -7,18 +7,14 @@ import           Control.Monad.Except         (MonadError (throwError))
 import           Control.Monad.IO.Class       (MonadIO, liftIO)
 import           Control.Monad.Reader         (MonadReader, asks)
 import           Data.Profunctor              (lmap)
+import           Data.String.Interpolate      (i)
 import qualified Data.Text                    as Text
 import           Data.UUID                    (UUID)
-{-
-import           Hasql.Session                (CommandError (ResultError),
-                                               ResultError (ServerError),
-                                               SessionError (QueryError))
--}
 import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
 import           RIO                          (Text)
 import           Servant                      (ServerError (errBody), err400,
-                                               err500)
+                                               err404, err500)
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
@@ -44,11 +40,12 @@ attend eventId attendee' = do
   getEvent eventId
   where
     handleErr err = do
-      liftIO $ print err
       case err of
-        -- TODO: Look up the error types in the Hasql API
-        -- QueryError _ _ (ResultError (ServerError "23503" _ _ _ _)) -> throwError err404 { errBody = "Event not found" }
-        _                                                        -> throwError err500 { errBody = "Something went wrong" }
+        Db.StatementSessionError _ _ _ _ _ (Db.ServerStatementError (Db.ServerError "23503" _ _ _ _)) ->
+          throwError err404 { errBody = "Event not found" }
+        _ -> do
+          liftIO $ putStrLn [i|Something went wrong when attending event: #{err}|]
+          throwError err500 { errBody = "Something went wrong" }
 
 
 insertAttendeeStatement :: Statement (Text, AttendInput) ()
