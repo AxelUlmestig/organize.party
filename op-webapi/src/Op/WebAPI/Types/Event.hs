@@ -1,6 +1,6 @@
 module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..)) where
 
-import           Data.Aeson               (ToJSON)
+import qualified Data.Aeson               as Aeson
 import           Data.Text                (Text)
 import           Data.Time.Clock          (UTCTime)
 import           Data.Types.Isomorphic    (Injective (to), Iso)
@@ -24,6 +24,9 @@ data Event
     }
     deriving (Generic, Eq, Show)
 
+instance Aeson.ToJSON Event
+instance Aeson.FromJSON Event
+
 data Attendee
   = Attendee
     { name    :: Text
@@ -31,6 +34,9 @@ data Attendee
     , plusOne :: Bool
     }
     deriving (Generic, Eq, Show)
+
+instance Aeson.ToJSON Attendee
+instance Aeson.FromJSON Attendee
 
 data Comment
   = Comment
@@ -41,9 +47,8 @@ data Comment
     }
     deriving (Generic, Eq, Show)
 
-instance ToJSON Attendee
-instance ToJSON Comment
-instance ToJSON Event
+instance Aeson.ToJSON Comment
+instance Aeson.FromJSON Comment
 
 instance Injective (UUID, Text, Text, UTCTime, Maybe UTCTime, Text, Maybe Text, UTCTime, UTCTime) Event where
   to (id, title, description, startTime, endTime, location, googleMapsLink, createdAt, modifiedAt) = Event id title description startTime endTime location googleMapsLink [] createdAt modifiedAt []

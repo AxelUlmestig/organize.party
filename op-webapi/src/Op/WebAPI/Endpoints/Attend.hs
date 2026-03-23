@@ -18,7 +18,7 @@ import qualified Hasql.Session                as Hasql
 import           Hasql.Statement              (Statement)
 import           RIO                          (Text)
 import           Servant                      (ServerError (errBody), err400,
-                                               err404, err500)
+                                               err500)
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
