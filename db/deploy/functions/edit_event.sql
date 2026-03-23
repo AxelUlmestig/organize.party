@@ -19,6 +19,7 @@ BEGIN;
     declare
       event_url_ text not null := host_url_ || '/e/' || event_id_;
       correct_password_ bool;
+      no_changes_ bool := false;
     begin
       -- verify that the password is correct
       select password_hash = digest(password_ || password_salt, 'sha256')::text
@@ -27,9 +28,29 @@ BEGIN;
       where id = event_id_;
 
       if correct_password_ is null then
-          raise exception 'event not found' using errcode = 'P0404', hint = '404';
+        raise exception 'event not found' using errcode = 'P0404', hint = '404';
       elsif not correct_password_ then
-          raise exception 'invalid password' using errcode = 'P0403', hint = '403';
+        raise exception 'invalid password' using errcode = 'P0403', hint = '403';
+      end if;
+
+      -- check if there are any actual changes
+      select exists (
+        select 1
+        from event_data
+        where
+          id = event_id_
+          and superseded_at is null
+          -- compare old data
+          and title is not distinct from title_
+          and description is not distinct from description_
+          and time_start is not distinct from start_time_
+          and time_end is not distinct from end_time_
+          and location is not distinct from location_
+          and location_google_maps_link is not distinct from google_maps_link_
+      ) into no_changes_;
+
+      if no_changes_ then
+        return;
       end if;
 
       -- update event info
