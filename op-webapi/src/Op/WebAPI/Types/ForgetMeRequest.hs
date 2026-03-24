@@ -6,12 +6,10 @@ module Op.WebAPI.Types.ForgetMeRequest (
 ) where
 
 import           Data.Aeson
-import           Data.Int              (Int64)
-import           Data.Text             (Text, pack, toLower)
 import           Data.Time             (UTCTime)
 import           Data.Types.Isomorphic (Injective (to))
 import           Data.UUID             (UUID)
-import           GHC.Generics          (Generic)
+import           RIO
 
 
 newtype InitForgetMeInput

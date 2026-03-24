@@ -3,12 +3,9 @@
 module Op.WebAPI.Endpoints.CreateEvent (createEvent) where
 
 import           Control.Monad.Except             (MonadError (..))
-import           Control.Monad.IO.Class           (MonadIO)
-import           Control.Monad.Reader             (MonadReader)
 import           Data.Profunctor                  (dimap)
 import           Data.Types.Isomorphic            (to)
-import qualified Hasql.Session                    as Hasql
-import           Hasql.Statement                  (Statement)
+import           RIO                              hiding (to)
 import           Servant                          (ServerError (..))
 
 import qualified Op.Db                            as Db
@@ -19,9 +16,9 @@ import           Op.WebAPI.Types.Event            (Event)
 
 createEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => CreateEventInput -> m Event
 createEvent input = do
-  Db.queryDbOr Db.printAndThrow500 (Hasql.statement input statement)
+  Db.queryDbOr Db.printAndThrow500 (Db.statement input statement)
   where
-    statement :: Statement CreateEventInput Event
+    statement :: Db.Statement CreateEventInput Event
     statement = dimap to to
       [Db.singletonStatement|
         with

@@ -3,10 +3,8 @@
 module Op.WebAPI.Endpoints.ExecuteForgetMeRequest (executeForgetMeRequest) where
 
 import           Control.Monad.Except            (MonadError (throwError))
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Reader            (MonadReader)
 import           Data.UUID                       (UUID)
-import qualified Hasql.Session                   as Hasql
+import           RIO
 import           Servant                         (ServerError (errBody), err404)
 
 import qualified Op.Db                           as Db
@@ -26,7 +24,7 @@ executeForgetMeRequest forgetMeRequestId = do
       pure $ ExecuteForgetMeResult forgetMeRequestId deletedAt
   where
     session = do
-      mDeletedAt <- Hasql.statement forgetMeRequestId
+      mDeletedAt <- Db.statement forgetMeRequestId
           [Db.maybeStatement|
             select
               email::text?,
@@ -41,7 +39,7 @@ executeForgetMeRequest forgetMeRequestId = do
         Just (Nothing, Just deletedAt) -> pure $ Just deletedAt
         Just (Nothing, Nothing) -> error "Impossible: constraint prevents both from being null at the same time"
         Just (Just email, _) -> do
-          Hasql.statement (email, forgetMeRequestId)
+          Db.statement (email, forgetMeRequestId)
             [Db.singletonStatement|
               with
                 attendee_ids as (

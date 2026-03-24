@@ -4,11 +4,10 @@
 module Op.WebAPI.Endpoints.EditEvent (editEvent) where
 
 import           Control.Monad.Except             (MonadError (..))
-import           Control.Monad.IO.Class           (MonadIO)
-import           Control.Monad.Reader             (MonadReader, asks)
+import           Data.String.Interpolate          (i)
 import qualified Data.Text                        as Text
 import           Data.UUID                        (UUID)
-import           RIO                              (liftIO)
+import           RIO
 import           Servant                          (ServerError (..), err403,
                                                    err404, err500)
 
@@ -47,9 +46,9 @@ editEvent eventId CreateEventInput{..} = do
             "P0403" -> throwError err403 { errBody = "Password didn't match" }
             "P0404" -> throwError err404 { errBody = "Event not found" }
             _ -> do
-              liftIO $ print err
+              logError [i|Unexpected database error when editing event: #{err}|]
               throwError err500 { errBody = "Something went wrong" }
         _ -> do
-          liftIO $ print err
+          logError [i|Unexpected database error when editing event: #{err}|]
           throwError err500 { errBody = "Something went wrong" }
 

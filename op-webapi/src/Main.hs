@@ -6,18 +6,15 @@
 
 module Main where
 
-import           Control.Monad.Trans.Reader                  (ReaderT (..))
 import           Data.ByteString.UTF8                        as BSU
 import           Data.String.Interpolate                     (i)
-import           Data.Text                                   (Text)
 import           Data.UUID                                   (UUID)
-import qualified Hasql.Connection.Settings                   as ConnectionSetting
 import           Network.Wai.Handler.Warp                    (run)
 import           Network.Wai.Middleware.Cors                 (simpleCors)
+import           RIO
 import           Servant
 import           System.Environment                          (lookupEnv)
 import           System.Exit                                 (die)
-import           Text.Read                                   (readMaybe)
 
 import qualified Op.Cache                                    as Cache
 import qualified Op.Db                                       as Db
@@ -87,7 +84,7 @@ type ForgetMeEventHtml = "forget-me" :> Get '[HTML] RawHtml
 type ViewForgetMeEventHtml = "forget-me" :> Capture "forgetme_request_id" UUID :> Get '[HTML] RawHtml
 type UnsubscribeHtml = "unsubscribe" :> Capture "unsubscribe_id" UUID :> Get '[HTML] RawHtml
 
-type MyHandler = ReaderT AppEnv Handler
+type MyHandler = ReaderT AppEnv Servant.Handler
 
 api :: Proxy API
 api = Proxy
@@ -115,7 +112,7 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> const frontPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
 
-getDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
+getDbConnectionSettings :: IO (Either String Db.Settings)
 getDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
@@ -124,7 +121,7 @@ getDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ ConnectionSetting.connectionString connectionString
+      pure $ Db.connectionString connectionString
 
 
 getHostUrl :: IO (Either String String)
@@ -134,17 +131,36 @@ getHostUrl = do
 
 main :: IO ()
 main = do
-  dbSettings <- getDbConnectionSettings >>= either die pure
-  hostUrl <- getHostUrl >>= either die pure
-  connectionPool <- Db.createPool dbSettings
-  awsSnsPubKeyCache <- Cache.initCache
-  let port = 8081
+  withLogFunction $ \logFunc -> do
+    dbSettings <- getDbConnectionSettings >>= either die pure
+    hostUrl <- getHostUrl >>= either die pure
+    connectionPool <- Db.createPool dbSettings
+    awsSnsPubKeyCache <- Cache.initCache
+    let port = 8081
 
-  putStrLn [i|listening on port #{port}...|]
-  run port $ app AppEnv { connectionPool, hostUrl, awsSnsPubKeyCache }
+    runRIO logFunc do
+      logInfo [i|listening on port #{port}...|]
+
+    run port $ app AppEnv {..}
 
 -- util
 maybeToEither :: err -> Maybe a -> Either err a
 maybeToEither _ (Just a)  = Right a
 maybeToEither err Nothing = Left err
+
+withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
+withLogFunction action = do
+  logLevel <- getLogLevelFromEnv
+  logOptions <- setLogUseTime True
+                  . setLogUseLoc True
+                  . setLogMinLevel logLevel
+                  <$> logOptionsHandle stderr True
+  withLogFunc logOptions action
+  where
+    getLogLevelFromEnv = do
+      mLogLevel <- liftIO $ lookupEnv "LOG_LEVEL" <&> fmap readMaybe
+      case mLogLevel of
+        Nothing              -> pure LevelInfo
+        Just Nothing         -> error "Couldn't parse LOG_LEVEL argument"
+        Just (Just logLevel) -> pure logLevel
 

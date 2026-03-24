@@ -3,9 +3,8 @@
 module Op.WebAPI.Endpoints.ViewForgetMeRequest (viewForgetMeRequest) where
 
 import           Control.Monad.Except            (MonadError (throwError))
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Reader            (MonadReader)
 import           Data.UUID                       (UUID)
+import           RIO
 import           Servant                         (ServerError (errBody), err404)
 
 import qualified Op.Db                           as Db

@@ -4,8 +4,6 @@ module Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns (handleAwsSnsWebhook) where
 
 import           Control.Monad.Except     (MonadError (..))
 import qualified Control.Monad.Except     as Except
-import           Control.Monad.IO.Class   (MonadIO (liftIO))
-import           Control.Monad.Reader     (MonadReader)
 import           Crypto.Hash.Algorithms   (SHA1 (..), SHA256 (..))
 import qualified Crypto.PubKey.RSA.PKCS15 as RSA
 import           Crypto.PubKey.RSA.Types  (PublicKey (..))
@@ -16,10 +14,9 @@ import qualified Data.ByteString.Lazy     as LBS
 import qualified Data.PEM                 as PEM
 import           Data.String.Interpolate  (__i, i)
 import qualified Data.Text                as Text
-import           Data.Text.Encoding       (encodeUtf8)
 import qualified Data.X509                as X509
 import qualified Network.HTTP.Req         as Req
-import           RIO                      (ByteString, Generic, Text, unless)
+import           RIO
 import           Servant                  (ServerError (..), err400)
 import           Text.Regex.TDFA          ((=~))
 import           Text.URI                 (mkURI)
@@ -37,15 +34,14 @@ handleAwsSnsWebhook rawRequestBody = do
     case Aeson.decode $ LBS.fromStrict $ encodeUtf8 rawRequestBody of
       Just x -> pure x
       Nothing -> do
-        let errorMessage = [i|Unexpected AWS SES request, expected JSON but got: #{rawRequestBody}|]
-        liftIO $ print errorMessage
-        throwError err400 { errBody = errorMessage }
+        logWarn [i|Unexpected AWS SES request, expected JSON but got: #{rawRequestBody}|]
+        throwError err400 { errBody = [i|Unexpected AWS SES request, expected JSON but got: #{rawRequestBody}|] }
 
   requestBody <- do
     case Aeson.fromJSON requestBodyJson of
       Aeson.Success requestBody -> pure requestBody
       Aeson.Error err -> do
-        liftIO $ putStrLn [i|Failed to parse AWS SES request body: #{err}|]
+        logWarn [i|Failed to parse AWS SES request body: #{rawRequestBody}. Error: #{err}|]
         throwError err400 { errBody = "Invalid request body" }
 
   -- verify signature
@@ -53,7 +49,7 @@ handleAwsSnsWebhook rawRequestBody = do
     signature <- do
       case B64.decode . encodeUtf8 . whSignature $ requestBody of
         Left err -> do
-          liftIO $ putStrLn [i|Couldn't base64 decode 'Signature' in AWS SNS webhook request: #{err}|]
+          logWarn [i|Couldn't base64 decode 'Signature' in AWS SNS webhook request: #{err}|]
           throwError err400 { errBody = "Couldn't base64 decode 'Signature' in request body" }
         Right signature -> pure signature
 
@@ -64,8 +60,8 @@ handleAwsSnsWebhook rawRequestBody = do
 
         case ePubKey of
           Left err -> do
-            liftIO $ print err
-            throwError err400 { errBody = "Failed to extract signature public key" }
+            logWarn [i|Failed to parse AWS SNS Webhook certificate: #{err}|]
+            throwError err400 { errBody = "Failed to extract signature cert" }
           Right pubKey -> pure pubKey
 
     let messageToVerify = constructMessageToVerify requestBody
@@ -86,7 +82,7 @@ handleAwsSnsWebhook rawRequestBody = do
                 signature
 
     unless signatureValid do
-      liftIO $ putStrLn "Invalid AWS SNS signature"
+      logWarn "Invalid AWS SNS signature"
       throwError err400 { errBody = "Invalid signature" }
 
   Db.queryDbOr Db.printAndThrow500 do
@@ -98,17 +94,18 @@ handleAwsSnsWebhook rawRequestBody = do
       |]
 
 getSignaturePublicKey
-  :: (MonadIO m)
+  :: (MonadIO m, MonadReader AppEnv m)
   => Text
   -> m (Either String PublicKey)
 getSignaturePublicKey rawSigningCertUrl = do
-  liftIO $ Except.runExceptT do
+  Except.runExceptT do
     -- verify that signing cert url comes from AWS
     do
-      let awsDomainRegex = "https:\\/\\/([a-z0-9-]*\\.)*amazonaws\\.com.*$" :: Text
-      let localhostDomainRegex = "http:\\/\\/localhost:8888(\\/.*)$" :: Text -- allow localhost for testing
+      let awsDomainRegex = "^https:\\/\\/([a-z0-9-]*\\.)*amazonaws\\.com.*$" :: Text
+      let localhostDomainRegex = "^http:\\/\\/localhost:8888(\\/.*)$" :: Text -- allow localhost for testing
       unless (rawSigningCertUrl =~ awsDomainRegex || rawSigningCertUrl =~ localhostDomainRegex) do
-        liftIO $ putStrLn [i|Illegal signing cert url in AWS SNS webhook: #{rawSigningCertUrl}|]
+        -- runRIO appEnv do
+        logWarn [i|Illegal signing cert url in AWS SNS webhook: #{rawSigningCertUrl}|]
         Except.throwError "Illegal signing cert url. Only amazonaws.com is allowed"
 
     response <- do

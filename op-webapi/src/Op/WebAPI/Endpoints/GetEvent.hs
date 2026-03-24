@@ -9,7 +9,7 @@ import           Control.Monad.Except    (MonadError (throwError))
 import qualified Data.Aeson              as Aeson
 import           Data.String.Interpolate (i)
 import           Data.UUID               (UUID)
-import           RIO                     (MonadIO, MonadReader, liftIO)
+import           RIO
 import           Servant                 (ServerError (..), err404, err500)
 
 import qualified Op.Db                   as Db
@@ -38,5 +38,5 @@ maybeGetEvent eventId = do
     Nothing -> pure Nothing
     Just (Aeson.Success event) -> pure $ Just event
     Just (Aeson.Error err) -> do
-      liftIO $ putStrLn [i|Could not parse event json: #{Aeson.encode <$> mJson}\n\nerr: #{err}|]
+      logError [i|Could not parse event json: #{Aeson.encode <$> mJson}\n\nerr: #{err}|]
       throwError err500 { errBody = "Something went wrong" }

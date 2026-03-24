@@ -2,17 +2,12 @@
 
 module Op.WebAPI.Endpoints.Attend (attend) where
 
-import           Control.Monad                (when)
 import           Control.Monad.Except         (MonadError (throwError))
-import           Control.Monad.IO.Class       (MonadIO, liftIO)
-import           Control.Monad.Reader         (MonadReader, asks)
 import           Data.Profunctor              (lmap)
 import           Data.String.Interpolate      (i)
 import qualified Data.Text                    as Text
 import           Data.UUID                    (UUID)
-import qualified Hasql.Session                as Hasql
-import           Hasql.Statement              (Statement)
-import           RIO                          (Text)
+import           RIO
 import           Servant                      (ServerError (errBody), err400,
                                                err404, err500)
 
@@ -35,7 +30,7 @@ attend eventId attendee' = do
   do
     hostUrl' <- asks (Text.pack . hostUrl)
     Db.queryDbOr handleErr do
-      Hasql.statement (hostUrl', attendee) insertAttendeeStatement
+      Db.statement (hostUrl', attendee) insertAttendeeStatement
 
   getEvent eventId
   where
@@ -44,11 +39,11 @@ attend eventId attendee' = do
         Db.StatementSessionError _ _ _ _ _ (Db.ServerStatementError (Db.ServerError "23503" _ _ _ _)) ->
           throwError err404 { errBody = "Event not found" }
         _ -> do
-          liftIO $ putStrLn [i|Something went wrong when attending event: #{err}|]
+          logError [i|Something went wrong when attending event: #{err}|]
           throwError err500 { errBody = "Something went wrong" }
 
 
-insertAttendeeStatement :: Statement (Text, AttendInput) ()
+insertAttendeeStatement :: Db.Statement (Text, AttendInput) ()
 insertAttendeeStatement =
   lmap to'
     [Db.resultlessStatement|

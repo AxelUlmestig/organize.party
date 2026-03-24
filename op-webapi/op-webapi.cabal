@@ -44,8 +44,6 @@ executable op-webapi
                      , crypton
                      , crypton-pem
                      , crypton-x509
-                     , hasql >=1.9.0.1
-                     , hasql-th >= 0.4
                      , http-media >= 0.8 && < 0.9
                      , modern-uri
                      , mtl >= 2.3 && <= 3.0
@@ -81,3 +79,4 @@ executable op-webapi
                      , RecordWildCards
                      , QuasiQuotes
                      , TypeOperators
+                     , NoImplicitPrelude

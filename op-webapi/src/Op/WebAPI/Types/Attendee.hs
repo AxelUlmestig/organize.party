@@ -3,13 +3,11 @@
 module Op.WebAPI.Types.Attendee (Attendee(..), AttendeeStatus(..), readStatus, writeStatus) where
 
 import           Data.Aeson              (FromJSON, ToJSON)
-import           Data.Int                (Int64)
 import           Data.String.Interpolate (iii)
-import           Data.Text               (Text, pack, toTitle, unpack)
 import           Data.Time               (UTCTime)
-import           Data.Types.Isomorphic   (Injective (to), Iso)
+import           Data.Types.Isomorphic   (Injective (to))
 import           Data.UUID               (UUID)
-import           GHC.Generics            (Generic)
+import           RIO
 
 data AttendeeStatus
   = Coming

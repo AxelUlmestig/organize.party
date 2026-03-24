@@ -3,8 +3,8 @@ module Op.WebAPI.Types.CreateEventInput (CreateEventInput(..)) where
 import           Data.Aeson            (FromJSON, ToJSON)
 import           Data.Text
 import           Data.Time.Clock       (UTCTime)
-import           Data.Types.Isomorphic (Injective (to), Iso)
-import           GHC.Generics          (Generic)
+import           Data.Types.Isomorphic (Injective (to))
+import           RIO
 
 data CreateEventInput = CreateEventInput
                         { title          :: Text

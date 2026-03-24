@@ -3,12 +3,10 @@
 module Op.WebAPI.Endpoints.Comment (addComment) where
 
 import           Control.Monad.Except         (MonadError (throwError))
-import           Control.Monad.IO.Class       (MonadIO, liftIO)
-import           Control.Monad.Reader         (MonadReader, asks)
 import           Data.String.Interpolate      (i)
 import qualified Data.Text                    as Text
 import           Data.UUID                    (UUID)
-import           RIO                          (when)
+import           RIO
 import           Servant                      (ServerError (errBody), err400,
                                                err404, err500)
 
@@ -49,6 +47,6 @@ addComment urlEventId CommentInput{..} = do
         Db.StatementSessionError _ _ _ _ _ (Db.ServerStatementError (Db.ServerError "23503" _ _ _ _)) ->
           throwError err404 { errBody = "Event not found" }
         _ -> do
-          liftIO $ putStrLn [i|Something went wrong when adding comment: #{err}|]
+          logError [i|Something went wrong when adding comment: #{err}|]
           throwError err500 { errBody = "Something went wrong" }
 

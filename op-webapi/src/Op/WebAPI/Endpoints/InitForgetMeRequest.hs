@@ -5,8 +5,7 @@ module Op.WebAPI.Endpoints.InitForgetMeRequest (initForgetMe) where
 import           Control.Monad.Except            (MonadError)
 import           Data.String.Interpolate         (__i)
 import qualified Data.UUID                       as UUID
-import           RIO                             (MonadIO, MonadReader, Text,
-                                                  asks)
+import           RIO
 import           Servant                         (ServerError)
 
 import qualified Op.Db                           as Db

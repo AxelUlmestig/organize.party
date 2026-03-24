@@ -1,10 +1,9 @@
 module Op.WebAPI.Types.AttendInput (AttendInput(..)) where
 
 import           Data.Aeson               (FromJSON)
-import           Data.Text                (Text)
 import           Data.Types.Isomorphic    (Injective (to))
 import           Data.UUID                (UUID)
-import           GHC.Generics             (Generic)
+import           RIO
 
 import           Op.WebAPI.Types.Attendee (AttendeeStatus (..), writeStatus)
 

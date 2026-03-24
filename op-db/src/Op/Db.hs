@@ -9,21 +9,26 @@ module Op.Db (
   HasDbConnection(..),
   Hasql.statement,
   module Hasql.TH,
-  module Hasql.Errors
+  module Hasql.Errors,
+  Connection,
+  Hasql.Statement.Statement,
+  Settings,
+  connectionString
 ) where
 
-import           Control.Monad.Except     (MonadError (..))
-import           Control.Monad.IO.Class   (MonadIO (liftIO))
-import           Control.Monad.Reader     (MonadReader, ask)
-import           Data.Pool                (Pool)
-import qualified Data.Pool                as Pool
-import           Hasql.Connection         (Connection)
-import qualified Hasql.Connection         as Hasql
-import           Hasql.Connection.Settings (Settings)
+import           Control.Monad.Except      (MonadError (..))
+import           Control.Monad.IO.Class    (MonadIO (liftIO))
+import           Control.Monad.Reader      (MonadReader, ask)
+import           Data.Pool                 (Pool)
+import qualified Data.Pool                 as Pool
+import           Hasql.Connection          (Connection)
+import qualified Hasql.Connection          as Hasql
+import           Hasql.Connection.Settings (Settings, connectionString)
 import           Hasql.Errors
-import qualified Hasql.Session            as Hasql
+import qualified Hasql.Session             as Hasql
+import qualified Hasql.Statement
 import           Hasql.TH
-import           Servant                  (ServerError (..), err500)
+import           Servant                   (ServerError (..), err500)
 
 
 class HasDbConnection a where

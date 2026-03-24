@@ -1,12 +1,11 @@
 module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..)) where
 
 import qualified Data.Aeson               as Aeson
-import           Data.Text                (Text)
 import           Data.Time.Clock          (UTCTime)
-import           Data.Types.Isomorphic    (Injective (to), Iso)
+import           Data.Types.Isomorphic    (Injective (to))
 import           Data.UUID                (UUID)
-import           GHC.Generics             (Generic)
 import           Op.WebAPI.Types.Attendee (AttendeeStatus (..), readStatus)
+import           RIO
 
 data Event
   = Event

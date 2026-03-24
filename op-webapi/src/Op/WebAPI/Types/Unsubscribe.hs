@@ -1,10 +1,9 @@
 module Op.WebAPI.Types.Unsubscribe (UnsubscribeResult(..)) where
 
 import           Data.Aeson
-import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
-import           GHC.Generics          (Generic)
 import           Op.WebAPI.Types.Event (Event (..))
+import           RIO
 
 data UnsubscribeResult
   = UnsubscribeResult

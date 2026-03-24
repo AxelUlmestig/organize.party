@@ -3,11 +3,9 @@
 module Op.WebAPI.Endpoints.Unsubscribe (unsubscribe) where
 
 import           Control.Monad.Except         (MonadError (throwError))
-import           Control.Monad.IO.Class       (MonadIO)
-import           Control.Monad.Reader         (MonadReader)
 import           Data.String.Interpolate      (i)
 import           Data.UUID                    (UUID)
-import qualified Hasql.Session                as Hasql
+import           RIO
 import           Servant                      (ServerError (errBody), err404)
 
 import qualified Op.Db                        as Db
@@ -20,7 +18,7 @@ unsubscribe ::
   UUID ->
   m UnsubscribeResult
 unsubscribe unsubscribeId = do
-  queryResult <- Db.queryDbOr Db.printAndThrow500 (Hasql.statement unsubscribeId statement)
+  queryResult <- Db.queryDbOr Db.printAndThrow500 (Db.statement unsubscribeId statement)
   case queryResult of
     Just (eventId, email, unsubscribedAt) -> do
       event <- getEvent eventId

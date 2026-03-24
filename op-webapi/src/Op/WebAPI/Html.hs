@@ -9,8 +9,6 @@ module Op.WebAPI.Html (
 
 
 import           Control.Monad.Except         (MonadError)
-import           Control.Monad.IO.Class       (MonadIO, liftIO)
-import           Control.Monad.Reader         (MonadReader, asks)
 import qualified Data.ByteString.Lazy         as LBS
 import           Data.ByteString.Lazy.Search  (replace)
 import           Data.ByteString.UTF8         as BSU
@@ -20,6 +18,7 @@ import           Network.HTTP.Media           ((//), (/:))
 import qualified Op.WebAPI.Endpoints.GetEvent
 import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
 import           Op.WebAPI.Types.Event        (Event (..))
+import           RIO
 import           Servant
 
 -- type shenanigans to enable serving raw html
