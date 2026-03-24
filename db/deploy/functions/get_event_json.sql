@@ -68,23 +68,20 @@ BEGIN;
         coalesce(
           jsonb_agg(
             jsonb_build_object(
-              'commenterName', attendee_data.name,
+              'commenterName', latest_attendee_data.name,
               'comment', comments.comment,
               'timestamp', comments.created_at,
-              'gravatarUrl', attendees.gravatar_url
+              'gravatarUrl', latest_attendee_data.gravatar_url
             )
           ),
           '[]'::jsonb
         )
       into comments_
-      from attendees
-      join comments
-        on comments.attendee_id = attendees.id
-      join attendee_data
-        on attendee_data.attendee_id = attendees.id
-        and attendee_data.superseded_at is null
+      from comments
+      join latest_attendee_data
+        on latest_attendee_data.id = comments.attendee_id
       where
-        attendees.event_id = event_id_;
+        latest_attendee_data.event_id = event_id_;
 
       output_ := jsonb_set(output_, '{comments}', comments_);
 
