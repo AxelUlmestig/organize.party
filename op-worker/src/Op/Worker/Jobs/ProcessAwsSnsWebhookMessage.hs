@@ -156,12 +156,13 @@ handleSesBounce webhookMessage = do
 
   Db.queryDbOr retryDbErr do
     Db.statement
-      emailId
+      (emailId, webhookMessage)
       [Db.resultlessStatement|
           select fsm.notify_state_machine(
             shard => 1,
             machine => state_machine_id,
-            event => 'email.bounced'
+            event => 'email.bounced',
+            data => jsonb_build_object('block_context', $2::jsonb::text)
           )::text
           from email.emails
           where id = $1::uuid
@@ -177,12 +178,13 @@ handleSesComplaint webhookMessage = do
 
   Db.queryDbOr retryDbErr do
     Db.statement
-      emailId
+      (emailId, webhookMessage)
       [Db.resultlessStatement|
           select fsm.notify_state_machine(
             shard => 1,
             machine => state_machine_id,
-            event => 'email.marked_as_spam'
+            event => 'email.marked_as_spam',
+            data => jsonb_build_object('block_context', $2::jsonb::text)
           )::text
           from email.emails
           where id = $1::uuid

@@ -10,11 +10,13 @@ BEGIN;
         begin
             insert into email.blocked_email_addresses (
               email_address,
-              reason
+              reason,
+              context
             )
             select
               recipient_email,
-              'marked_as_spam'
+              'marked_as_spam',
+              (event_payload).data->>'block_context'
             from email.emails
             where state_machine_id = state_machine_id_
             on conflict do nothing;
