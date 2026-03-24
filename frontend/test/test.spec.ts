@@ -66,7 +66,12 @@ test('can create event', async ({ page, request }) => {
   await page.getByRole('button', { name: /ok/i }).click()
 
   // update attendee status to 'Maybe Coming'
+
+  // Elm, checkboxes and playwright don't seem to play nice. Adding a slight
+  // delay after checking boxes seems to help
   await page.getByTestId('view-event-attendee-plus-one').check()
+  await page.waitForTimeout(100);
+
   await page.getByTestId('view-event-attendee-status').selectOption({ label: 'Maybe Coming' })
   await page.getByTestId('view-event-submit-attendee').click()
 
@@ -239,7 +244,12 @@ test('handle aws email webhooks', async ({ page, request }) => {
   const comment = `broadcast-${testId}`
   await page.getByTestId('view-event-attendee-name').fill('Commenter')
   await page.getByTestId('view-event-attendee-email').fill('commenter@organize.party')
+
+  // Elm, checkboxes and playwright don't seem to play nice. Adding a slight
+  // delay after checking boxes seems to help
   await page.getByTestId('view-event-notify-everyone-on-comment').check()
+  await page.waitForTimeout(100);
+
   await page.getByPlaceholder('Leave a comment').fill(comment)
   await page.getByRole('button', { name: /comment/i }).click()
 

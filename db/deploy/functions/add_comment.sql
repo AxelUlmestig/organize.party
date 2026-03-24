@@ -53,6 +53,7 @@ BEGIN;
             event_id = event_id_
             and email <> email_
             and unsubscribed_at is null
+            and status in ('coming', 'maybe_coming')
             and (
               get_notified_on_comments
               or force_notification_on_comment_
