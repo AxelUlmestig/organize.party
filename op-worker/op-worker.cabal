@@ -1,7 +1,7 @@
 cabal-version:      3.14
 
 name:               op-worker
-version:            0.1.0.0
+version:            0.1
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Axel Ulmestig

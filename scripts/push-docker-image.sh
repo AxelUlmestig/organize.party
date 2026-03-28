@@ -1,25 +1,74 @@
 #!/bin/bash
 
-set -e
+set -ex
 
-IMAGE_TAG=$1
-IMAGE_NAME=axelulmestig/organize.party
+WEBAPI_IMAGE_NAME=axelulmestig/organize.party-webapi
+WORKER_IMAGE_NAME=axelulmestig/organize.party-worker
 
-if [ -z "$IMAGE_TAG" ]; then
-  echo "Please provide a tag for the image"
-  exit 1
+WEBAPI_VERSION=$(grep -i "^version:" op-webapi/op-webapi.cabal | awk '{print $2}')
+WORKER_VERSION=$(grep -i "^version:" op-worker/op-worker.cabal | awk '{print $2}')
+
+# Track what needs to be built
+NEED_WEBAPI_BUILD=false
+NEED_WORKER_BUILD=false
+
+# Check which versions already exist
+if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WEBAPI_IMAGE_NAME}/tags/${WEBAPI_VERSION}"; then
+  NEED_WEBAPI_BUILD=true
+  echo "✓ WebAPI version $WEBAPI_VERSION needs to be built"
+else
+  echo "WebAPI version $WEBAPI_VERSION already exists, skipping"
 fi
 
-sed -i -e "s/\${IMAGE_TAG:-.*}/\${IMAGE_TAG:-$IMAGE_TAG}/g" docker-compose.yml
+if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WORKER_IMAGE_NAME}/tags/${WORKER_VERSION}"; then
+  NEED_WORKER_BUILD=true
+  echo "✓ Worker version $WORKER_VERSION needs to be built"
+else
+  echo "Worker version $WORKER_VERSION already exists, skipping"
+fi
 
-# the Dockerfile contains the instructions for building the frontend
-git clean -fxd frontend/static/ frontend/index.html
-docker compose build server
+# Build all needed images first (without pushing)
+if [ "$NEED_WEBAPI_BUILD" = true ]; then
+  echo "Building WebAPI image..."
+  # the Dockerfile contains the instructions for building the frontend
+  git clean -fxd frontend/static/ frontend/index.html
+  
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t $WEBAPI_IMAGE_NAME:$WEBAPI_VERSION \
+    -t $WEBAPI_IMAGE_NAME:latest \
+    -f op-webapi/Dockerfile \
+    --load \
+    .
+  echo "✓ WebAPI image built"
+fi
 
-# docker push axelulmestig/organize.party:$IMAGE_TAG
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t $IMAGE_NAME:$IMAGE_TAG \
-  -t $IMAGE_NAME:latest \
-  --push .
+if [ "$NEED_WORKER_BUILD" = true ]; then
+  echo "Building Worker image..."
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t $WORKER_IMAGE_NAME:$WORKER_VERSION \
+    -t $WORKER_IMAGE_NAME:latest \
+    -f op-worker/Dockerfile \
+    --load \
+    .
+  echo "✓ Worker image built"
+fi
+
+# Push all built images and update docker-compose
+if [ "$NEED_WEBAPI_BUILD" = true ]; then
+  echo "Pushing WebAPI images..."
+  docker push $WEBAPI_IMAGE_NAME:$WEBAPI_VERSION
+  docker push $WEBAPI_IMAGE_NAME:latest
+  sed -i -e "s/\${WEBAPI_VERSION:-.*}/\${WEBAPI_VERSION:-$WEBAPI_VERSION}/g" docker-compose-prod.yml
+  echo "✓ WebAPI images pushed"
+fi
+
+if [ "$NEED_WORKER_BUILD" = true ]; then
+  echo "Pushing Worker images..."
+  docker push $WORKER_IMAGE_NAME:$WORKER_VERSION
+  docker push $WORKER_IMAGE_NAME:latest
+  sed -i -e "s/\${WORKER_VERSION:-.*}/\${WORKER_VERSION:-$WORKER_VERSION}/g" docker-compose-prod.yml
+  echo "✓ Worker images pushed"
+fi
 

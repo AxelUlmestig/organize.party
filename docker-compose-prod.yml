@@ -46,7 +46,7 @@ services:
       - app-network
 
   webapi:
-    # image: axelulmestig/organize.party-webapi:${IMAGE_TAG:-0.8}
+    image: axelulmestig/organize.party-webapi:${WEBAPI_VERSION:-0.1}
     ports:
       - "8081:8081"
     build:
@@ -58,14 +58,13 @@ services:
     environment:
       DB_HOST: pgbouncer
       DB_PORT: 6432
-      # HOST_URL: "https://organize.party"
-      HOST_URL: "http://localhost:8081"
+      HOST_URL: "https://organize.party"
       LOG_LEVEL: LevelInfo
     networks:
       - app-network
 
   worker:
-    # image: axelulmestig/organize.party-worker:${IMAGE_TAG:-0.1}
+    image: axelulmestig/organize.party-worker:${WORKER_VERSION:-0.1}
     build:
       context: .
       dockerfile: op-worker/Dockerfile
