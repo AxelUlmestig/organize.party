@@ -1,3 +1,5 @@
+name: organize-party-dev
+
 services:
   db:
     build:
@@ -48,33 +50,9 @@ services:
     networks:
       - app-network
 
-  server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.8}
-    ports:
-      - "8081:8081"
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      - db
-      - mailhog
-    environment:
-      DB_HOST: pgbouncer
-      DB_PORT: 6432
-      HOST_URL: "http://localhost:8081"
-      SMTP_SERVER: "mailhog"
-      SMTP_PORT: 1025
-      SMTP_LOGIN: null
-      SMTP_PASSWORD: null
-    env_file: .env
-    # volumes:
-    #   - ./frontend:/events/frontend
-    networks:
-      - app-network
-
   # use this if you want to do frontend dev work without installing Haskell
-  dev-server:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.8}
+  dev-webapi:
+    image: axelulmestig/organize.party-webapi:latest
     ports:
       - "8081:8081"
     depends_on:
@@ -94,67 +72,13 @@ services:
     networks:
       - app-network
 
-  production:
-    image: axelulmestig/organize.party:${IMAGE_TAG:-0.8}
-    ports:
-      - "8081:8081"
-    depends_on:
-      - pgbouncer
-      - nginx
-    environment:
-      DB_HOST: pgbouncer
-      DB_PORT: 6432
-      HOST_URL: "https://organize.party"
-    env_file: .env
-    restart: always
-    networks:
-      - app-network
-
-  nginx:
-    image: nginx:latest
-    userns_mode: host
-    network_mode: host
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/mime.types:/etc/nginx/mime.types
-      - ./certbot/www/:/var/www/certbot/:ro
-      - ./certbot/conf/:/etc/nginx/ssl/:ro
-    # networks:
-    #   - app-network
-
-  nginx-certbot:
-    image: nginx:latest
-    userns_mode: host
-    network_mode: host
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx-certbot.conf
-      - ./nginx/mime.types:/etc/nginx/mime.types
-      - ./certbot/www/:/var/www/certbot/:rw
-      - ./certbot/conf/:/etc/nginx/ssl/:rw
-    # networks:
-    #   - app-network
-
   mailhog:
     image: mailhog/mailhog
     ports:
       - "8025:8025"
       - "1025:1025"
-    networks:
-      - app-network
-
-  certbot:
-    image: certbot/certbot:latest
-    depends_on:
-      - nginx
-    volumes:
-      - ./certbot/www/:/var/www/certbot/:rw
-      - ./certbot/conf/:/etc/letsencrypt/:rw
+    # networks:
+    #   - app-network
 
   filehost:
     image: halverneus/static-file-server:latest

@@ -19,7 +19,7 @@ build-frontend:
 
 .PHONY: access-database
 access-database:
-	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events
+	./scripts/access-database.sh
 
 .PHONY: deploy-migrations
 deploy-migrations:
@@ -34,10 +34,10 @@ update-server-container:
 
 .PHONY: deploy-production
 deploy-production:
-	docker compose up -d db
-	./scripts/wait-for-db.sh
-	docker compose exec db sqitch --chdir db deploy
-	docker compose up --force-recreate -d production
+	docker compose -f docker-compose-prod.yml up -d db
+	./scripts/wait-for-db.sh docker-compose-prod.yml
+	docker compose -f docker-compose-prod.yml exec db sqitch --chdir db deploy --verify
+	docker compose -f docker-compose-prod.yml up --force-recreate -d webapi worker
 
 .PHONY: backup-db
 backup-db:

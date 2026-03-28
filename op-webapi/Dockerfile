@@ -1,6 +1,6 @@
 # build the server
 FROM haskell:9.8.4 AS build-server
-WORKDIR /events
+WORKDIR /
 
 # Install dependencies for adding the PostgreSQL repository
 RUN apt-get update && apt-get install -y curl ca-certificates gnupg lsb-release
@@ -11,16 +11,20 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg m
 
 RUN apt-get update && apt-get install -y \
     libgmp10 \
-    postgresql-17 \
-    postgresql-client-17 \
+    postgresql-18 \
+    postgresql-client-18 \
     libpq5 \
     libpq-dev \
     zlib1g-dev \
     libzstd-dev \
     pkg-config
 
-COPY events.cabal /events/
-COPY cabal.project.freeze /events/
+COPY op-webapi/op-webapi.cabal /op-webapi/
+COPY op-cache/op-cache.cabal /op-cache/
+COPY op-db/op-db.cabal /op-db/
+COPY op-worker/op-worker.cabal /op-worker/
+COPY cabal.project /
+COPY cabal.project.freeze /
 
 RUN cabal update
 
@@ -30,19 +34,22 @@ RUN if [ -f cabal.project.freeze ]; then \
     mv cabal.project.freeze.tmp cabal.project.freeze || true; \
     fi
 
-RUN cabal build --only-dependencies
+RUN cabal build op-webapi op-db op-cache --only-dependencies
 
-COPY src /events/src
+COPY op-webapi/src /op-webapi/src
+COPY op-cache/src /op-cache/src
+COPY op-db/src /op-db/src
+COPY op-worker/src /op-worker/src
 
 # Build the executable
-RUN cabal build
+RUN cabal build op-webapi
 
 # Copy the actual binary from the dist directory, not the symlink
-RUN cp $(cabal list-bin events) /events/events-real
+RUN cp $(cabal list-bin op-webapi) /op-webapi/webapi-real
 
 # Create a minimal runtime image for the server
 FROM debian:bullseye-slim AS server-runtime
-WORKDIR /events
+WORKDIR /op-webapi
 
 # Install only runtime dependencies (much smaller than build dependencies)
 RUN apt-get update && apt-get install -y \
@@ -53,11 +60,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the actual binary, not the symlink
-COPY --from=build-server /events/events-real /events/events
+COPY --from=build-server /op-webapi/webapi-real /op-webapi/webapi
 
 # build the frontend
 FROM node:24-alpine AS build-frontend
-WORKDIR /events
+WORKDIR /
 
 RUN apk update && apk add --no-cache curl make
 
@@ -82,15 +89,15 @@ RUN ARCH=$(uname -m) && \
 # RUN npm install -g elm@0.19.1-5 uglify-js
 RUN npm install -g uglify-js
 
-COPY frontend/ /events/frontend/
-COPY scripts /events/scripts
+COPY frontend/ /frontend/
+COPY scripts /scripts
 
 RUN rm frontend/index.html || true
 RUN ./scripts/build-frontend.sh --optimize
 
 # Create final minimal image
-FROM debian:bullseye-slim AS final
-WORKDIR /events
+FROM debian:trixie-slim AS final
+WORKDIR /
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -101,10 +108,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the server binary
-COPY --from=build-server /events/events-real /events/events
+COPY --from=build-server /op-webapi/webapi-real /webapi
 
 # Copy the frontend files
-COPY --from=build-frontend /events/frontend/index.html /events/frontend/index.html
-COPY --from=build-frontend /events/frontend/static/ /events/frontend/static/
+COPY --from=build-frontend /frontend/index.html /frontend/index.html
+COPY --from=build-frontend /frontend/static/ /frontend/static/
 
-CMD ["/events/events"]
+CMD ["/webapi"]
