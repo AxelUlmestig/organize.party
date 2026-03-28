@@ -10,7 +10,7 @@ import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy                       as LBS
 import           Data.ByteString.UTF8                       as BSU
 import qualified Data.Pool                                  as Pool
-import           Data.String.Interpolate                    (__i'L, i)
+import           Data.String.Interpolate                    (i, iii)
 import           Data.Typeable                              (typeOf)
 import           GHC.Generics
 import           Hasql.Connection                           (Connection,
@@ -161,7 +161,7 @@ processOneJob = do
                     eResult <- handleAny onErr do
                       Job.runJob env do
                         logInfo
-                          [__i'L|
+                          [iii|
                           Starting to process #{workerJobName workerJob}...
                           jobId: #{jobId}
                           |]
@@ -171,7 +171,7 @@ processOneJob = do
                     case eResult of
                       Right () -> do
                         logInfo
-                          [__i'L|
+                          [iii|
                           Done processing #{workerJobName workerJob}
                           jobId: #{jobId}
                           |]
@@ -187,7 +187,7 @@ processOneJob = do
 
                           Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
                             logError
-                              [__i'L|
+                              [iii|
                               Giving up after #{failedAttemptsLimit} failed attempts
 
                               Error: #{textDisplay message}
