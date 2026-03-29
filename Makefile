@@ -74,3 +74,7 @@ export GEN_CHARTS_QUERY
 gen-charts:
 	sudo chmod 666 db/sqitch.plan
 	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events -c "$$GEN_CHARTS_QUERY"
+
+.PHONY: push-docker-images
+push-docker-images:
+		./scripts/push-docker-images.sh

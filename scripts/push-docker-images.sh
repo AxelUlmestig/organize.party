@@ -38,8 +38,8 @@ if [ "$NEED_WEBAPI_BUILD" = true ]; then
     -t $WEBAPI_IMAGE_NAME:$WEBAPI_VERSION \
     -t $WEBAPI_IMAGE_NAME:latest \
     -f op-webapi/Dockerfile \
-    --load \
     .
+
   echo "✓ WebAPI image built"
 fi
 
@@ -50,24 +50,35 @@ if [ "$NEED_WORKER_BUILD" = true ]; then
     -t $WORKER_IMAGE_NAME:$WORKER_VERSION \
     -t $WORKER_IMAGE_NAME:latest \
     -f op-worker/Dockerfile \
-    --load \
     .
+
   echo "✓ Worker image built"
 fi
 
 # Push all built images and update docker-compose
 if [ "$NEED_WEBAPI_BUILD" = true ]; then
-  echo "Pushing WebAPI images..."
-  docker push $WEBAPI_IMAGE_NAME:$WEBAPI_VERSION
-  docker push $WEBAPI_IMAGE_NAME:latest
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t $WEBAPI_IMAGE_NAME:$WEBAPI_VERSION \
+    -t $WEBAPI_IMAGE_NAME:latest \
+    -f op-webapi/Dockerfile \
+    --push \
+    .
+
   sed -i -e "s/\${WEBAPI_VERSION:-.*}/\${WEBAPI_VERSION:-$WEBAPI_VERSION}/g" docker-compose-prod.yml
   echo "✓ WebAPI images pushed"
 fi
 
 if [ "$NEED_WORKER_BUILD" = true ]; then
-  echo "Pushing Worker images..."
-  docker push $WORKER_IMAGE_NAME:$WORKER_VERSION
-  docker push $WORKER_IMAGE_NAME:latest
+  echo "Building Worker image..."
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t $WORKER_IMAGE_NAME:$WORKER_VERSION \
+    -t $WORKER_IMAGE_NAME:latest \
+    -f op-worker/Dockerfile \
+    --push \
+    .
+
   sed -i -e "s/\${WORKER_VERSION:-.*}/\${WORKER_VERSION:-$WORKER_VERSION}/g" docker-compose-prod.yml
   echo "✓ Worker images pushed"
 fi
