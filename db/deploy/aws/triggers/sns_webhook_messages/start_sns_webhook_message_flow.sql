@@ -7,8 +7,8 @@ BEGIN;
     $$
         begin
             perform fsm.start_machine(
-                1,
-                new.state_machine_id
+                shard => 1,
+                machine_id => new.state_machine_id
             )
             from aws.sns_webhook_messages
             where id = new.id;

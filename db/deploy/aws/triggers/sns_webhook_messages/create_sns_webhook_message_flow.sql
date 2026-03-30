@@ -10,8 +10,8 @@ BEGIN;
             then
                 select s.id into new.state_machine_id
                 from fsm.create_state_machine_with_latest_statechart(
-                    1,
-                    'aws.sns_webhook_message_flow'
+                    shard_id_ => 1,
+                    named => 'aws.sns_webhook_message_flow'
                 ) s;
             end if;
             return new;

@@ -16,7 +16,10 @@ BEGIN;
     primary key (id)
   );
 
-  create index if not exists idx_email_emails_state_machine_id
+  create unique index if not exists idx_email_emails_state_machine_id
     on email.emails (state_machine_id);
+
+  create index if not exists idx_email_emails_recipient_email
+    on email.emails (recipient_email);
 
 COMMIT;

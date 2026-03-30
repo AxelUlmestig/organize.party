@@ -8,8 +8,8 @@ BEGIN;
         begin
 
             perform fsm.start_machine(
-                1,
-                new.state_machine_id
+                shard => 1,
+                machine_id => new.state_machine_id
             )
             from email.emails
             where id = new.id;
