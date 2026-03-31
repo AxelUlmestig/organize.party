@@ -26,6 +26,8 @@ BEGIN;
       ics_email_sent_ bool;
       event_url_ text;
     begin
+      email_ := trim(lower(email_));
+
       -- insert into attendees table if not already populated
       insert into attendees (event_id, email)
         values (event_id_, email_)

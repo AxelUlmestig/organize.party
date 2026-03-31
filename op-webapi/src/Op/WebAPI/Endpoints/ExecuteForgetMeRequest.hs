@@ -64,6 +64,12 @@ executeForgetMeRequest forgetMeRequestId = do
                   from attendee_ids
                   where
                     comments.attendee_id = attendee_ids.attendee_id
+                ),
+
+                deleted_emails as (
+                  delete from email.emails
+                  cascade
+                  where recipient_email = $1::text
                 )
 
               update forgetme_requests
