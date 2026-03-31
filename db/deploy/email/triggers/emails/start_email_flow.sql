@@ -6,7 +6,6 @@ BEGIN;
     returns trigger as
     $$
         begin
-
             perform fsm.start_machine(
                 shard => 1,
                 machine_id => new.state_machine_id

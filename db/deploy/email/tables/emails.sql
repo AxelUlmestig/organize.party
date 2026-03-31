@@ -9,8 +9,8 @@ BEGIN;
     state_machine_id bigint not null,
     recipient_email text not null,
     recipient_name text,
-    subject text,
-    body text,
+    subject text not null,
+    body text not null,
     materialized_status text not null default 'queued',
 
     primary key (id)

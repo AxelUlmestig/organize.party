@@ -26,7 +26,7 @@ BEGIN;
       ics_email_sent_ bool;
       event_url_ text;
     begin
-      -- get attendee_id
+      -- insert into attendees table if not already populated
       insert into attendees (event_id, email)
         values (event_id_, email_)
       on conflict ((attendees.event_id), (attendees.email))
@@ -41,7 +41,7 @@ BEGIN;
           and attendees.email = email_;
       end if;
 
-      -- early return if this won't change any values
+      -- early return if identical attendee data already exists
       select * into output_
       from latest_attendee_data
       where
@@ -49,7 +49,7 @@ BEGIN;
         and name = name_
         and plus_one = coalesce(plus_one_, plus_one)
         and get_notified_on_comments = coalesce(get_notified_on_comments_, get_notified_on_comments)
-        and status = coalesce(status_, status);
+        and status is not distinct from coalesce(status_, status);
 
       if output_.id is not null then
         return output_;
@@ -158,6 +158,11 @@ BEGIN;
         join event_data
           on event_data.id = events.id
           and event_data.superseded_at is null;
+
+        update attendees set
+          ics_email_sent = true
+        where
+          id = attendee_id_;
 
       end if;
 
