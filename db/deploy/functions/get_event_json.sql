@@ -28,9 +28,9 @@ BEGIN;
       from event_data
       join events
         on events.id = event_data.id
+        and event_data.superseded_at is null
       where
-        event_data.id = event_id_
-        and event_data.superseded_at is null;
+        event_data.id = event_id_;
 
       if output_ is null then
         return null;

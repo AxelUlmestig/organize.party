@@ -6,7 +6,11 @@ BEGIN;
   returns trigger as $$
   begin
     perform pg_notify(
-      'new_worker_job', jsonb_build_object('microsecondsUntilRunAt', (extract(epoch from now() - new.run_at) * 1000000)::int)::text
+      'new_worker_job',
+      jsonb_build_object(
+        'microsecondsUntilRunAt',
+        (extract(epoch from now() - new.run_at) * 1000000)::int
+      )::text
     );
     return new;
   end;

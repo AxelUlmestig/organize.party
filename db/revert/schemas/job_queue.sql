@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop schema if exists job_queue;
+  drop schema job_queue;
 
 COMMIT;

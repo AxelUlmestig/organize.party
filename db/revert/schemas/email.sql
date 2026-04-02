@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop schema if exists email;
+  drop schema email;
 
 COMMIT;

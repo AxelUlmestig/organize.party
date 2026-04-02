@@ -3,7 +3,6 @@
 BEGIN;
 
   drop trigger if exists trigger_notify_worker on queued_worker_jobs;
-
   drop function if exists notify_worker();
 
 COMMIT;

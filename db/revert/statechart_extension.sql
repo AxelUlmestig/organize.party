@@ -2,6 +2,6 @@
 
 BEGIN;
 
--- XXX Add DDLs here.
+  drop extension pg_statecharts;
 
 COMMIT;

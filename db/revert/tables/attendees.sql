@@ -39,13 +39,4 @@ create table if not exists attendees (
 create unique index if not exists unique_attendee_idx
   on attendees (event_id, email);
 
--- 👇 Alterations below 👇
-
-alter table attendees
-  add column if not exists unsubscribed_at timestamptz,
-  add column if not exists unsubscribe_id uuid not null default md5(random()::text || clock_timestamp()::text)::uuid;
-
-create unique index if not exists unique_unsubscribe_id
-  on attendees (unsubscribe_id);
-
 commit;

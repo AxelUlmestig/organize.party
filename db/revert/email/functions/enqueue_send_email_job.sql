@@ -2,6 +2,6 @@
 
 BEGIN;
 
--- XXX Add DDLs here.
+  drop function email.enqueue_send_email_job;
 
 COMMIT;
