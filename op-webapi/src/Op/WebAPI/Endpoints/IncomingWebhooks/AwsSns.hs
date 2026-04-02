@@ -35,6 +35,7 @@ handleAwsSnsWebhook ::
   => Text
   -> m ()
 handleAwsSnsWebhook rawRequestBody = do
+  -- parse request body
   requestBodyJson <- do
     case Aeson.decode $ LBS.fromStrict $ encodeUtf8 rawRequestBody of
       Just x -> pure x
@@ -90,6 +91,7 @@ handleAwsSnsWebhook rawRequestBody = do
       logWarn "Invalid AWS SNS signature"
       throwError err400 { errBody = "Invalid signature" }
 
+  -- store webhook in database for processing later
   Db.queryDbOr Db.printAndThrow500 do
     Db.statement
       (requestBodyJson, whMessageId requestBody)
@@ -112,10 +114,10 @@ getSignaturePublicKey rawSigningCertUrl = do
       let awsDomainRegex = "^https:\\/\\/([a-z0-9-]*\\.)*amazonaws\\.com.*$" :: Text
       let localhostDomainRegex = "^http:\\/\\/localhost:8888(\\/.*)$" :: Text -- allow localhost for testing
       unless (rawSigningCertUrl =~ awsDomainRegex || rawSigningCertUrl =~ localhostDomainRegex) do
-        -- runRIO appEnv do
         logWarn [i|Illegal signing cert url in AWS SNS webhook: #{rawSigningCertUrl}|]
         Except.throwError "Illegal signing cert url. Only amazonaws.com is allowed"
 
+    -- download certificate
     response <- do
       case Req.useURI =<< mkURI rawSigningCertUrl of
         Nothing  -> Except.throwError [i|Couldn't parse AWS SNS signing cert url: #{rawSigningCertUrl}|]
@@ -126,6 +128,7 @@ getSignaturePublicKey rawSigningCertUrl = do
       2 -> pure ()
       _ -> Except.throwError [i|Unexpected HTTP response code when calling AWS SNS signing cert url: #{Req.responseStatusCode response}|]
 
+    -- parse certificate
     pem <- do
       case PEM.pemParseBS (Req.responseBody response) of
         Right [pem] -> pure pem
