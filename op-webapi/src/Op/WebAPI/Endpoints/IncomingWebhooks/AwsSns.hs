@@ -23,10 +23,15 @@ import           Text.URI                 (mkURI)
 
 import qualified Op.Cache                 as Cache
 import qualified Op.Db                    as Db
-import           Op.WebAPI.Types.AppEnv   (AppEnv (..))
 
-handleAwsSnsWebhook
-  :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m)
+handleAwsSnsWebhook ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , Db.HasDbConnection env
+  , HasLogFunc env
+  , Cache.HasCache Text PublicKey env
+  )
   => Text
   -> m ()
 handleAwsSnsWebhook rawRequestBody = do
@@ -93,8 +98,11 @@ handleAwsSnsWebhook rawRequestBody = do
       values ($1::jsonb, $2::text)
       |]
 
-getSignaturePublicKey
-  :: (MonadIO m, MonadReader AppEnv m)
+getSignaturePublicKey ::
+  ( MonadIO m
+  , MonadReader env m
+  , HasLogFunc env
+  )
   => Text
   -> m (Either String PublicKey)
 getSignaturePublicKey rawSigningCertUrl = do
