@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function email.blocked_bounced_email_address;
+  drop function email.block_bounced_email_address;
 
 COMMIT;

@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function if exists email.update_email_sent_at;
+  drop function email.update_email_sent_at;
 
 COMMIT;

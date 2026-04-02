@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function if exists email.create_icalendar_string;
+  drop function email.create_icalendar_string;
 
 COMMIT;

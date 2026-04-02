@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function email.enqueue_process_sns_webhook_job;
+  drop function aws.enqueue_process_sns_webhook_job;
 
 COMMIT;

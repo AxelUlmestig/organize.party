@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function if exists email.materialize_email_status;
+  drop function email.materialize_email_status;
 
 COMMIT;

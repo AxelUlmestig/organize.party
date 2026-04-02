@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop table email.blocked_email_addresses
+  drop table email.blocked_email_addresses;
 
 COMMIT;

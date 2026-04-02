@@ -2,7 +2,7 @@
 
 BEGIN;
 
-    drop trigger if exists create_email_flow on email.emails;
-    drop function if exists email.trig_create_email_flow();
+    drop trigger create_email_flow on email.emails;
+    drop function email.trig_create_email_flow();
 
 COMMIT;

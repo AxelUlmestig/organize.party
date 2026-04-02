@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop table if exists email.email_attachments;
+  drop table email.email_attachments;
 
 COMMIT;

@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop table if exists job_queue.failed_worker_jobs;
+  drop table job_queue.failed_worker_jobs;
 
 COMMIT;

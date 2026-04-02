@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop table if exists email.emails;
+  drop table email.emails;
 
 COMMIT;

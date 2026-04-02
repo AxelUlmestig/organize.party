@@ -2,7 +2,7 @@
 
 BEGIN;
 
-  drop trigger if exists start_sns_webhook_message_flow on aws.sns_webhook_messages;
-  drop function if exists aws.trig_start_sns_webhook_message_flow();
+  drop trigger start_sns_webhook_message_flow on aws.sns_webhook_messages;
+  drop function aws.trig_start_sns_webhook_message_flow();
 
 COMMIT;
