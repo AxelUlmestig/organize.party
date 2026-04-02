@@ -5,6 +5,7 @@ version:             0.1
 -- description:
 homepage:            https://github.com/AxelUlmestig/organize.party#readme
 license:             BSD-3-Clause
+license-file:        ../LICENSE
 author:              Axel Ulmestig
 maintainer:          example@example.com
 copyright:           2021 Author name here

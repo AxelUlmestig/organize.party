@@ -3,11 +3,10 @@ cabal-version:      3.14
 name:               op-worker
 version:            0.1
 license:            BSD-3-Clause
-license-file:       LICENSE
+license-file:       ../LICENSE
 author:             Axel Ulmestig
 maintainer:         axel.ulmestig@gmail.com
 build-type:         Simple
-extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
