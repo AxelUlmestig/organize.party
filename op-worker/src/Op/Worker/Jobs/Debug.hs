@@ -8,8 +8,11 @@ import           RIO
 import qualified Op.Worker.Job as Job
 
 -- -- To queue a bunch of debug jobs
--- insert into queued_worker_jobs (definition)
+-- insert into job_queue.queued_worker_jobs (definition)
 -- values
+--   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb),
+--   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb),
+--   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb),
 --   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb),
 --   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb),
 --   ('{"type": "Debug", "payload": {"debugAction":"Succeed"}}'::jsonb);

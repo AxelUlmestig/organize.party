@@ -83,19 +83,23 @@ main = do
         JobLogistics.GracefulShutdown -> logInfo "Gracefully shut down after all in progress jobs were finished"
         JobLogistics.ForcedShutdown -> logWarn "Forced shutdown, some jobs might have been in progress"
     where
-      handler workerEnv _channel payload = do
-        void $ forkIO do
-          runRIO workerEnv do
-            case Aeson.decode (LBS.fromStrict payload) of
-              Nothing                                      -> do
-                logError [i|Unexpected payload in db 'new_worker_job' notification: #{payload}|]
-              Just (DbNotification microsecondsUntilRunAt) -> do
-                -- just rely on the polling if the run_at is too far into the future
-                when (microsecondsUntilRunAt < 2 * microsecondsBetweenJobQueuePoll) do
-                  when (microsecondsUntilRunAt > 0) do
-                    threadDelay microsecondsUntilRunAt
+      handler workerEnv channel payload = do
+        runRIO workerEnv do
+          case channel of
+            "new_worker_job" -> do
+              case Aeson.decode (LBS.fromStrict payload) :: Maybe [DbNotification] of
+                Nothing                                      -> do
+                  logError [i|Unexpected payload in db 'new_worker_job' notification: #{payload}|]
+                Just timesUntilRunAt -> do
+                  for_ timesUntilRunAt \(DbNotification microsecondsUntilRunAt) -> forkIO do
+                    -- just rely on the polling if the run_at is too far into the future
+                    when (microsecondsUntilRunAt < 2 * microsecondsBetweenJobQueuePoll) do
+                      when (microsecondsUntilRunAt > 0) do
+                        threadDelay microsecondsUntilRunAt
 
-                  checkJobQueue
+                      checkJobQueue
+            _ -> do
+              logWarn [i|Unexpected pg_notify channel: #{channel}, payload: #{payload}|]
 
 withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
 withLogFunction action = do
