@@ -2,6 +2,6 @@
 
 BEGIN;
 
--- XXX Add DDLs here.
+  drop function forget_email_address;
 
 COMMIT;

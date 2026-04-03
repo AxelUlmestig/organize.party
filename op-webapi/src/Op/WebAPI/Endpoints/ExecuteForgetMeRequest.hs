@@ -19,68 +19,17 @@ executeForgetMeRequest ::
   UUID ->
   m ExecuteForgetMeResult
 executeForgetMeRequest forgetMeRequestId = do
-  queryResult <- Db.queryDbOr Db.printAndThrow500 session
+  queryResult <- do
+    Db.queryDbOr Db.printAndThrow500 do
+      Db.statement
+        forgetMeRequestId
+        [Db.singletonStatement|
+        select forget_email_address($1::uuid)::timestamptz?
+        |]
+
   case queryResult of
     Nothing -> do
       throwError err404 { errBody = "forget me request not found" }
     Just deletedAt -> do
       pure $ ExecuteForgetMeResult forgetMeRequestId deletedAt
-  where
-    session = do
-      mDeletedAt <- Db.statement forgetMeRequestId
-          [Db.maybeStatement|
-            select
-              email::text?,
-              deleted_at::timestamptz?
-            from forgetme_requests
-            where
-              id = $1::uuid
-          |]
-
-      case mDeletedAt of
-        Nothing -> pure Nothing
-        Just (Nothing, Just deletedAt) -> pure $ Just deletedAt
-        Just (Nothing, Nothing) -> error "Impossible: constraint prevents both from being null at the same time"
-        Just (Just email, _) -> do
-          Db.statement (email, forgetMeRequestId)
-            [Db.singletonStatement|
-              with
-                attendee_ids as (
-                  update attendees set
-                    email = null,
-                    deleted_at = now()
-                  where email = $1::text
-                  returning id as attendee_id
-                ),
-
-                deleted_attendee_data as (
-                  update attendee_data
-                    set name = 'deleted user'
-                  from attendee_ids
-                  where attendee_data.attendee_id = attendee_ids.attendee_id
-                ),
-
-                deleted_comments as (
-                  update comments set
-                    comment = 'Comment deleted by user',
-                    deleted_at = now()
-                  from attendee_ids
-                  where
-                    comments.attendee_id = attendee_ids.attendee_id
-                ),
-
-                deleted_emails as (
-                  delete from email.emails
-                  cascade
-                  where recipient_email = $1::text
-                )
-
-              update forgetme_requests
-              set
-                deleted_at = now(),
-                email = null
-              where
-                id = $2::uuid
-              returning deleted_at::timestamptz?
-            |]
 
