@@ -6,9 +6,8 @@ module Op.WebAPI.Types.ForgetMeRequest (
 ) where
 
 import           Data.Aeson
-import           Data.Time             (UTCTime)
-import           Data.Types.Isomorphic (Injective (to))
-import           Data.UUID             (UUID)
+import           Data.Time  (UTCTime)
+import           Data.UUID  (UUID)
 import           RIO
 
 
@@ -19,9 +18,6 @@ newtype InitForgetMeInput
     deriving (Eq, Generic, Show)
 
 instance FromJSON InitForgetMeInput
-
-instance Injective InitForgetMeInput Text where
-  to InitForgetMeInput{email} = email
 
 data InitForgetMeResult
   = InitForgetMeResult

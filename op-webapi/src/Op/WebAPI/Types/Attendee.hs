@@ -5,7 +5,6 @@ module Op.WebAPI.Types.Attendee (Attendee(..), AttendeeStatus(..), readStatus, w
 import           Data.Aeson              (FromJSON, ToJSON)
 import           Data.String.Interpolate (iii)
 import           Data.Time               (UTCTime)
-import           Data.Types.Isomorphic   (Injective (to))
 import           Data.UUID               (UUID)
 import           RIO
 
@@ -43,8 +42,3 @@ readStatus "maybe_coming" = MaybeComing
 readStatus "not_coming"   = NotComing
 readStatus other          = error [iii|unknown AttendeeStatus: #{other}|]
 
-instance Injective (UUID, Text, Text, Text, Bool, UTCTime, UUID) Attendee where
-  to (eventId, email, name, status, plusOne, rsvpAt, unsubscribeId) = Attendee{ status = readStatus status, .. }
-
-instance Injective Attendee (UUID, Text, Text, Text, Bool) where
-  to Attendee{eventId, email, name, status, plusOne} = (eventId, email, name, writeStatus status, plusOne)

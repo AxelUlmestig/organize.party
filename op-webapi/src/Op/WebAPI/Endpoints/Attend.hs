@@ -3,7 +3,6 @@
 module Op.WebAPI.Endpoints.Attend (attend) where
 
 import           Control.Monad.Except         (MonadError (throwError))
-import           Data.Profunctor              (lmap)
 import           Data.String.Interpolate      (i)
 import qualified Data.Text                    as Text
 import           Data.UUID                    (UUID)
@@ -31,18 +30,31 @@ attend ::
   => UUID
   -> AttendInput
   -> m Event
-attend eventId attendee' = do
+attend eventId' attendee' = do
   let attendee = attendee' { VP.email = Text.toLower attendee'.email }
 
-  when (eventId /= attendee.eventId) $
+  when (eventId' /= attendee.eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
   do
     hostUrl <- asks getHostUrl
     Db.queryDbOr handleErr do
-      Db.statement (hostUrl, attendee) insertAttendeeStatement
+      let AttendInput{..} = attendee
+      Db.statement
+        (hostUrl, eventId, email, name, Attendee.writeStatus status, plusOne, getNotifiedOnComments)
+        [Db.resultlessStatement|
+          select add_attendee_data(
+            host_url_ => $1::text,
+            event_id_ => $2::uuid,
+            email_ => $3::text,
+            name_ => $4::text,
+            status_ => $5::text::attendee_status,
+            plus_one_ => $6::bool,
+            get_notified_on_comments_ => $7::bool
+          )::text
+        |]
 
-  getEvent eventId
+  getEvent eventId'
   where
     handleErr err = do
       case err of
@@ -51,23 +63,4 @@ attend eventId attendee' = do
         _ -> do
           logError [i|Something went wrong when attending event: #{err}|]
           throwError err500 { errBody = "Something went wrong" }
-
-
-insertAttendeeStatement :: Db.Statement (Text, AttendInput) ()
-insertAttendeeStatement =
-  lmap to'
-    [Db.resultlessStatement|
-      select add_attendee_data(
-        host_url_ => $1::text,
-        event_id_ => $2::uuid,
-        email_ => $3::text,
-        name_ => $4::text,
-        status_ => $5::text::attendee_status,
-        plus_one_ => $6::bool,
-        get_notified_on_comments_ => $7::bool
-      )::text
-    |]
-    where
-      to' (hostUrl, AttendInput{..}) =
-        (hostUrl, eventId, email, name, Attendee.writeStatus status, plusOne, getNotifiedOnComments)
 
