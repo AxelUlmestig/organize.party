@@ -4,6 +4,7 @@
 module Op.WebAPI.Endpoints.EditEvent (editEvent) where
 
 import           Control.Monad.Except             (MonadError (..))
+import           Data.Coerce                      (coerce)
 import           Data.String.Interpolate          (i)
 import           Data.UUID                        (UUID)
 import           RIO
@@ -15,6 +16,7 @@ import           Op.WebAPI.Endpoints.GetEvent     (getEvent)
 import           Op.WebAPI.Types.CreateEventInput
 import           Op.WebAPI.Types.Event            (Event)
 import           Op.WebAPI.Types.HasHostUrl       (HasHostUrl (..))
+import           Op.WebAPI.Types.Password         (Password (..))
 
 editEvent ::
   ( MonadError ServerError m
@@ -31,7 +33,7 @@ editEvent eventId CreateEventInput{..} = do
   hostUrl <- asks getHostUrl
   Db.queryDbOr handleError do
     Db.statement
-      (hostUrl, eventId, title, description, startTime, endTime, location, googleMapsLink, password)
+      (hostUrl, eventId, title, description, startTime, endTime, location, googleMapsLink, coerce password)
       [Db.resultlessStatement|
         select edit_event(
           host_url_ => $1::text,
