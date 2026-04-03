@@ -8,11 +8,14 @@ import           RIO
 import           Servant                         (ServerError (errBody), err404)
 
 import qualified Op.Db                           as Db
-import           Op.WebAPI.Types.AppEnv          (AppEnv (..))
 import           Op.WebAPI.Types.ForgetMeRequest (ExecuteForgetMeResult (..))
 
 executeForgetMeRequest ::
-  (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , Db.HasDbConnection env
+  ) =>
   UUID ->
   m ExecuteForgetMeResult
 executeForgetMeRequest forgetMeRequestId = do

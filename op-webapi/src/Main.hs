@@ -8,6 +8,7 @@ module Main where
 
 import           Data.ByteString.UTF8                        as BSU
 import           Data.String.Interpolate                     (i)
+import qualified Data.Text                                   as Text
 import           Data.UUID                                   (UUID)
 import           Network.Wai.Handler.Warp                    (run)
 import           Network.Wai.Middleware.Cors                 (simpleCors)
@@ -124,9 +125,9 @@ getDbConnectionSettings = do
       pure $ Db.connectionString connectionString
 
 
-getHostUrl :: IO (Either String String)
+getHostUrl :: IO (Either String Text)
 getHostUrl = do
-  mHostUrl <- lookupEnv "HOST_URL"
+  mHostUrl <- fmap Text.pack <$> lookupEnv "HOST_URL"
   pure $ maybeToEither "Error: Missing env variable HOST_URL" mHostUrl
 
 main :: IO ()

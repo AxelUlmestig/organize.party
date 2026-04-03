@@ -13,10 +13,17 @@ import           RIO
 import           Servant                 (ServerError (..), err404, err500)
 
 import qualified Op.Db                   as Db
-import           Op.WebAPI.Types.AppEnv
 import           Op.WebAPI.Types.Event   (Event)
 
-getEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m Event
+getEvent ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , HasLogFunc env
+  , Db.HasDbConnection env
+  )
+  => UUID
+  -> m Event
 getEvent eventId = do
   mEvent <- maybeGetEvent eventId
 
@@ -24,7 +31,15 @@ getEvent eventId = do
     Just event -> pure event
     Nothing    -> throwError err404 { errBody = "Event not found" }
 
-maybeGetEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> m (Maybe Event)
+maybeGetEvent ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , HasLogFunc env
+  , Db.HasDbConnection env
+  )
+  => UUID
+  -> m (Maybe Event)
 maybeGetEvent eventId = do
   mJson <- do
     Db.queryDbOr Db.printAndThrow500 do

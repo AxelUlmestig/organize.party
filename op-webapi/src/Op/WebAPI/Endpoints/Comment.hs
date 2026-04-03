@@ -4,7 +4,6 @@ module Op.WebAPI.Endpoints.Comment (addComment) where
 
 import           Control.Monad.Except         (MonadError (throwError))
 import           Data.String.Interpolate      (i)
-import qualified Data.Text                    as Text
 import           Data.UUID                    (UUID)
 import           RIO
 import           Servant                      (ServerError (errBody), err400,
@@ -12,20 +11,30 @@ import           Servant                      (ServerError (errBody), err400,
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
-import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
 import           Op.WebAPI.Types.CommentInput (CommentInput (..))
 import           Op.WebAPI.Types.Event        (Event)
+import           Op.WebAPI.Types.HasHostUrl   (HasHostUrl (..))
 
 
-addComment :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> CommentInput -> m Event
+addComment ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , HasHostUrl env
+  , HasLogFunc env
+  , Db.HasDbConnection env
+  )
+  => UUID
+  -> CommentInput
+  -> m Event
 addComment urlEventId CommentInput{..} = do
   when (urlEventId /= eventId) $
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
-  emailHostUrl <- asks (Text.pack . hostUrl)
+  hostUrl <- asks getHostUrl
   Db.queryDbOr handleErr do
     Db.statement
-      (emailHostUrl, eventId, email, name, comment, forceNotificationOnComment)
+      (hostUrl, eventId, email, name, comment, forceNotificationOnComment)
       [Db.resultlessStatement|
         select add_comment(
           host_url_ => $1::text,

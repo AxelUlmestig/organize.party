@@ -9,12 +9,18 @@ import           RIO                              hiding (to)
 import           Servant                          (ServerError (..))
 
 import qualified Op.Db                            as Db
-import           Op.WebAPI.Types.AppEnv
 import           Op.WebAPI.Types.CreateEventInput (CreateEventInput)
 import           Op.WebAPI.Types.Event            (Event)
 
 
-createEvent :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => CreateEventInput -> m Event
+createEvent ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , Db.HasDbConnection env
+  )
+  => CreateEventInput
+  -> m Event
 createEvent input = do
   Db.queryDbOr Db.printAndThrow500 (Db.statement input statement)
   where

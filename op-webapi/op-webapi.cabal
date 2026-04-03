@@ -34,6 +34,7 @@ executable op-webapi
                      , Op.WebAPI.Types.CreateEventInput
                      , Op.WebAPI.Types.Event
                      , Op.WebAPI.Types.ForgetMeRequest
+                     , Op.WebAPI.Types.HasHostUrl
                      , Op.WebAPI.Types.Unsubscribe
   default-language:    GHC2021
   ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m" -O2

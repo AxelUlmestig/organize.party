@@ -18,6 +18,7 @@ import           Network.HTTP.Media           ((//), (/:))
 import qualified Op.WebAPI.Endpoints.GetEvent
 import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
 import           Op.WebAPI.Types.Event        (Event (..))
+import           Op.WebAPI.Types.HasHostUrl   (HasHostUrl (..))
 import           RIO
 import           Servant
 
@@ -48,7 +49,7 @@ frontPage ::
   m RawHtml
 frontPage = do
   rawIndexHtml <- liftIO $ LBS.readFile indexHtmlPath
-  hostUrl <- asks hostUrl
+  hostUrl <- asks getHostUrl
 
   let indexHtmlWithOpenGraph =
           replace
@@ -58,7 +59,7 @@ frontPage = do
 
   pure $ RawHtml indexHtmlWithOpenGraph
 
-frontPageOg :: String -> LBS.ByteString
+frontPageOg :: Text -> LBS.ByteString
 frontPageOg hostUrl =
   [__i|
     <meta property="og:title" content="organize.party" />

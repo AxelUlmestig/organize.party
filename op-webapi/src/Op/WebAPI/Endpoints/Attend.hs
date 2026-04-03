@@ -13,14 +13,24 @@ import           Servant                      (ServerError (errBody), err400,
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
-import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
 import qualified Op.WebAPI.Types.Attendee     as Attendee
 import           Op.WebAPI.Types.AttendInput  (AttendInput (..))
 import qualified Op.WebAPI.Types.AttendInput  as VP
 import           Op.WebAPI.Types.Event        (Event)
+import           Op.WebAPI.Types.HasHostUrl   (HasHostUrl (..))
 
 
-attend :: (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) => UUID -> AttendInput -> m Event
+attend ::
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , HasHostUrl env
+  , Db.HasDbConnection env
+  , HasLogFunc env
+  )
+  => UUID
+  -> AttendInput
+  -> m Event
 attend eventId attendee' = do
   let attendee = attendee' { VP.email = Text.toLower attendee'.email }
 
@@ -28,9 +38,9 @@ attend eventId attendee' = do
     throwError err400 { errBody = "Event id in the URL has to be the same as the event id in the body" }
 
   do
-    hostUrl' <- asks (Text.pack . hostUrl)
+    hostUrl <- asks getHostUrl
     Db.queryDbOr handleErr do
-      Db.statement (hostUrl', attendee) insertAttendeeStatement
+      Db.statement (hostUrl, attendee) insertAttendeeStatement
 
   getEvent eventId
   where

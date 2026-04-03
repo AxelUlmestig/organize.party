@@ -9,19 +9,24 @@ import           RIO
 import           Servant                         (ServerError)
 
 import qualified Op.Db                           as Db
-import           Op.WebAPI.Types.AppEnv          (AppEnv (..))
 import           Op.WebAPI.Types.ForgetMeRequest (InitForgetMeInput (..),
                                                   InitForgetMeResult (..))
+import           Op.WebAPI.Types.HasHostUrl      (HasHostUrl (..))
 
 initForgetMe ::
-  (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
-  InitForgetMeInput ->
-  m InitForgetMeResult
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , HasHostUrl env
+  , Db.HasDbConnection env
+  )
+  => InitForgetMeInput
+  -> m InitForgetMeResult
 initForgetMe InitForgetMeInput{email} = do
   forgetMeRequestId <- Db.queryDbOr Db.printAndThrow500 (Db.statement email statement)
 
-  hostUrl' <- asks hostUrl
-  sendForgetMeConfirmation Db.printAndThrow500 hostUrl' forgetMeRequestId email
+  hostUrl <- asks getHostUrl
+  sendForgetMeConfirmation Db.printAndThrow500 hostUrl forgetMeRequestId email
 
   pure $ InitForgetMeResult
     { initForgetMeResultEmail = email
@@ -52,9 +57,12 @@ initForgetMe InitForgetMeInput{email} = do
 
 
 sendForgetMeConfirmation ::
-  (Db.HasDbConnection env, MonadIO m, MonadReader env m) =>
-  (Db.SessionError -> m ()) ->
-  String ->
+  ( Db.HasDbConnection env
+  , MonadIO m
+  , MonadReader env m
+  )
+  => (Db.SessionError -> m ()) ->
+  Text ->
   UUID.UUID ->
   Text ->
   m ()

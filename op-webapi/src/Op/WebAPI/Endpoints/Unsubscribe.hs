@@ -10,13 +10,16 @@ import           Servant                      (ServerError (errBody), err404)
 
 import qualified Op.Db                        as Db
 import           Op.WebAPI.Endpoints.GetEvent (getEvent)
-import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
 import           Op.WebAPI.Types.Unsubscribe  (UnsubscribeResult (..))
 
 unsubscribe ::
-  (MonadError ServerError m, MonadIO m, MonadReader AppEnv m) =>
-  UUID ->
-  m UnsubscribeResult
+  ( MonadError ServerError m
+  , MonadIO m
+  , MonadReader env m
+  , Db.HasDbConnection env
+  , HasLogFunc env
+  ) => UUID
+  -> m UnsubscribeResult
 unsubscribe unsubscribeId = do
   queryResult <- Db.queryDbOr Db.printAndThrow500 (Db.statement unsubscribeId statement)
   case queryResult of
