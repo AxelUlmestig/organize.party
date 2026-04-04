@@ -2,6 +2,6 @@
 
 BEGIN;
 
-  drop function forget_email_address;
+  drop table forgetme_requests;
 
 COMMIT;
