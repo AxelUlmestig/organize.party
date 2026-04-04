@@ -13,11 +13,7 @@ import qualified Data.Pool                                  as Pool
 import           Data.String.Interpolate                    (i, iii)
 import           Data.Typeable                              (typeOf)
 import           GHC.Generics
-import           Hasql.Connection                           (Connection,
-                                                             acquire)
-import qualified Hasql.Connection.Settings                  as ConnectionSetting
 import qualified Hasql.Notifications                        as Notifications
-import qualified Hasql.Session                              as Hasql
 import qualified Op.Db                                      as Db
 import           RIO
 import           System.Environment                         (lookupEnv)
@@ -60,7 +56,7 @@ main = do
       -- through PG Bouncer or connection pools or the connection will drop while
       -- we're listening and we won't get any notifications
       listenDbSettings <- getListenDbConnectionSettings >>= either die pure
-      acquire listenDbSettings >>= either (die . show) pure
+      Db.acquire listenDbSettings >>= either (die . show) pure
 
     Notifications.listen listenConnection (Notifications.toPgIdentifier "new_worker_job")
 
@@ -139,7 +135,7 @@ processOneJob = do
         do Db.beginTransactionOr connection handleDbError
         do const do Db.commitTransactionOr connection handleDbError
         \_ -> do
-          mJob <- Db.queryDbOr' connection handleDbError (Hasql.statement () checkJobQueueStatement)
+          mJob <- Db.queryDbOr' connection handleDbError (Db.statement () checkJobQueueStatement)
 
           case mJob of
             Nothing -> do
@@ -152,7 +148,7 @@ processOneJob = do
                 case Aeson.fromJSON rawJobDefinition of
                   Aeson.Error err -> do
                     logError [i|jobId: #{jobId}, could not be parsed: #{err}|]
-                    Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
+                    Db.queryDbOr' connection handleDbError (Db.statement jobId moveToFailedJobStatement)
 
                   Aeson.Success (workerJob :: WorkerJob) -> do
                     let onErr exception = pure $ Left $ Job.RetryableError
@@ -180,14 +176,14 @@ processOneJob = do
                           jobId: #{jobId}
                           |]
 
-                        Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToCompletedJobStatement)
+                        Db.queryDbOr' connection handleDbError (Db.statement jobId moveToCompletedJobStatement)
 
                       Left err ->
                         case err of
                           Job.NonRetryableError message -> do
                             logError message
                             Job.cleanUpJobAfterGivingUp workerJob
-                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
+                            Db.queryDbOr' connection handleDbError (Db.statement jobId moveToFailedJobStatement)
 
                           Job.RetryableError message | failedAttempts >= failedAttemptsLimit - 1 -> do
                             logError
@@ -198,11 +194,11 @@ processOneJob = do
                               |]
 
                             Job.cleanUpJobAfterGivingUp workerJob
-                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId moveToFailedJobStatement)
+                            Db.queryDbOr' connection handleDbError (Db.statement jobId moveToFailedJobStatement)
 
                           Job.RetryableError message -> do
                             logError message
-                            Db.queryDbOr' connection handleDbError (Hasql.statement jobId returnJobToQueueStatement)
+                            Db.queryDbOr' connection handleDbError (Db.statement jobId returnJobToQueueStatement)
   where
     checkJobQueueStatement =
       [Db.maybeStatement|
@@ -312,7 +308,7 @@ processOneJob = do
 
 
 
-getListenDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
+getListenDbConnectionSettings :: IO (Either String Db.Settings)
 getListenDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "LISTEN_DB_HOST"
     mPort <- lookupEnv "LISTEN_DB_PORT"
@@ -321,9 +317,9 @@ getListenDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable LISTEN_DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from LISTEN_DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ ConnectionSetting.connectionString connectionString
+      pure $ Db.connectionString connectionString
 
-getDbConnectionSettings :: IO (Either String ConnectionSetting.Settings)
+getDbConnectionSettings :: IO (Either String Db.Settings)
 getDbConnectionSettings = do
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
@@ -332,7 +328,7 @@ getDbConnectionSettings = do
       port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
       let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ ConnectionSetting.connectionString connectionString
+      pure $ Db.connectionString connectionString
 
 
 getSmtpSettings :: IO (Either String SendEmail.SmtpConfig)
@@ -355,7 +351,7 @@ maybeToEither _ (Just a)  = Right a
 maybeToEither err Nothing = Left err
 
 data WorkerEnv = WorkerEnv
-  { connectionPool    :: Pool.Pool Connection
+  { connectionPool    :: Pool.Pool Db.Connection
   -- , jobId          :: UUID.UUID
   , smtpConfig        :: SendEmail.SmtpConfig
   , logFunc           :: LogFunc

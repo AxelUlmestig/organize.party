@@ -33,7 +33,7 @@ initSharedWorkerState :: MonadIO m => m SharedWorkerState
 initSharedWorkerState = do
   liftIO $ fmap SharedWorkerState $ STM.atomically $ STM.newTVar (Running, 0)
 
--- | This will set start gracefully shutting down the first time it's called.
+-- | This will start gracefully shutting down the first time it's called.
 -- If called again it will force shutdown immeadiately
 initiateShutdown :: SharedWorkerState -> IO ()
 initiateShutdown (SharedWorkerState tvar) = do

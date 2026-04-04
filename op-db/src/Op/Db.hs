@@ -7,10 +7,12 @@ module Op.Db (
   commitTransactionOr,
   rollbackTransactionOr,
   HasDbConnection(..),
+  -- re-export Hasql functionality below
   Hasql.statement,
   module Hasql.TH,
   module Hasql.Errors,
   Connection,
+  acquire,
   Hasql.Statement.Statement,
   Settings,
   connectionString
@@ -21,7 +23,7 @@ import           Control.Monad.IO.Class    (MonadIO (liftIO))
 import           Control.Monad.Reader      (MonadReader, ask)
 import           Data.Pool                 (Pool)
 import qualified Data.Pool                 as Pool
-import           Hasql.Connection          (Connection)
+import           Hasql.Connection          (Connection, acquire)
 import qualified Hasql.Connection          as Hasql
 import           Hasql.Connection.Settings (Settings, connectionString)
 import           Hasql.Errors
