@@ -21,7 +21,21 @@ unsubscribe ::
   ) => UUID
   -> m UnsubscribeResult
 unsubscribe unsubscribeId = do
-  queryResult <- Db.queryDbOr Db.printAndThrow500 (Db.statement unsubscribeId statement)
+  queryResult <- do
+    Db.queryDbOr Db.printAndThrow500 do
+      Db.statement
+        unsubscribeId
+        [Db.maybeStatement|
+          update attendees set
+            unsubscribed_at = coalesce(unsubscribed_at, now())
+          where
+            unsubscribe_id = $1::uuid
+          returning
+            event_id::uuid,
+            email::text?,
+            unsubscribed_at::timestamptz
+        |]
+
   case queryResult of
     Just (eventId, email, unsubscribedAt) -> do
       event <- getEvent eventId
@@ -33,15 +47,3 @@ unsubscribe unsubscribeId = do
 
     Nothing ->
       throwError err404 { errBody = [i|There's no attendee associated with the unsubscribe id: #{unsubscribeId}|] }
-  where
-    statement =
-      [Db.maybeStatement|
-        update attendees set
-          unsubscribed_at = coalesce(unsubscribed_at, now())
-        where
-          unsubscribe_id = $1::uuid
-        returning
-          event_id::uuid,
-          email::text?,
-          unsubscribed_at::timestamptz
-      |]
