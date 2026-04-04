@@ -113,6 +113,7 @@ BEGIN;
             event_data.id = event_id_
             and event_data.superseded_at is null
             and attendee_data.status in ('coming', 'maybe_coming')
+            and attendees.email is not null -- it becomes null if the user has requested to be forgotten
           returning *
         )
 

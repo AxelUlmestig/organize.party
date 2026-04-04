@@ -52,6 +52,7 @@ BEGIN;
           where
             event_id = event_id_
             and email <> email_
+            and email is not null
             and unsubscribed_at is null
             and status in ('coming', 'maybe_coming')
             and (
