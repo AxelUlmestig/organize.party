@@ -2,6 +2,22 @@
 
 set -ex
 
+# Parse command line arguments
+FORCE=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --force)
+      FORCE=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 [--force]"
+      exit 1
+      ;;
+  esac
+done
+
 WEBAPI_IMAGE_NAME=axelulmestig/organize.party-webapi
 WORKER_IMAGE_NAME=axelulmestig/organize.party-worker
 
@@ -12,19 +28,25 @@ WORKER_VERSION=$(grep -i "^version:" op-worker/op-worker.cabal | awk '{print $2}
 NEED_WEBAPI_BUILD=false
 NEED_WORKER_BUILD=false
 
-# Check which versions already exist
-if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WEBAPI_IMAGE_NAME}/tags/${WEBAPI_VERSION}"; then
+# Check which versions already exist (skip if force is enabled)
+if [ "$FORCE" = true ]; then
   NEED_WEBAPI_BUILD=true
-  echo "✓ WebAPI version $WEBAPI_VERSION needs to be built"
-else
-  echo "WebAPI version $WEBAPI_VERSION already exists, skipping"
-fi
-
-if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WORKER_IMAGE_NAME}/tags/${WORKER_VERSION}"; then
   NEED_WORKER_BUILD=true
-  echo "✓ Worker version $WORKER_VERSION needs to be built"
+  echo "Force mode enabled - will rebuild and push all images"
 else
-  echo "Worker version $WORKER_VERSION already exists, skipping"
+  if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WEBAPI_IMAGE_NAME}/tags/${WEBAPI_VERSION}"; then
+    NEED_WEBAPI_BUILD=true
+    echo "✓ WebAPI version $WEBAPI_VERSION needs to be built"
+  else
+    echo "WebAPI version $WEBAPI_VERSION already exists, skipping"
+  fi
+
+  if ! curl -s -f -o /dev/null "https://hub.docker.com/v2/repositories/${WORKER_IMAGE_NAME}/tags/${WORKER_VERSION}"; then
+    NEED_WORKER_BUILD=true
+    echo "✓ Worker version $WORKER_VERSION needs to be built"
+  else
+    echo "Worker version $WORKER_VERSION already exists, skipping"
+  fi
 fi
 
 # Build all needed images first (without pushing)
@@ -82,4 +104,3 @@ if [ "$NEED_WORKER_BUILD" = true ]; then
   sed -i -e "s/\${WORKER_VERSION:-.*}/\${WORKER_VERSION:-$WORKER_VERSION}/g" docker-compose-prod.yml
   echo "✓ Worker images pushed"
 fi
-
