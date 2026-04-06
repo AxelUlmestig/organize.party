@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # Wait for PostgreSQL in the container to be ready
-CONTAINER_NAME=${1:-db}
+COMPOSE_FILE=${1:-docker-compose.yml}
+CONTAINER_NAME=db
 MAX_ATTEMPTS=30
 SLEEP_SECONDS=0.5
 
 for i in $(seq 1 $MAX_ATTEMPTS); do
     # Check if pg_isready returns success in the container
-    if docker compose exec "$CONTAINER_NAME" pg_isready -U postgres >/dev/null 2>&1; then
+    if docker compose -f "$COMPOSE_FILE" exec "$CONTAINER_NAME" pg_isready -U postgres >/dev/null 2>&1; then
         echo "Database is ready!"
         exit 0
     fi

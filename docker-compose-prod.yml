@@ -1,0 +1,130 @@
+name: organize-party-prod
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: db/postgres.Dockerfile
+    environment:
+      POSTGRES_DB: events
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      TZ: Europe/Stockholm
+      PGTZ: Europe/Stockholm
+    volumes:
+      - dbdata:/var/lib/postgresql/18/docker
+      - .:/repo
+      - ~/.sqitch:/root/.sqitch
+    working_dir: /repo
+    restart: always
+    networks:
+      - app-network
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=events
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PASS=postgres
+      - AUTH_TYPE=scram-sha-256
+      - LISTEN_PORT=6432
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=100
+      - DEFAULT_POOL_SIZE=25
+      - RESERVE_POOL_SIZE=5
+      - RESERVE_POOL_TIMEOUT=5
+      - IGNORE_STARTUP_PARAMETERS=extra_float_digits
+      - ADMIN_USERS=postgres
+      - STATS_USERS=postgres
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - app-network
+
+  webapi:
+    image: axelulmestig/organize.party-webapi:${WEBAPI_VERSION:-0.1}
+    ports:
+      - "8081:8081"
+    build:
+      context: .
+      dockerfile: op-webapi/Dockerfile
+    depends_on:
+      - pgbouncer
+      - nginx
+    environment:
+      DB_HOST: pgbouncer
+      DB_PORT: 6432
+      HOST_URL: "https://organize.party"
+      LOG_LEVEL: LevelInfo
+    networks:
+      - app-network
+
+  worker:
+    image: axelulmestig/organize.party-worker:${WORKER_VERSION:-0.1}
+    build:
+      context: .
+      dockerfile: op-worker/Dockerfile
+    depends_on:
+      - db
+      - pgbouncer
+    environment:
+      DB_HOST: pgbouncer
+      DB_PORT: 6432
+      LISTEN_DB_HOST: db
+      LISTEN_DB_PORT: 5432
+      HOST_URL: "https://organize.party"
+      LOG_LEVEL: LevelInfo
+    env_file: .env
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  nginx:
+    image: nginx:latest
+    userns_mode: host
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/mime.types:/etc/nginx/mime.types
+      - ./certbot/www/:/var/www/certbot/:ro
+      - ./certbot/conf/:/etc/nginx/ssl/:ro
+    # networks:
+    #   - app-network
+
+  nginx-certbot:
+    image: nginx:latest
+    userns_mode: host
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx-certbot.conf
+      - ./nginx/mime.types:/etc/nginx/mime.types
+      - ./certbot/www/:/var/www/certbot/:rw
+      - ./certbot/conf/:/etc/nginx/ssl/:rw
+    # networks:
+    #   - app-network
+
+  certbot:
+    image: certbot/certbot:latest
+    depends_on:
+      - nginx
+    volumes:
+      - ./certbot/www/:/var/www/certbot/:rw
+      - ./certbot/conf/:/etc/letsencrypt/:rw
+
+volumes:
+  dbdata:
+
+networks:
+  app-network:
+    driver: bridge

@@ -11,7 +11,9 @@ set -x
 #   --webroot-path /var/www/certbot/ \
 #   -d organize.party
 
-docker compose run \
+docker compose \
+  -f docker-compose-prod.yml \
+  run \
   --rm \
   certbot certonly \
   --webroot \
@@ -27,5 +29,4 @@ docker compose run \
 # docker compose up nginx -d
 
 # we need to reload nginx after updating the certificate files, it's better to reload than to restart to avoid downtime. This hasn't been tested yet
-
-docker compose exec nginx nginx -s reload
+docker compose -f docker-compose-prod.yml exec nginx nginx -s reload

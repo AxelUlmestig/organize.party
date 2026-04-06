@@ -478,4 +478,4 @@ newline: native
 # parse options (currently only language extensions) from that.
 #
 # Default: true
-cabal: true
+cabal: false

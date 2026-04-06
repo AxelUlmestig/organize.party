@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import * as crypto from 'crypto'
+import * as ses_webhook from './ses_webhook'
+import * as fs from 'fs'
 
 const mailhogUrl = 'http://localhost:8025'
 const newEventUrl = 'http://localhost:8081'
@@ -58,13 +60,18 @@ test('can create event', async ({ page, request }) => {
   await expect(page.getByTestId('view-attendees-attending-number')).toHaveText("Attending: 2")
   await expect(page.getByText(organizerName)).toBeVisible()
 
-  const eventUrl = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/e\/[0-9\-a-f]+/)
+  const { regexResult: eventUrl } = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/e\/[0-9\-a-f]+/)
 
   // Click Ok button on info modal
   await page.getByRole('button', { name: /ok/i }).click()
 
   // update attendee status to 'Maybe Coming'
-  await page.getByTestId('view-event-attendee-plus-one').click({force: true})
+
+  // Elm, checkboxes and playwright don't seem to play nice. Adding a slight
+  // delay after checking boxes seems to help
+  await page.getByTestId('view-event-attendee-plus-one').check()
+  await page.waitForTimeout(100);
+
   await page.getByTestId('view-event-attendee-status').selectOption({ label: 'Maybe Coming' })
   await page.getByTestId('view-event-submit-attendee').click()
 
@@ -129,13 +136,14 @@ test('can create event', async ({ page, request }) => {
   let remainingAttempts = 10
   const getEmailIntervalMs = 100
 
-  const forgetMeUrl = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/forget-me\/[0-9\-a-f]+/)
+  const { regexResult: forgetMeUrl } = await getEmailContents(request, organizerEmail, /http(s?):\/\/[^ \/]+\/forget-me\/[0-9\-a-f]+/)
 
   // execute delete request
   await page.goto(forgetMeUrl)
   await page.getByRole('button', { name: /yes, forget me/i }).click()
 
   // return to the event page and verify that the organizer is deleted
+  await page.waitForTimeout(100); // wait a bit so the data is deleted
   await page.goto(eventUrl)
   await expect(page.getByText(deletedCommentText)).toHaveText(deletedCommentText)
   await expect(page.getByText(organizerName)).toHaveCount(0)
@@ -149,6 +157,124 @@ test('can create event', async ({ page, request }) => {
   await expect(page.getByText(comment)).toHaveCount(0)
   await expect(page.getByText('Comment deleted by user')).toHaveCount(1)
   await expect(page.getByText(secondComment)).toHaveCount(1)
+})
+
+
+test('handle aws email webhooks', async ({ page, request }) => {
+  const testId = crypto.randomUUID()
+
+  // Clean up emails from other tests first
+  const deleteEmailsResponse = await request.delete(`${mailhogUrl}/api/v1/messages`)
+  expect(deleteEmailsResponse.ok()).toBeTruthy()
+
+  // Generate crypto keys
+  const { privateKey, cert } = await ses_webhook.generateTestKeyPair()
+  const certName = `cert-${testId}.pem`
+  fs.writeFileSync(`./certs/${certName}`, cert)
+
+  // Create new event
+  await page.goto(newEventUrl)
+
+  await page.getByTestId('event-editor-event-name').fill('event name')
+  await page.getByTestId('expanding-text-area').fill('event description')
+  await page.getByTestId('event-editor-event-location').fill('home')
+  await page.getByRole('button', { name: /submit/i }).click()
+
+  // Click Ok button on info modal
+  await page.getByRole('button', { name: /ok/i }).click()
+
+  const emailSuffix = 'simulator.amazonses.com'
+  const bounceEmail = `bounce-${testId}@${emailSuffix}`
+  const successEmail = `success-${testId}@${emailSuffix}`
+  const complaintEmail = `complaint-${testId}@${emailSuffix}`
+
+  const attendeeEmails = [successEmail, bounceEmail, complaintEmail]
+
+  const emailIds = {}
+
+  // Attend the event with everyone
+  for (const attendeeEmail of attendeeEmails) {
+    await page.getByTestId('view-event-attendee-name').fill(attendeeEmail)
+    await page.getByTestId('view-event-attendee-email').fill(attendeeEmail)
+    await page.getByRole('button', { name: /submit/i }).click()
+
+    // Click Ok button on info modal
+    await page.getByRole('button', { name: /ok/i }).click()
+
+    const { emailId } = await getEmailContents(request, attendeeEmail, /.*/)
+    emailIds[attendeeEmail] = emailId
+  }
+
+  // send bounce webhook
+  const bounceResponse = await request.post(
+    `http://localhost:8081/api/v1/incoming-webhook/aws-sns`,
+    {
+      data: ses_webhook.constructEmailBounceWebhook({ privateKey, emailId: emailIds[bounceEmail], certName }),
+      headers: { 'Content-Type': 'text/plain; charset=UTF-8' }
+    }
+  )
+
+  expect(bounceResponse.ok()).toBeTruthy()
+
+  // send delivery webhooks for success and complaint emails
+  for (const attendeeEmail of [successEmail, complaintEmail]) {
+    const successResponse = await request.post(
+      `http://localhost:8081/api/v1/incoming-webhook/aws-sns`,
+      {
+        data: ses_webhook.constructEmailDeliveryWebhook({ privateKey, emailId: emailIds[attendeeEmail], certName }),
+        headers: { 'Content-Type': 'text/plain; charset=UTF-8' }
+      }
+    )
+
+    expect(successResponse.ok()).toBeTruthy()
+  }
+
+  // send complaint webhook
+  const complaintResponse = await request.post(
+    `http://localhost:8081/api/v1/incoming-webhook/aws-sns`,
+    {
+      data: ses_webhook.constructEmailComplaintWebhook({ privateKey, emailId: emailIds[complaintEmail], certName }),
+      headers: { 'Content-Type': 'text/plain; charset=UTF-8' }
+    }
+  )
+
+  expect(complaintResponse.ok()).toBeTruthy()
+
+  // add a comment that notifies everyone
+  const comment = `broadcast-${testId}`
+  await page.getByTestId('view-event-attendee-name').fill('Commenter')
+  await page.getByTestId('view-event-attendee-email').fill('commenter@organize.party')
+
+  // Elm, checkboxes and playwright don't seem to play nice. Adding a slight
+  // delay after checking boxes seems to help
+  await page.getByTestId('view-event-notify-everyone-on-comment').check()
+  await page.waitForTimeout(100);
+
+  await page.getByPlaceholder('Leave a comment').fill(comment)
+  await page.getByRole('button', { name: /comment/i }).click()
+
+  // wait for the emails to be sent
+  await delay(1000)
+
+  // verify that the bounced and complained email addresses did not get any notifications
+  const commentEmails = await getEmails(request, comment)
+  expect(commentEmails.length).toEqual(1)
+
+  const receiver = `${commentEmails[0].To[0].Mailbox}@${commentEmails[0].To[0].Domain}`
+  expect(receiver).toEqual(successEmail)
+
+  // Verify that webhooks signed with another key aren't allowed
+  const { privateKey: wrongPrivateKey } = await ses_webhook.generateTestKeyPair()
+
+  const failedBounceResponse = await request.post(
+    `http://localhost:8081/api/v1/incoming-webhook/aws-sns`,
+    {
+      data: ses_webhook.constructEmailBounceWebhook({ privateKey: wrongPrivateKey, emailId: emailIds[bounceEmail], certName }),
+      headers: { 'Content-Type': 'text/plain; charset=UTF-8' }
+    }
+  )
+
+  expect(failedBounceResponse.ok()).toBeFalsy()
 })
 
 const getEmailContents = async (request, recipientEmail, regex) => {
@@ -169,6 +295,7 @@ const getEmailContents = async (request, recipientEmail, regex) => {
         .at(0)
 
     if(!mostRecentEmail) {
+      await delay(getEmailIntervalMs)
       continue
     }
 
@@ -177,7 +304,9 @@ const getEmailContents = async (request, recipientEmail, regex) => {
     const regexResults = regex.exec(trimmedBody)
 
     if(regexResults) {
-      return regexResults[0]
+      const emailId = mostRecentEmail.Content.Headers['X-OP-EMAIL-ID'][0]
+
+      return { regexResult: regexResults[0], emailId }
     }
 
     await delay(getEmailIntervalMs)
@@ -185,6 +314,15 @@ const getEmailContents = async (request, recipientEmail, regex) => {
   }
 
   throw console.error('Did not find expected email')
+}
+
+const getEmails = async (request, emailMessage) => {
+  const response = await request.get(`${mailhogUrl}/api/v2/search?kind=containing&query=${emailMessage}`)
+  expect(response.ok()).toBeTruthy()
+  const rawResponseBody = await response.body()
+  const responseBody = JSON.parse(rawResponseBody.toString())
+
+  return responseBody.items
 }
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))

@@ -2,11 +2,11 @@
 
 BEGIN;
 
-
   -- needed to change return type, delete in next rework
   drop function if exists add_attendee_data;
 
   create or replace function add_attendee_data(
+    host_url_ text,
     event_id_ uuid,
     email_ text,
     name_ text,
@@ -14,29 +14,25 @@ BEGIN;
     get_notified_on_comments_ bool default null,
     status_ attendee_status default null
   )
-  returns table (
-    event_id uuid,
-    attendee_id bigint,
-    email email,
-    name text,
-    plus_one bool,
-    get_notified_on_comments bool,
-    status attendee_status,
-    rsvp_at timestamptz,
-    unsubscribe_id uuid
-  ) as
+  returns latest_attendee_data
+  as
   $$
     declare
       attendee_id_ bigint;
-      values_unchanged_ bool := false;
+      output_ latest_attendee_data;
       previous_plus_one_ bool;
       previous_get_notified_on_comments_ bool;
       previous_status_ attendee_status;
+      ics_email_sent_ bool;
+      event_url_ text;
     begin
-      -- get attendee_id
+      email_ := trim(lower(email_));
+
+      -- insert into attendees table if not already populated
       insert into attendees (event_id, email)
-      values (event_id_, email_)
-      on conflict ((attendees.event_id), (attendees.email)) do nothing
+        values (event_id_, email_)
+      on conflict ((attendees.event_id), (attendees.email))
+        do nothing
       returning id into attendee_id_;
 
       if attendee_id_ is null then
@@ -47,98 +43,133 @@ BEGIN;
           and attendees.email = email_;
       end if;
 
-      -- early return if this won't change any values
-      select exists (
-        select 1
-        from attendee_data
-        where
-          superseded_at is null
-          and attendee_data.attendee_id = attendee_id_
-          and attendee_data.name = name_
-          -- 'is not distinct from' => null = null
-          and (
-            attendee_data.plus_one is not distinct from plus_one_
-            or plus_one_ is null
-          )
-          and (
-            attendee_data.get_notified_on_comments is not distinct from get_notified_on_comments_
-            or get_notified_on_comments_ is null
-          )
-          and (
-            attendee_data.status is not distinct from status_
-            or status_ is null
-          )
-      ) into values_unchanged_;
+      -- early return if identical attendee data already exists
+      select * into output_
+      from latest_attendee_data
+      where
+        id = attendee_id_
+        and name = name_
+        and plus_one = coalesce(plus_one_, plus_one)
+        and get_notified_on_comments = coalesce(get_notified_on_comments_, get_notified_on_comments)
+        and status is not distinct from coalesce(status_, status);
 
-      -- not sure why early return in the if statement doesn't work with
-      -- 'return query'. But doing an else clause solves the problem
-      if values_unchanged_ then
-        return query
-          select
-            attendees.event_id,
-            attendees.id as attendee_id,
-            attendees.email,
-            attendee_data.name text,
-            attendee_data.plus_one bool,
-            attendee_data.get_notified_on_comments bool,
-            attendee_data.status attendee_status,
-            attendee_data.rsvp_at,
-            attendees.unsubscribe_id
-          from attendees
-          join attendee_data
-            on attendee_data.attendee_id = attendees.id
-            and attendee_data.superseded_at is null
-          where
-            attendees.id = attendee_id_;
-      else
-        -- insert new attendee_data
-        update attendee_data
-        set superseded_at = now()
-        where
-          attendee_data.attendee_id = attendee_id_
-          and superseded_at is null
-        returning
-          attendee_data.status,
-          attendee_data.plus_one,
-          attendee_data.get_notified_on_comments
-        into
-          previous_status_,
-          previous_plus_one_,
-          previous_get_notified_on_comments_;
+      if output_.id is not null then
+        return output_;
+      end if;
 
-        insert into attendee_data (
-          attendee_id,
-          name,
-          status,
-          plus_one,
-          get_notified_on_comments
+      -- mark the old attendee_data as superseded (if it exists)
+      update attendee_data
+      set superseded_at = now()
+      where
+        attendee_data.attendee_id = attendee_id_
+        and superseded_at is null
+      returning
+        attendee_data.status,
+        attendee_data.plus_one,
+        attendee_data.get_notified_on_comments
+      into
+        previous_status_,
+        previous_plus_one_,
+        previous_get_notified_on_comments_;
+
+      -- insert new attendee_data
+      insert into attendee_data (
+        attendee_id,
+        name,
+        status,
+        plus_one,
+        get_notified_on_comments
+      )
+      select
+        attendee_id_,
+        name_,
+        coalesce(status_, previous_status_),
+        coalesce(plus_one_, previous_plus_one_, false),
+        coalesce(get_notified_on_comments_, previous_get_notified_on_comments_, false);
+
+      -- load final version into output_
+      select * into output_
+      from latest_attendee_data
+      where
+        id = attendee_id_;
+
+      -- send calendar invite if it hasn't been sent already
+      select ics_email_sent
+      into ics_email_sent_
+      from attendees
+      where id = attendee_id_;
+
+      if not ics_email_sent_ and output_.status in ('coming', 'maybe_coming') then
+
+        event_url_ := host_url_ || '/e/' || event_id_;
+
+        with
+          inserted_email as (
+            insert into email.emails (
+              recipient_email,
+              recipient_name,
+              subject,
+              body
+            )
+            select
+              email_,
+              name_,
+              event_data.title,
+              event_data.description ||
+'
+<br>
+<br>
+<a href="' || event_url_ || '">' || event_url_ || '</a>
+<br>
+<br>
+<div style="font-size: x-small">
+  If you never want to receive an email from this event again, <a href="' || host_url_ || '/unsubscribe/' || attendees.unsubscribe_id || '">click here to unsubscribe</a>. Warning, this can not be undone
+</div>
+'
+            from attendees
+            join event_data
+              on event_data.id = attendees.event_id
+              and event_data.superseded_at is null
+            where
+              attendees.id = attendee_id_
+            returning *
+          )
+
+        insert into email.email_attachments (
+          email_id,
+          content_type,
+          file_name,
+          file_contents
         )
         select
-          attendee_id_,
-          name_,
-          coalesce(status_, previous_status_),
-          coalesce(plus_one_, previous_plus_one_, false),
-          coalesce(get_notified_on_comments_, previous_get_notified_on_comments_, false);
+          inserted_email.id,
+          'text/calendar',
+          'invitation.ics',
+          convert_to(
+            email.create_icalendar_string(
+              event_data,
+              events.created_at,
+              host_url_,
+              email_
+            ),
+            'UTF8'
+          )
+        from inserted_email
+        join events on
+          events.id = event_id_
+        join event_data
+          on event_data.id = events.id
+          and event_data.superseded_at is null;
 
-        return query
-          select
-            attendees.event_id,
-            attendees.id as attendee_id,
-            attendees.email,
-            attendee_data.name text,
-            attendee_data.plus_one bool,
-            attendee_data.get_notified_on_comments bool,
-            attendee_data.status attendee_status,
-            attendee_data.rsvp_at,
-            attendees.unsubscribe_id
-          from attendees
-          join attendee_data
-            on attendee_data.attendee_id = attendees.id
-            and attendee_data.superseded_at is null
-          where
-            attendees.id = attendee_id_;
+        update attendees set
+          ics_email_sent = true
+        where
+          id = attendee_id_;
+
       end if;
+
+      return output_;
     end;
-  $$ language plpgsql rows 1;
+  $$ language plpgsql;
 
 COMMIT;

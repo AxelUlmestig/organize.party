@@ -471,6 +471,7 @@ addCommentView attendeeInput =
                 , H.input
                     [ A.type_ "checkbox"
                     , A.checked attendeeInput.forceNotificationOnComment
+                    , A.attribute "data-testid" "view-event-notify-everyone-on-comment"
                     , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
                     ]
                     []

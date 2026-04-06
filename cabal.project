@@ -1,0 +1,19 @@
+packages:
+  op-cache
+  op-db
+  op-webapi
+  op-worker
+
+package *
+  ghc-options: -O2 -Wall
+
+-- program-options
+--   ghc-options:
+--     -XOverloadedRecordDot
+--     -XOverloadedStrings
+--     -XQuasiQuotes
+--     -XRecordWildCards
+--     -Wall
+--     -Wunused-packages
+--     +RTS -A64m -N -RTS
+

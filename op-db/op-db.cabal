@@ -1,0 +1,46 @@
+cabal-version:      3.0
+name:               op-db
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       ../LICENSE
+author:             Axel Ulmestig
+maintainer:         axel.ulmestig@gmail.com
+-- copyright:
+build-type:         Simple
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  Op.Db
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base ^>=4.19.2.0
+                    , hasql >=1.10
+                    , hasql-pool >= 0.10
+                    , hasql-th >= 0.4
+                    , hasql-transaction >= 1.0
+                    , mtl >= 2.3 && <= 3.0
+                    , resource-pool
+                    , servant-server
+                    , text
+                    , transformers >= 0.6
+    hs-source-dirs:   src
+    default-language: GHC2021
+    ghc-options:      -threaded -O2
+    default-extensions:   BlockArguments
+                        , DataKinds
+                        , DeriveGeneric
+                        , FlexibleContexts
+                        , FlexibleInstances
+                        , MultiParamTypeClasses
+                        , NamedFieldPuns
+                        , OverloadedRecordDot
+                        , OverloadedStrings
+                        , RecordWildCards
+                        , QuasiQuotes
+                        , TypeOperators

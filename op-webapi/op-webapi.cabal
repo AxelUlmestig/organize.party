@@ -1,0 +1,84 @@
+cabal-version:      3.14
+name:                op-webapi
+version:             0.1
+-- synopsis:
+-- description:
+homepage:            https://github.com/AxelUlmestig/organize.party#readme
+license:             BSD-3-Clause
+license-file:        ../LICENSE
+author:              Axel Ulmestig
+maintainer:          example@example.com
+copyright:           2021 Author name here
+category:            Web
+build-type:          Simple
+-- extra-source-files:  README.md
+
+executable op-webapi
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  other-modules:       Op.WebAPI.Endpoints.Attend
+                     , Op.WebAPI.Endpoints.Comment
+                     , Op.WebAPI.Endpoints.CreateEvent
+                     , Op.WebAPI.Endpoints.EditEvent
+                     , Op.WebAPI.Endpoints.GetEvent
+                     , Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns
+                     , Op.WebAPI.Endpoints.InitForgetMeRequest
+                     , Op.WebAPI.Endpoints.ViewForgetMeRequest
+                     , Op.WebAPI.Endpoints.ExecuteForgetMeRequest
+                     , Op.WebAPI.Endpoints.Unsubscribe
+                     , Op.WebAPI.Html
+                     , Op.WebAPI.Types.AppEnv
+                     , Op.WebAPI.Types.Attendee
+                     , Op.WebAPI.Types.AttendInput
+                     , Op.WebAPI.Types.CommentInput
+                     , Op.WebAPI.Types.CreateEventInput
+                     , Op.WebAPI.Types.Event
+                     , Op.WebAPI.Types.ForgetMeRequest
+                     , Op.WebAPI.Types.HasHostUrl
+                     , Op.WebAPI.Types.Password
+                     , Op.WebAPI.Types.Unsubscribe
+  default-language:    GHC2021
+  ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m" -O2
+  build-depends:       aeson >= 2.1 && < 3.0
+                     , aeson-casing
+                     , base >= 4.0
+                     , base64-bytestring
+                     , bytestring >= 0.11
+                     , crypton
+                     , crypton-pem
+                     , crypton-x509
+                     , http-media >= 0.8 && < 0.9
+                     , modern-uri
+                     , mtl >= 2.3 && <= 3.0
+                     , network >= 3.1
+                     , op-cache
+                     , op-db
+                     , profunctors >= 5.6 && < 6.0
+                     , regex-tdfa
+                     , req
+                     , resource-pool
+                     , rio
+                     , servant-server >= 0.20 && < 0.21
+                     , stringsearch >= 0.3.6.6
+                     , string-interpolate >= 0.3 && < 0.4
+                     , text >= 2.0 && < 3.0
+                     , time >= 1.12 && < 2.0
+                     , transformers >= 0.6
+                     , uuid >= 1.3 && <= 2.0
+                     , utf8-string >= 1.0 && < 1.1
+                     , vector >= 0.13
+                     , wai-cors >= 0.2 && <= 0.3
+                     , warp >= 3.3 && < 3.4
+  default-extensions:  BlockArguments
+                     , DataKinds
+                     , DeriveGeneric
+                     , FlexibleContexts
+                     , FlexibleInstances
+                     , MultiParamTypeClasses
+                     , NamedFieldPuns
+                     , OverloadedRecordDot
+                     , OverloadedStrings
+                     , RecordWildCards
+                     , QuasiQuotes
+                     , TypeOperators
+                     , NoImplicitPrelude
