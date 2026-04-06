@@ -76,7 +76,6 @@ services:
       DB_PORT: 6432
       LISTEN_DB_HOST: db
       LISTEN_DB_PORT: 5432
-      HOST_URL: "https://organize.party"
       LOG_LEVEL: LevelInfo
     env_file: .env
     networks:
