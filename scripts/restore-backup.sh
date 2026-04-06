@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DUMP_PATH=$1
+COMPOSE_FILE="docker-compose-prod.yml"
 
 if [ -z "$DUMP_PATH" ]; then
   echo "Please provide a file to back up from"
@@ -24,6 +25,6 @@ set -ex
 
 DUMP_FILE_NAME=/tmp/$(basename "$DUMP_PATH")
 
-docker compose cp $DUMP_PATH db:$DUMP_FILE_NAME
-docker compose exec db pg_restore --clean --if-exists -d postgres://postgres:postgres@localhost:5432/events $DUMP_FILE_NAME
-docker compose exec db rm $DUMP_FILE_NAME
+docker compose -f $COMPOSE_FILE cp $DUMP_PATH db:$DUMP_FILE_NAME
+docker compose -f $COMPOSE_FILE exec db pg_restore --clean --if-exists -d postgres://postgres:postgres@localhost:5432/events $DUMP_FILE_NAME
+docker compose -f $COMPOSE_FILE exec db rm $DUMP_FILE_NAME

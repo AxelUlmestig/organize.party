@@ -8,11 +8,12 @@ TODAY=$(printf '%(%Y-%m-%d)T\n' -1)
 DUMP_NAME="$TODAY".dump
 DUMP_PATH=/tmp/$DUMP_NAME
 DUMP_DIR="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )"/../db_dumps
+COMPOSE_FILE="docker-compose-prod.yml"
 mkdir -p $DUMP_DIR
 
-docker compose exec db pg_dump -f $DUMP_PATH -Fc postgres://postgres:postgres@localhost:5432/events
-docker compose cp db:$DUMP_PATH $DUMP_DIR/$DUMP_NAME
-docker compose exec db rm $DUMP_PATH
+docker compose -f $COMPOSE_FILE exec db pg_dump -f $DUMP_PATH -Fc postgres://postgres:postgres@localhost:5432/events
+docker compose -f $COMPOSE_FILE cp db:$DUMP_PATH $DUMP_DIR/$DUMP_NAME
+docker compose -f $COMPOSE_FILE exec db rm $DUMP_PATH
 
 # only allow 10 backups to exist, delete the oldest files when the number
 # exceeds 10
