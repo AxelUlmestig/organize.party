@@ -10,6 +10,7 @@ import FontAwesome.Styles as Icon
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as Events
+import Maybe
 import Shared.FormatUrls exposing (formatTextWithLinks)
 import Types exposing (..)
 
@@ -19,103 +20,96 @@ viewAttendees attendees =
     let
         attendeeDict =
             splitAttendees attendees
+
+        attendingHtml =
+            let
+                options =
+                    { testId = "view-attendees-attending-number"
+                    , attendeeCategory = "Attending"
+                    , displayPlusOne = True
+                    }
+            in
+            Dict.get (attendeeStatusToString Coming) attendeeDict
+                |> Maybe.map (displayAttendees options)
+                |> Maybe.withDefault (H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ] [ H.text "Attending: 0" ])
+
+        maybeAttendingHtml =
+            let
+                options =
+                    { testId = "view-attendees-maybe-attending-number"
+                    , attendeeCategory = "Maybe Attending"
+                    , displayPlusOne = True
+                    }
+            in
+            Dict.get (attendeeStatusToString MaybeComing) attendeeDict
+                |> Maybe.map (displayAttendees options)
+                |> Maybe.withDefault (H.span [] [])
+
+        notAttendingHtml =
+            let
+                options =
+                    { testId = "view-attendees-not-attending-number"
+                    , attendeeCategory = "Can't Attend"
+                    , displayPlusOne = False
+                    }
+            in
+            Dict.get (attendeeStatusToString NotComing) attendeeDict
+                |> Maybe.map (displayAttendees options)
+                |> Maybe.withDefault (H.span [] [])
     in
     H.div []
-        [ case Dict.get "Coming" attendeeDict of
-            Nothing ->
-                H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ] [ H.text "Attending: 0" ]
+        [ attendingHtml
+        , maybeAttendingHtml
+        , notAttendingHtml
+        ]
 
-            Just attending ->
-                let
-                    ( comingCount, plusOnesCount ) =
-                        countAttendees attending
-                in
-                H.div []
-                    [ H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ]
-                        [ H.text
-                            ("Attending: "
-                                ++ String.fromInt comingCount
-                                ++ (if plusOnesCount == 0 then
-                                        ""
 
-                                    else
-                                        " (+" ++ String.fromInt plusOnesCount ++ ")"
-                                   )
-                            )
+type alias Options =
+    { testId : String
+    , attendeeCategory : String
+    , displayPlusOne : Bool
+    }
+
+
+displayAttendees : Options -> List Attendee -> Html msg
+displayAttendees { testId, attendeeCategory, displayPlusOne } attendees =
+    let
+        ( attendeeComingCount, plusOnesCount ) =
+            countAttendees attendees
+    in
+    H.div [ A.class "attendee-count-card" ]
+        [ H.h3 [ A.class "attendee-count-header", A.attribute "data-testid" testId ]
+            [ H.text
+                (attendeeCategory
+                    ++ ": "
+                    ++ String.fromInt attendeeComingCount
+                    ++ (if plusOnesCount > 0 && displayPlusOne then
+                            " (+" ++ String.fromInt plusOnesCount ++ ")"
+
+                        else
+                            ""
+                       )
+                )
+            ]
+        , H.div []
+            (List.map
+                (\attendee ->
+                    H.div [ A.class "attendee-name-wrapper" ]
+                        [ H.div [ A.class "attendee-name" ]
+                            [ H.text
+                                (attendee.name
+                                    ++ (if attendee.plusOne && displayPlusOne then
+                                            " (+1)"
+
+                                        else
+                                            ""
+                                       )
+                                )
+                            ]
                         ]
-                    , H.div []
-                        (List.map
-                            (\attendee ->
-                                H.div []
-                                    [ H.text
-                                        (attendee.name
-                                            ++ (if attendee.plusOne then
-                                                    " (+1)"
-
-                                                else
-                                                    ""
-                                               )
-                                        )
-                                    ]
-                            )
-                            attending
-                        )
-                    ]
-        , H.br [] []
-        , case Dict.get "Maybe Coming" attendeeDict of
-            Nothing ->
-                H.div [] []
-
-            Just maybeAttending ->
-                let
-                    ( maybeComingCount, plusOnesCount ) =
-                        countAttendees maybeAttending
-                in
-                H.div []
-                    [ H.h3 [ A.attribute "data-testid" "view-attendees-maybe-attending-number" ]
-                        [ H.text
-                            ("Maybe Attending: "
-                                ++ String.fromInt maybeComingCount
-                                ++ (if plusOnesCount == 0 then
-                                        ""
-
-                                    else
-                                        " (+" ++ String.fromInt plusOnesCount ++ ")"
-                                   )
-                            )
-                        ]
-                    , H.div []
-                        (List.map
-                            (\attendee ->
-                                H.div []
-                                    [ H.text
-                                        (attendee.name
-                                            ++ (if attendee.plusOne then
-                                                    " (+1)"
-
-                                                else
-                                                    ""
-                                               )
-                                        )
-                                    ]
-                            )
-                            maybeAttending
-                        )
-                    ]
-        , H.br [] []
-        , case Dict.get "Not Coming" attendeeDict of
-            Nothing ->
-                H.div [] []
-
-            Just notAttending ->
-                let
-                    ( notComingCount, plusOnesCount ) =
-                        countAttendees notAttending
-                in
-                H.div []
-                    [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
-                    , H.div [] (List.map (\attendee -> H.div [] [ H.text attendee.name ]) notAttending)
-                    ]
+                )
+                attendees
+            )
         ]
 
 

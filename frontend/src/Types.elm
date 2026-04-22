@@ -169,10 +169,10 @@ attendeeStatusToString status =
             "Coming"
 
         MaybeComing ->
-            "Maybe Coming"
+            "Maybe"
 
         NotComing ->
-            "Not Coming"
+            "Can't"
 
 
 emptyEventInput : Time.Posix -> EventInput
