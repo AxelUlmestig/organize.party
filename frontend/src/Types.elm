@@ -5,6 +5,7 @@ module Types exposing
     , Comment
     , Event
     , EventInput
+    , Photo
     , attendeeInputDecoder
     , attendeeStatusDecoder
     , attendeeStatusToString
@@ -22,9 +23,11 @@ module Types exposing
 
 import Browser
 import Browser.Navigation as Nav
+import File exposing (File)
 import Http
 import Iso8601
 import Json.Decode as D
+import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode exposing (Value)
 import Maybe
 import SingleDatePicker as DP
@@ -41,8 +44,13 @@ type alias Event =
     , location : String
     , attendees : List Attendee
     , comments : List Comment
+    , photo : Maybe Photo
+    }
 
-    -- , googleMapsLink : Maybe String
+
+type alias Photo =
+    { id : String
+    , url : Url
     }
 
 
@@ -52,6 +60,7 @@ type alias EventInput =
     , startTime : Time.Posix
     , endTime : Maybe Time.Posix
     , location : String
+    , photoId : Maybe String
 
     -- , googleMapsLink : Maybe String
     , password : String
@@ -111,17 +120,53 @@ type alias ForgetMeRequest =
 -- encoders and decoders
 
 
+urlDecoder : D.Decoder Url
+urlDecoder =
+    D.string
+        |> D.andThen
+            (\urlString ->
+                case Url.fromString urlString of
+                    Just url ->
+                        D.succeed url
+
+                    Nothing ->
+                        D.fail ("Invalid URL: " ++ urlString)
+            )
+
+
 eventDecoder : D.Decoder Event
 eventDecoder =
-    D.map8 Event
-        (D.field "id" D.string)
-        (D.field "title" D.string)
-        (D.field "description" D.string)
-        (D.field "startTime" Iso8601.decoder)
-        (D.maybe (D.field "endTime" Iso8601.decoder))
-        (D.field "location" D.string)
-        (D.field "attendees" (D.list attendeeDecoder))
-        (D.field "comments" (D.list commentDecoder))
+    let
+        photoDecoder =
+            D.succeed Photo
+                |> required "id" D.string
+                |> required "url" urlDecoder
+    in
+    D.succeed Event
+        |> required "id" D.string
+        |> required "title" D.string
+        |> required "description" D.string
+        |> required "startTime" Iso8601.decoder
+        |> required "endTime" (D.nullable Iso8601.decoder)
+        |> required "location" D.string
+        |> required "attendees" (D.list attendeeDecoder)
+        |> required "comments" (D.list commentDecoder)
+        |> optional "photo" (D.nullable photoDecoder) Nothing
+
+
+
+{-
+   D.map9 Event
+       (D.field "id" D.string)
+       (D.field "title" D.string)
+       (D.field "description" D.string)
+       (D.field "startTime" Iso8601.decoder)
+       (D.maybe (D.field "endTime" Iso8601.decoder))
+       (D.field "location" D.string)
+       (D.field "attendees" (D.list attendeeDecoder))
+       (D.field "comments" (D.list commentDecoder))
+       (D.maybe (D.field "eventPhotoUrl" urlDecoder))
+-}
 
 
 attendeeDecoder : D.Decoder Attendee
@@ -183,11 +228,12 @@ emptyEventInput startTime =
     , startTime = startTime
     , endTime = Nothing
     , password = ""
+    , photoId = Nothing
     }
 
 
 encodeEventInput : EventInput -> Value
-encodeEventInput { title, description, location, startTime, endTime, password } =
+encodeEventInput { title, description, location, startTime, endTime, password, photoId } =
     Encode.object
         [ ( "title", Encode.string title )
         , ( "description", Encode.string description )
@@ -195,6 +241,10 @@ encodeEventInput { title, description, location, startTime, endTime, password } 
         , ( "startTime", Iso8601.encode startTime )
         , ( "endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime )
         , ( "password", Encode.string password )
+        , ( "photoId", Maybe.withDefault Encode.null <| Maybe.map Encode.string photoId )
+
+        --, ( "photoId", Maybe.withDefault Encode.null photoId )
+        -- , ( "photoId", photoId )
         ]
 
 

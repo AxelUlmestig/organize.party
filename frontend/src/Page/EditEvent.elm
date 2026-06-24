@@ -71,9 +71,9 @@ type alias EditEventInput =
     , startTime : Time.Posix
     , endTime : Maybe Time.Posix
     , location : String
-
-    -- , googleMapsLink : Maybe String
     , password : String
+
+    -- , photoId : Maybe String
     }
 
 
@@ -161,10 +161,26 @@ update msg pageState =
                             , endTime = Nothing
                             , location = event.location
                             , password = ""
+                            , photoId =
+                                case event.photo of
+                                    Just p ->
+                                        Just p.id
+
+                                    Nothing ->
+                                        Nothing
+
+                            {-
+                               , eventPhotoUrl = event.eventPhotoUrl
+                            -}
                             }
 
-                        newState =
-                            EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput }
+                        -- newState = EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput, photo = Nothing }
+                        ( newState, newMsg ) =
+                            let
+                                ( eventEditorState, eventEditorMsg ) =
+                                    EventEditor.init pageState.timeZone editEventInput
+                            in
+                            ( EditEvent event Nothing eventEditorState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorMsg )
                     in
                     ( format newState, Cmd.none )
 
@@ -183,14 +199,19 @@ update msg pageState =
                                 eventEditorState =
                                     { picker = state.picker
                                     , timezone = pageState.timeZone
-                                    , input =
-                                        { title = state.input.title
-                                        , description = state.input.description
-                                        , startTime = state.input.startTime
-                                        , endTime = state.input.endTime
-                                        , location = state.input.location
-                                        , password = state.input.password
-                                        }
+                                    , photoUploader = state.photoUploader
+                                    , input = state.input
+
+                                    {-
+                                       { title = state.input.title
+                                       , description = state.input.description
+                                       , startTime = state.input.startTime
+                                       , endTime = state.input.endTime
+                                       , location = state.input.location
+                                       , password = state.input.password
+                                       , photoId = state.input.photoId
+                                       }
+                                    -}
                                     }
                             in
                             ( format (EditEvent event (Just WrongPasswordModal) eventEditorState), Cmd.none )
@@ -209,17 +230,39 @@ update msg pageState =
                 otherState ->
                     ( format otherState, Cmd.none )
 
-        EventEditorMsg (EventEditor.InternalMsg internalMsg) ->
-            case pageState.state of
-                EditEvent event modal eventEditorState ->
-                    let
-                        ( newEventEditorState, newEventEditorMsg ) =
-                            EventEditor.update internalMsg eventEditorState
-                    in
-                    ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+        EventEditorMsg eventEditorMsg ->
+            case eventEditorMsg of
+                EventEditor.InternalMsg internalMsg ->
+                    case pageState.state of
+                        EditEvent event modal eventEditorState ->
+                            let
+                                ( newEventEditorState, newEventEditorMsg ) =
+                                    EventEditor.update internalMsg eventEditorState
+                            in
+                            ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
 
-                state ->
-                    ( format pageState.state, Cmd.none )
+                        state ->
+                            ( format pageState.state, Cmd.none )
+
+                EventEditor.EventInputReady eventInput ->
+                    -- TODO: include photoId when updating events
+                    case pageState.state of
+                        EditEvent event _ eventEditorState ->
+                            let
+                                editEventInput =
+                                    { id = event.id
+                                    , title = eventInput.title
+                                    , description = eventInput.description
+                                    , startTime = eventInput.startTime
+                                    , endTime = eventInput.endTime
+                                    , location = eventInput.location
+                                    , password = eventInput.password
+                                    }
+                            in
+                            ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
+
+                        otherState ->
+                            ( format otherState, Cmd.none )
 
         SubmitUpdate eventInput ->
             case pageState.state of

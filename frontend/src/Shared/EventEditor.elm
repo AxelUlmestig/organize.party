@@ -1,7 +1,17 @@
-module Shared.EventEditor exposing (Msg(..), State, getInput, handleSubscription, update, view)
+module Shared.EventEditor exposing
+    ( Msg(..)
+    , State
+    , getInput
+    , handleSubscription
+    , init
+    , prepareInput
+    , update
+    , view
+    )
 
 import Browser.Dom as Dom
 import Dict exposing (Dict)
+import File exposing (File)
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
@@ -13,11 +23,12 @@ import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Shared.PhotoUploader as Photo
 import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Task
 import Time
-import Types exposing (EventInput)
+import Types exposing (EventInput, emptyEventInput)
 import Util exposing (viewEventDate, viewEventTime)
 
 
@@ -25,13 +36,13 @@ type alias State =
     { picker : DP.DatePicker
     , input : EventInput
     , timezone : Time.Zone
+    , photoUploader : Photo.State
     }
 
 
-type
-    Msg
-    -- = Submit EventInput
+type Msg
     = InternalMsg InternalMsg
+    | EventInputReady EventInput
 
 
 type InternalMsg
@@ -41,6 +52,20 @@ type InternalMsg
     | FocusTimePicker
     | FocusTimePickerSoon
     | DoNothing
+    | PhotoUploaderMsg Photo.Msg
+    | AddPhotoButton
+    | ClearPhotoButton
+
+
+init : Time.Zone -> EventInput -> ( State, Cmd Msg )
+init timezone eventInput =
+    let
+        ( photoState, photoMsg ) =
+            Photo.init
+    in
+    ( { timezone = timezone, picker = DP.init, input = eventInput, photoUploader = photoState }
+    , Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg
+    )
 
 
 borderRadius =
@@ -48,7 +73,7 @@ borderRadius =
 
 
 view : Dict String String -> State -> Html Msg
-view copy { picker, input, timezone } =
+view copy { picker, input, timezone, photoUploader } =
     let
         updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         updatePicker input2 ( picker2, mTimestamp ) =
@@ -96,6 +121,16 @@ view copy { picker, input, timezone } =
         , sectionSeparator (Maybe.withDefault "Password For Future Edits" <| Dict.get "password_header" copy)
 
         -- , sectionSeparator "Password For Future Edits"
+        , H.button [ onClick (InternalMsg AddPhotoButton) ] [ H.text "add photo" ]
+        , case Photo.getPhotoUrl photoUploader of
+            Just photoUrl ->
+                H.div []
+                    [ H.img [ A.src photoUrl ] []
+                    , H.button [ onClick (InternalMsg ClearPhotoButton) ] [ H.text "clear photo" ]
+                    ]
+
+            Nothing ->
+                H.span [] []
         , H.div [] [ H.text "Password" ]
         , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
             [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
@@ -139,6 +174,36 @@ update msg state =
 
         FocusTimePickerSoon ->
             ( state, delay100ms (InternalMsg FocusTimePicker) )
+
+        PhotoUploaderMsg pumsg ->
+            case pumsg of
+                Photo.InternalMsg imsg ->
+                    let
+                        ( newPhotoState, photoMsg ) =
+                            Photo.update imsg state.photoUploader
+                    in
+                    ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
+
+                Photo.PhotoUploadDone photoId ->
+                    let
+                        eventInput =
+                            state.input
+                    in
+                    ( state, pureCmd (EventInputReady { eventInput | photoId = photoId }) )
+
+        AddPhotoButton ->
+            let
+                ( newPhotoState, photoMsg ) =
+                    Photo.newPhoto state.photoUploader
+            in
+            ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
+
+        ClearPhotoButton ->
+            let
+                ( newPhotoState, photoMsg ) =
+                    Photo.clear state.photoUploader
+            in
+            ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
 
         DoNothing ->
             ( state, Cmd.none )
@@ -186,3 +251,17 @@ pickerSettings timeZone picker input =
 getInput : State -> EventInput
 getInput state =
     state.input
+
+
+prepareInput : State -> ( State, Cmd Msg )
+prepareInput state =
+    let
+        ( newPhotoState, photoCmd ) =
+            Photo.submitPhoto state.photoUploader
+    in
+    ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoCmd )
+
+
+pureCmd : msg -> Cmd msg
+pureCmd =
+    Task.perform identity << Task.succeed
