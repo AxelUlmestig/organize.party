@@ -76,6 +76,7 @@ photoUploadDecoder =
         |> required "id" D.string
         |> required "uploadUrl" urlDecoder
         |> required "photoId" (D.nullable D.string)
+        |> required "materializedStatus" D.string
 
 
 update : InternalMsg -> State -> ( State, Cmd Msg )

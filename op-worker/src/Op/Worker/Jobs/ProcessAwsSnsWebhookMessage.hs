@@ -24,6 +24,17 @@ newtype ProcessAwsSnsWebhookMessageJob = ProcessAwsSnsWebhookMessageJob { awsSns
 instance Aeson.ToJSON ProcessAwsSnsWebhookMessageJob
 instance Aeson.FromJSON ProcessAwsSnsWebhookMessageJob
 
+data NotificationSource
+  = S3
+  | SES
+  deriving (Show)
+
+getNotificationSource :: Aeson.Value -> Maybe NotificationSource
+getNotificationSource message
+  | isJust $ message ^? key "notificationType" = Just SES
+  | message ^? key "Records" . nth 0 . key "eventSource" . _String == Just "aws:s3" = Just S3
+  | otherwise = Nothing
+
 instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env ProcessAwsSnsWebhookMessageJob where
   processJob (ProcessAwsSnsWebhookMessageJob awsSnsWebhookMessageId) = do
     webhookContents <- do
@@ -48,11 +59,16 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
     case (mWebhookType, mWebhookMessage) of
       (Just "SubscriptionConfirmation", _) -> handleSubscriptionConfirmation webhookContents
       (Just "Notification", Just message) -> do
-        case message ^? key "notificationType" of
-          Just "Delivery" -> handleSesDelivery message
-          Just "Bounce" -> handleSesBounce message
-          Just "Complaint" -> handleSesComplaint message
-          _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+        case getNotificationSource message of
+          Just SES -> do
+            case message ^? key "notificationType" of
+              Just "Delivery" -> handleSesDelivery message
+              Just "Bounce" -> handleSesBounce message
+              Just "Complaint" -> handleSesComplaint message
+              _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+          Just S3 -> do
+            handleS3Notification message
+          Nothing -> Job.giveUpJob [i|Unexpected AWS SNS webhook message (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
       _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook type (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
 
     Db.queryDbOr retryDbErr do
@@ -116,6 +132,8 @@ handleSubscriptionConfirmation webhookContents = do
     2 -> pure ()
     _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
 
+handleS3Notification :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
+handleS3Notification message = Job.giveUpJob [i|S3 notification job not implemented yet. Message: #{Aeson.encode message}|]
 
 extractEmailId :: Aeson.Value -> Maybe UUID.UUID
 extractEmailId webhookMessage = do
