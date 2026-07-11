@@ -18,6 +18,7 @@ import Html.Attributes as A
 import Http
 import Json.Decode as D
 import Json.Decode.Pipeline exposing (optional, required)
+import Json.Encode as Encode
 import Process
 import Task
 import Url exposing (Url)
@@ -59,8 +60,9 @@ type InternalMsg
 
 type alias PhotoUpload =
     { id : String
-    , uploadUrl : Maybe Url
+    , uploadUrl : Url
     , photoId : Maybe String
+    , materializedStatus : String
     }
 
 
@@ -72,7 +74,7 @@ init =
 photoUploadDecoder =
     D.succeed PhotoUpload
         |> required "id" D.string
-        |> required "uploadUrl" (D.nullable urlDecoder)
+        |> required "uploadUrl" urlDecoder
         |> required "photoId" (D.nullable D.string)
 
 
@@ -105,34 +107,22 @@ update msg state =
         PhotoUploadInitiated file result ->
             case result of
                 Ok { id, uploadUrl } ->
-                    case uploadUrl of
-                        Nothing ->
-                            let
-                                newState =
-                                    WaitingForUploadUrl { photoUploadId = id, photo = file }
+                    let
+                        newState =
+                            WaitingForPhotoId { photoUploadId = id, photo = file }
 
-                                cmd =
-                                    Process.sleep 250 |> Task.perform (\_ -> InternalMsg PollForUploadUrl)
-                            in
-                            ( newState, cmd )
-
-                        Just url ->
-                            let
-                                newState =
-                                    WaitingForPhotoId { photoUploadId = id, photo = file }
-
-                                cmd =
-                                    Http.request
-                                        { method = "PUT"
-                                        , url = Url.toString url
-                                        , body = Http.fileBody file
-                                        , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
-                                        , headers = [ Http.header "Content-Type" (File.mime file) ]
-                                        , timeout = Nothing
-                                        , tracker = Nothing
-                                        }
-                            in
-                            ( newState, cmd )
+                        cmd =
+                            Http.request
+                                { method = "PUT"
+                                , url = Url.toString uploadUrl
+                                , body = Http.fileBody file
+                                , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
+                                , headers = [ Http.header "Content-Type" (File.mime file) ]
+                                , timeout = Nothing
+                                , tracker = Nothing
+                                }
+                    in
+                    ( newState, cmd )
 
                 -- TODO: better error handling
                 Err err ->
@@ -253,11 +243,14 @@ submitPhoto state =
 
                 Just photo ->
                     let
+                        body =
+                            Encode.object [ ( "fileName", Encode.string (File.name photo) ) ]
+
                         cmd =
                             Http.post
                                 { url = "/api/v1/photo-upload"
                                 , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo) photoUploadDecoder
-                                , body = Http.emptyBody
+                                , body = Http.jsonBody body
                                 }
                     in
                     ( state, cmd )

@@ -80,3 +80,10 @@ functions/add_comment 2026-03-13T13:01:43Z Axel,,, <axel@axel-ThinkPad> # add co
 functions/edit_event 2026-03-21T11:31:51Z Axel,,, <axel@axel-ThinkPad> # edit event
 functions/get_event_json 2026-03-22T12:50:33Z Axel,,, <axel@axel-ThinkPad> # get event
 functions/forget_email_address 2026-04-03T20:10:26Z Axel,,, <axel@axel-ThinkPad> # forget email function
+aws/tables/photo_uploads 2026-06-29T09:23:44Z Axel Ulmestig,,, <axel@desktop> # photo upload table
+aws/triggers/photo_uploads/create_s3_photo_upload_flow 2026-06-29T10:01:01Z Axel Ulmestig,,, <axel@desktop> # create s3 photo upload flow
+aws/triggers/photo_uploads/start_s3_photo_upload_flow 2026-06-29T10:03:50Z Axel Ulmestig,,, <axel@desktop> # start s3 photo upload flow
+aws/functions/materialize_s3_upload_status 2026-07-08T20:10:03Z Axel Ulmestig,,, <axel@desktop> # materialize s3 upload status
+aws/functions/enqueue_s3_file_upload_status_check_job 2026-07-08T20:10:58Z Axel Ulmestig,,, <axel@desktop> # enqueue_s3_file_upload_status_check_job
+aws/functions/promote_uploaded_photo 2026-07-08T20:11:30Z Axel Ulmestig,,, <axel@desktop> # promote_uploaded_photo
+statechart/aws/s3_photo_upload_flow-1.0 2026-07-08T20:03:18Z pg_statecharts <pg_statecharts@postgres> # statechart/aws/s3_photo_upload_flow-1.0

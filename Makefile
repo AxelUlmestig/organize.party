@@ -12,6 +12,7 @@ start-dev-webapi: deploy-database
 start-dev-worker: deploy-database
 	docker compose up -d mailhog
 	LOG_LEVEL=LevelDebug DB_HOST=localhost DB_PORT=6432 LISTEN_DB_HOST=localhost LISTEN_DB_PORT=5432 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run op-worker
+	# LOG_LEVEL=LevelDebug DB_HOST=localhost DB_PORT=6432 LISTEN_DB_HOST=localhost LISTEN_DB_PORT=5432 SMTP_SERVER=email-smtp.eu-north-1.amazonaws.com SMTP_PORT=2465 SMTP_LOGIN=AKIAYSKLVOOXD5FZQSFU SMTP_PASSWORD=BODfn15rAtpoVuImReU40M3ab6akAOmJWriKcDBjB/UF cabal run op-worker
 
 .PHONY: build-frontend
 build-frontend:

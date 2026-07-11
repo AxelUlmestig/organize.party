@@ -23,6 +23,7 @@ executable op-webapi
                      , Op.WebAPI.Endpoints.GetEvent
                      , Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns
                      , Op.WebAPI.Endpoints.InitForgetMeRequest
+                     , Op.WebAPI.Endpoints.InitPhotoUpload
                      , Op.WebAPI.Endpoints.ViewForgetMeRequest
                      , Op.WebAPI.Endpoints.ExecuteForgetMeRequest
                      , Op.WebAPI.Endpoints.Unsubscribe
@@ -36,19 +37,24 @@ executable op-webapi
                      , Op.WebAPI.Types.ForgetMeRequest
                      , Op.WebAPI.Types.HasHostUrl
                      , Op.WebAPI.Types.Password
+                     , Op.WebAPI.Types.PhotoUpload
                      , Op.WebAPI.Types.Unsubscribe
   default-language:    GHC2021
   ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m" -O2
   build-depends:       aeson >= 2.1 && < 3.0
                      , aeson-casing
+                     , amazonka
+                     , amazonka-s3
                      , base >= 4.0
                      , base64-bytestring
                      , bytestring >= 0.11
                      , crypton
                      , crypton-pem
                      , crypton-x509
+                     , exceptions
                      , http-media >= 0.8 && < 0.9
                      , modern-uri
+                     , mmzk-typeid
                      , mtl >= 2.3 && <= 3.0
                      , network >= 3.1
                      , op-cache
