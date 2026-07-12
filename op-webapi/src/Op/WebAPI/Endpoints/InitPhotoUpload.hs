@@ -53,6 +53,7 @@ initPhotoUpload InitPhotoUploadInput{fileName} = do
     -- TODO: move aws env to reader env
     env <- AWS.newEnv AWS.discover --  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION env variables needed here
 
+    -- TODO: url encode file name
     let objectKey = [i|photos/#{photoUploadId}/#{fileName}|]
     let bucketName = AWS.S3.BucketName "organize-party"
     let s3PutRequestBody = AWS.toBody ("" :: ByteString)
