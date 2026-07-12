@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Op.WebAPI.Endpoints.InitPhotoUpload (initPhotoUpload, InitPhotoUploadInput, InitPhotoUploadResult) where
+module Op.WebAPI.Endpoints.InitPhotoUpload (initPhotoUpload, InitPhotoUploadInput, InitPhotoUploadResult (..)) where
 
 import qualified Amazonka                    as AWS
 import qualified Amazonka.S3                 as AWS.S3
@@ -31,7 +31,7 @@ data InitPhotoUploadResult
   { id                 :: UUID
   , uploadUrl          :: Text
   , materializedStatus :: Text
-  , photoId            :: Maybe Text
+  , photoId            :: Maybe UUID
   }
   deriving (Generic)
 
@@ -77,6 +77,6 @@ initPhotoUpload InitPhotoUploadInput{fileName} = do
 
   where
     handleErr err = do
-      logError [i|Something went wrong when attending event: #{err}|]
+      logError [i|Something went wrong initiating photo upload: #{err}|]
       throwError err500 { errBody = "Something went wrong" }
 

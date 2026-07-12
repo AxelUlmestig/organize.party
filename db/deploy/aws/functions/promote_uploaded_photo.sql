@@ -25,7 +25,7 @@ BEGIN;
               update aws.photo_uploads set
                 photo_id = inserted_photos.id
               from inserted_photos
-              where photo_uploads.state_machine_id = state_machine_id;
+              where photo_uploads.state_machine_id = state_machine_id_;
 
             return;
         end
