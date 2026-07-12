@@ -19,7 +19,6 @@ import           Servant                     (ServerError (errBody), err400,
 
 
 import qualified Op.Db                       as Db
-import           Op.WebAPI.Types.PhotoUpload (PhotoUpload (..))
 
 newtype InitPhotoUploadInput
   = InitPhotoUploadInput { fileName :: Text }

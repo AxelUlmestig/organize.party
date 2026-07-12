@@ -38,7 +38,6 @@ executable op-webapi
                      , Op.WebAPI.Types.ForgetMeRequest
                      , Op.WebAPI.Types.HasHostUrl
                      , Op.WebAPI.Types.Password
-                     , Op.WebAPI.Types.PhotoUpload
                      , Op.WebAPI.Types.Unsubscribe
   default-language:    GHC2021
   ghc-options:         -threaded -rtsopts "-with-rtsopts=-N -A64m" -O2
