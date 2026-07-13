@@ -7,6 +7,7 @@ module Shared.EventEditor exposing
     , prepareInput
     , update
     , view
+    , viewPhotoUploadStatus
     )
 
 import Browser.Dom as Dom
@@ -70,6 +71,11 @@ init timezone eventInput =
 
 borderRadius =
     A.style "border-radius" "5px"
+
+
+viewPhotoUploadStatus : State -> Html a
+viewPhotoUploadStatus state =
+    Photo.view state.photoUploader
 
 
 view : Dict String String -> State -> Html Msg

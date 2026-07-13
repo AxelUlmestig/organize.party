@@ -75,9 +75,9 @@ view pageState =
                 [ H.text "Creating event..."
                 ]
 
-        PreparingEventInput _ ->
+        PreparingEventInput eventEditorState ->
             H.div [ A.class "center" ]
-                [ H.text "Creating event..."
+                [ EventEditor.viewPhotoUploadStatus eventEditorState
                 ]
 
         Failure ->

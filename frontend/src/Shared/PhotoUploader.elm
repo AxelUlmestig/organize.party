@@ -206,9 +206,23 @@ update msg state =
                     ( state, Cmd.none )
 
 
-view : Maybe String -> Html Msg
-view photoId =
-    H.div [] []
+view : State -> Html a
+view state =
+    case state of
+        Initialized _ ->
+            H.text "Waiting for input"
+
+        WaitingForUploadUrl _ ->
+            H.text "Fetching photo upload info..."
+
+        WaitingForPhotoId _ ->
+            H.text "Waiting for photo upload confirmation..."
+
+        Completed _ ->
+            H.text "Photo upload completed"
+
+        Failure ->
+            H.text "Photo upload failed"
 
 
 newPhoto : State -> ( State, Cmd Msg )
