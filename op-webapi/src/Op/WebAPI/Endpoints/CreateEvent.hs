@@ -3,9 +3,11 @@
 module Op.WebAPI.Endpoints.CreateEvent (createEvent) where
 
 import           Control.Monad.Except             (MonadError (..))
+import qualified Data.Aeson                       as Aeson
 import           Data.Coerce                      (coerce)
+import           Data.String.Interpolate          (i)
 import           RIO                              hiding (to)
-import           Servant                          (ServerError (..))
+import           Servant                          (ServerError (..), err500)
 
 import qualified Op.Db                            as Db
 import           Op.WebAPI.Types.CreateEventInput (CreateEventInput (..))
@@ -18,46 +20,31 @@ createEvent ::
   , MonadIO m
   , MonadReader env m
   , Db.HasDbConnection env
+  , HasLogFunc env
   )
   => CreateEventInput
   -> m Event
 createEvent input = do
-  let tupleToEvent (id, title, description, startTime, endTime, location, googleMapsLink, createdAt, modifiedAt) = Event{attendees = [], comments = [], ..}
-
-  fmap tupleToEvent do
+  json <- do
     Db.queryDbOr Db.printAndThrow500 do
       let CreateEventInput{..} = input
       Db.statement
-        (title, description, startTime, endTime, location, googleMapsLink, coerce password)
+        (title, description, startTime, endTime, location, photoId, coerce password)
         [Db.singletonStatement|
-          with
-            event as (
-              insert into events (password_salt, password_hash)
-                select salt, digest($7::text || salt, 'sha256')
-                from (
-                  select md5(random()::text || clock_timestamp()::text) as salt
-                ) t
-              returning *
-            ),
+          select create_event(
+            title_        => $1::text,
+            description_  => $2::text,
+            time_start_   => $3::timestamptz,
+            time_end_     => $4::timestamptz?,
+            location_     => $5::text,
+            photo_id_     => $6::uuid?,
+            password_     => $7::text
+          )::jsonb
+        |]
 
-            inserted_event_data as (
-              insert into event_data (id, title, description, time_start, time_end, location, location_google_maps_link)
-              select event.id, $1::text, $2::text, $3::timestamptz, $4::timestamptz?, $5::text, $6::text?
-              from event
-              returning *
-            )
-
-            select
-              inserted_event_data.id::uuid,
-              inserted_event_data.title::text,
-              inserted_event_data.description::text,
-              inserted_event_data.time_start::timestamptz,
-              inserted_event_data.time_end::timestamptz?,
-              inserted_event_data.location::text,
-              inserted_event_data.location_google_maps_link::text?,
-              event.created_at::timestamptz,
-              inserted_event_data.created_at::timestamptz
-            from inserted_event_data
-            cross join event
-          |]
+  case Aeson.fromJSON json of
+    Aeson.Success event -> pure event
+    Aeson.Error err -> do
+      logError [i|Could not parse event json after event creation: #{Aeson.encode json}\n\nerr: #{err}|]
+      throwError err500 { errBody = "Something went wrong" }
 
