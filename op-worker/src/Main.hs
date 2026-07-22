@@ -26,6 +26,7 @@ import           UnliftIO.Concurrent                        (forkIO)
 import qualified Op.Worker.Job                              as Job
 import qualified Op.Worker.JobLogistics                     as JobLogistics
 import qualified Op.Worker.Jobs.Debug                       as DebugJob
+import qualified Op.Worker.Jobs.PollS3FileUpload            as PollS3FileUpload
 import qualified Op.Worker.Jobs.ProcessAwsSnsWebhookMessage as ProcessAwsSnsWebhookMessage
 import qualified Op.Worker.Jobs.SendEmail                   as SendEmail
 
@@ -372,6 +373,7 @@ instance Db.HasDbConnection WorkerEnv where
 data WorkerJob
   = SendEmail SendEmail.SendEmailJob
   | ProcessAwsSnsWebhookMessage ProcessAwsSnsWebhookMessage.ProcessAwsSnsWebhookMessageJob
+  | PollS3FileUpload PollS3FileUpload.PollS3FileUploadJob
   | Debug DebugJob.DebugJob
   deriving (Generic, Show)
 
@@ -379,14 +381,16 @@ instance Job.JobDefinition WorkerEnv WorkerJob where
   processJob wj =
     case wj of
       SendEmail sendEmail                                     -> Job.processJob sendEmail
-      Debug debugJob                                          -> Job.processJob debugJob
       ProcessAwsSnsWebhookMessage processAwsSnsWebhookMessage -> Job.processJob processAwsSnsWebhookMessage
+      PollS3FileUpload pollS3FileUpload                       -> Job.processJob pollS3FileUpload
+      Debug debugJob                                          -> Job.processJob debugJob
 
   cleanUpJobAfterGivingUp wj =
     case wj of
       SendEmail sendEmail                                     -> Job.cleanUpJobAfterGivingUp sendEmail
-      Debug debugJob                                          -> Job.cleanUpJobAfterGivingUp debugJob
       ProcessAwsSnsWebhookMessage processAwsSnsWebhookMessage -> Job.cleanUpJobAfterGivingUp processAwsSnsWebhookMessage
+      PollS3FileUpload pollS3FileUpload                       -> Job.cleanUpJobAfterGivingUp pollS3FileUpload
+      Debug debugJob                                          -> Job.cleanUpJobAfterGivingUp debugJob
 
 instance Aeson.ToJSON WorkerJob where
   toJSON = Aeson.genericToJSON defaultOptions
@@ -406,6 +410,7 @@ workerJobName wj =
   case wj of
     SendEmail x                   -> tshow $ typeOf x
     ProcessAwsSnsWebhookMessage x -> tshow $ typeOf x
+    PollS3FileUpload x            -> tshow $ typeOf x
     Debug x                       -> tshow $ typeOf x
 
 

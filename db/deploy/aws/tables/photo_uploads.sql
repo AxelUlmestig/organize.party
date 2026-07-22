@@ -4,7 +4,7 @@ BEGIN;
 
   create table if not exists aws.photo_uploads (
     id uuid not null default uuidv7(),
-    photo_id uuid, -- TODO: add fk
+    photo_id uuid,
     state_machine_id bigint not null,
     file_name text not null,
     upload_url text not null,

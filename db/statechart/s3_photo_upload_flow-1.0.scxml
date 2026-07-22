@@ -6,6 +6,7 @@
   <state id="upload_url_ready" name="UPLOAD_URL_READY">
     <transition event="check_upload_progress" target="upload_url_ready"/>
     <transition event="upload_verified" target="upload_completed"/>
+    <transition event="poll_upload_status_again" target="upload_url_ready"/>
     <transition event="error" target="error"/>
 
     <onentry>

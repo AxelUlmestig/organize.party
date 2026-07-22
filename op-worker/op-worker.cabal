@@ -17,10 +17,12 @@ executable op-worker
     other-modules:    Op.Worker.Job
                     , Op.Worker.JobLogistics
                     , Op.Worker.Jobs.Debug
+                    , Op.Worker.Jobs.PollS3FileUpload
                     , Op.Worker.Jobs.ProcessAwsSnsWebhookMessage
                     , Op.Worker.Jobs.SendEmail
     build-depends:    base ^>=4.19.2.0
                     , aeson
+                    , aeson-qq
                     , bytestring
                     , every
                     , hasql
