@@ -20,15 +20,25 @@ import Json.Decode as D
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Process
+import SHA256
 import Task
 import Url exposing (Url)
 
 
+type alias PhotoDetails =
+    { file : File
+    , url : String
+    , sha256Hash : String
+    }
+
+
 type State
-    = Initialized { photo : Maybe File, photoUrl : Maybe String }
-    | WaitingForUploadUrl { photo : File, photoUploadId : String }
-    | WaitingForPhotoId { photo : File, photoUploadId : String }
-    | Completed { photo : File, photoId : String }
+    = NoFileSelected
+    | PreparingFile { photo : Maybe File, photoUrl : Maybe String }
+    | FileReady { photo : PhotoDetails }
+    | WaitingForUploadUrl { photo : PhotoDetails, photoUploadId : String }
+    | WaitingForPhotoId { photo : PhotoDetails, photoUploadId : String }
+    | Completed { photo : PhotoDetails, photoId : String }
     | Failure
 
 
@@ -43,6 +53,7 @@ type InternalMsg
       -}
       FileSelected File
     | PhotoUrlGenerated String
+    | PhotoHashGenerated String
     | PhotoUploadInitiated File (Result Http.Error PhotoUpload)
     | PollForUploadUrl
     | PhotoUploaded (Result Http.Error ())
@@ -68,7 +79,7 @@ type alias PhotoUpload =
 
 init : ( State, Cmd Msg )
 init =
-    ( Initialized { photo = Nothing, photoUrl = Nothing }, Cmd.none )
+    ( NoFileSelected, Cmd.none )
 
 
 photoUploadDecoder =
@@ -91,43 +102,68 @@ update msg state =
         -}
         FileSelected file ->
             -- TODO: verify file size
-            ( Initialized { photo = Just file, photoUrl = Nothing }
+            ( PreparingFile { photo = Just file, photoUrl = Nothing }
             , Task.perform (InternalMsg << PhotoUrlGenerated) (File.toUrl file)
             )
 
         PhotoUrlGenerated photoUrl ->
             case state of
-                Initialized { photo } ->
-                    ( Initialized { photo = photo, photoUrl = Just photoUrl }
-                    , Cmd.none
-                    )
+                PreparingFile { photo } ->
+                    case photo of
+                        Just file ->
+                            ( PreparingFile { photo = Just file, photoUrl = Just photoUrl }
+                            , Task.perform (InternalMsg << PhotoHashGenerated) (Task.map (SHA256.toBase64 << SHA256.fromBytes) (File.toBytes file))
+                            )
+
+                        Nothing ->
+                            ( state, Cmd.none )
+
+                _ ->
+                    ( state, Cmd.none )
+
+        PhotoHashGenerated sha256Hash ->
+            case state of
+                PreparingFile { photo, photoUrl } ->
+                    case ( photo, photoUrl ) of
+                        ( Just file, Just url ) ->
+                            ( FileReady { photo = { file = file, url = url, sha256Hash = sha256Hash } }
+                            , Cmd.none
+                            )
+
+                        _ ->
+                            ( state, Cmd.none )
 
                 _ ->
                     ( state, Cmd.none )
 
         PhotoUploadInitiated file result ->
-            case result of
-                Ok { id, uploadUrl } ->
-                    let
-                        newState =
-                            WaitingForPhotoId { photoUploadId = id, photo = file }
+            case state of
+                FileReady { photo } ->
+                    case result of
+                        Ok { id, uploadUrl } ->
+                            let
+                                newState =
+                                    WaitingForPhotoId { photoUploadId = id, photo = photo }
 
-                        cmd =
-                            Http.request
-                                { method = "PUT"
-                                , url = Url.toString uploadUrl
-                                , body = Http.fileBody file
-                                , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
-                                , headers = [ Http.header "Content-Type" (File.mime file) ]
-                                , timeout = Nothing
-                                , tracker = Nothing
-                                }
-                    in
-                    ( newState, cmd )
+                                cmd =
+                                    Http.request
+                                        { method = "PUT"
+                                        , url = Url.toString uploadUrl
+                                        , body = Http.fileBody file
+                                        , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
+                                        , headers = [ Http.header "Content-Type" (File.mime file) ]
+                                        , timeout = Nothing
+                                        , tracker = Nothing
+                                        }
+                            in
+                            ( newState, cmd )
 
-                -- TODO: better error handling
-                Err err ->
-                    ( Failure, Cmd.none )
+                        -- TODO: better error handling
+                        Err err ->
+                            ( Failure, Cmd.none )
+
+                _ ->
+                    ( state, Cmd.none )
 
         PollForUploadUrl ->
             case state of
@@ -136,7 +172,7 @@ update msg state =
                         cmd =
                             Http.get
                                 { url = "/api/v1/photo-upload/" ++ photoUploadId
-                                , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo) photoUploadDecoder
+                                , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo.file) photoUploadDecoder
                                 }
                     in
                     ( state, cmd )
@@ -209,8 +245,14 @@ update msg state =
 view : State -> Html a
 view state =
     case state of
-        Initialized _ ->
+        NoFileSelected ->
             H.text "Waiting for input"
+
+        PreparingFile _ ->
+            H.text "Preparing file"
+
+        FileReady _ ->
+            H.text "File ready for upload"
 
         WaitingForUploadUrl _ ->
             H.text "Fetching photo upload info..."
@@ -235,8 +277,8 @@ newPhoto state =
 getPhotoUrl : State -> Maybe String
 getPhotoUrl state =
     case state of
-        Initialized { photoUrl } ->
-            photoUrl
+        FileReady { photo } ->
+            Just photo.url
 
         _ ->
             Nothing
@@ -244,31 +286,31 @@ getPhotoUrl state =
 
 clear : State -> ( State, Cmd Msg )
 clear _ =
-    ( Initialized { photo = Nothing, photoUrl = Nothing }, Cmd.none )
+    ( NoFileSelected, Cmd.none )
 
 
 submitPhoto : State -> ( State, Cmd Msg )
 submitPhoto state =
     case state of
-        Initialized initState ->
-            case initState.photo of
-                Nothing ->
-                    -- ( state, Cmd.none )
-                    ( state, pureCmd (PhotoUploadDone Nothing) )
+        NoFileSelected ->
+            ( state, pureCmd (PhotoUploadDone Nothing) )
 
-                Just photo ->
-                    let
-                        body =
-                            Encode.object [ ( "fileName", Encode.string (File.name photo) ) ]
+        FileReady { photo } ->
+            let
+                body =
+                    Encode.object
+                        [ ( "fileName", Encode.string (File.name photo.file) )
+                        , ( "base64Sha256", Encode.string photo.sha256Hash )
+                        ]
 
-                        cmd =
-                            Http.post
-                                { url = "/api/v1/photo-upload"
-                                , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo) photoUploadDecoder
-                                , body = Http.jsonBody body
-                                }
-                    in
-                    ( state, cmd )
+                cmd =
+                    Http.post
+                        { url = "/api/v1/photo-upload"
+                        , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo.file) photoUploadDecoder
+                        , body = Http.jsonBody body
+                        }
+            in
+            ( state, cmd )
 
         _ ->
             ( state, Cmd.none )
