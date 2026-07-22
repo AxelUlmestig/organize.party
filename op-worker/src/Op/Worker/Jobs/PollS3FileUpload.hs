@@ -49,7 +49,9 @@ instance (Db.HasDbConnection env) => Job.JobDefinition env PollS3FileUploadJob w
           Nothing  -> Job.giveUpJob [i|Couldn't parse AWS S3 url when polling for upload status: #{textUrl}|]
 
       liftIO do
-        Req.runReq Req.defaultHttpConfig do
+        -- defaultHttpConfig throws an exception unless response status is 2XX. We don't want that
+        let httpConfig = Req.defaultHttpConfig{Req.httpConfigCheckResponse = \_ _ _ -> Nothing}
+        Req.runReq httpConfig do
           Req.req
             Req.HEAD
             s3Url
@@ -60,6 +62,7 @@ instance (Db.HasDbConnection env) => Job.JobDefinition env PollS3FileUploadJob w
     (fsmEvent, fsmEventBody) <- do
       case Req.responseStatusCode response of
         200 -> pure ("upload_verified", Just [aesonQQ|{"photoUrl": #{textUrl}}|])
+        403 -> pure ("poll_upload_status_again", Nothing)
         404 -> pure ("poll_upload_status_again", Nothing)
         _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
 
@@ -71,7 +74,7 @@ instance (Db.HasDbConnection env) => Job.JobDefinition env PollS3FileUploadJob w
             shard => 1,
             machine => state_machine_id,
             event => $2::text,
-            data => $3::jsonb?
+            data => coalesce($3::jsonb?, '{}'::jsonb)
           )::text?
           from aws.photo_uploads
           where id = $1::uuid

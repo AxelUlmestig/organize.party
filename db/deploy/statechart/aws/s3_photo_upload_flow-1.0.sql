@@ -15,6 +15,7 @@ insert into fsm.state (statechart_id, id, name, parent_id, is_initial, is_final,
 insert into fsm.transition (statechart_id, event, source_state, target_state) values
 (chart, 'check_upload_progress', 'upload_url_ready', 'upload_url_ready'),
 (chart, 'upload_verified', 'upload_url_ready', 'upload_completed'),
+(chart, 'poll_upload_status_again', 'upload_url_ready', 'upload_url_ready'),
 (chart, 'error', 'upload_url_ready', 'error');
 end
 $$;
