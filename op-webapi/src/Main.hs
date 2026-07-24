@@ -83,8 +83,8 @@ type UnsubscribeApi = "api" :> "v1" :> "unsubscribe" :> Capture "unsubscribe_id"
 
 type AwsSnsWebhookApi = "api" :> "v1" :> "incoming-webhook" :> "aws-sns" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
 
-type InitPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> ReqBody '[JSON] InitPhotoUploadInput :> Post '[JSON] InitPhotoUploadResult
-type GetPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> Capture "photo_upload_id" UUID :> Get '[JSON] InitPhotoUploadResult
+type InitPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> ReqBody '[JSON] InitPhotoUploadInput :> Post '[JSON] (InitPhotoUploadResult Maybe)
+type GetPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> Capture "photo_upload_id" UUID :> Get '[JSON] (InitPhotoUploadResult Identity)
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml

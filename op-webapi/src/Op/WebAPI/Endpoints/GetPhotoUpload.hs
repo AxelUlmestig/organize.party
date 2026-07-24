@@ -5,6 +5,7 @@ module Op.WebAPI.Endpoints.GetPhotoUpload (getPhotoUpload) where
 import           Control.Monad.Catch                 (MonadCatch)
 import           Control.Monad.Except                (MonadError (throwError))
 import qualified Data.Aeson                          as Aeson
+import           Data.Functor.Identity               (Identity)
 import           Data.String.Interpolate             (i)
 import qualified Data.Text                           as Text
 import           Data.Text.Encoding                  (decodeUtf8)
@@ -26,7 +27,7 @@ getPhotoUpload ::
   , HasLogFunc env
   , MonadCatch m
   ) => UUID
-  -> m InitPhotoUploadResult
+  -> m (InitPhotoUploadResult Identity)
 getPhotoUpload uploadId = do
     mUploadStatus <- do
       Db.queryDbOr handleErr do
@@ -43,7 +44,10 @@ getPhotoUpload uploadId = do
           |]
 
     case mUploadStatus of
-      Just (id, uploadUrl, materializedStatus, photoId) -> pure InitPhotoUploadResult{..}
+      Just (id', uploadUrl', materializedStatus, photoId) -> do
+        let id = pure id'
+        let uploadUrl = pure uploadUrl'
+        pure InitPhotoUploadResult{..}
       Nothing -> do throwError err404 { errBody = [i|Photo upload with id #{uploadId} couldn't be found|] }
   where
     handleErr err = do

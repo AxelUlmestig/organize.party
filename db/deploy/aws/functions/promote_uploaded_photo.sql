@@ -15,8 +15,8 @@ BEGIN;
 
             with
               inserted_photos as (
-                insert into photos (id, name, photo_url)
-                select id, file_name, event_payload_->>'photoUrl'
+                insert into photos (id, name, file_base64_sha256, photo_url)
+                select id, file_name, file_base64_sha256, event_payload_->>'photoUrl'
                 from aws.photo_uploads
                 where photo_uploads.state_machine_id = state_machine_id_
                 returning *

@@ -94,3 +94,4 @@ migrations/add-event_data-photo_id-column 2026-07-13T20:13:26Z Axel <axel@axel-t
 functions/get_event_json [functions/get_event_json@photo-feature] 2026-07-13T19:02:26Z Axel <axel@axel-thinkpad> # add photo info
 tables/event_data [tables/event_data@photo-feature] 2026-07-13T20:12:16Z Axel <axel@axel-thinkpad> # add photo_id column
 functions/create_event 2026-07-13T20:49:19Z Axel <axel@axel-thinkpad> # create event function
+aws/functions/init_photo_upload 2026-07-23T14:46:12Z Axel <axel@axel-thinkpad> # init photo upload

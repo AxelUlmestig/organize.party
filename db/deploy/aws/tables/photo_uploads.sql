@@ -8,6 +8,8 @@ BEGIN;
     state_machine_id bigint not null,
     file_name text not null,
     upload_url text not null,
+    upload_url_expires_at timestamptz not null,
+    file_base64_sha256 text not null,
     materialized_status text not null default 'queued',
 
     primary key (id),
@@ -21,5 +23,8 @@ BEGIN;
 
   create unique index if not exists idx_aws_photo_uploads_photo_id
     on aws.photo_uploads (photo_id);
+
+  create unique index if not exists idx_aws_photo_file_base64_sha256
+    on aws.photo_uploads (file_base64_sha256);
 
 COMMIT;
