@@ -48,28 +48,33 @@ type Msg
 
 
 type InternalMsg
-    = {- FileRequested
-         |
-      -}
-      FileSelected File
+    = FileSelected File
     | PhotoUrlGenerated String
     | PhotoHashGenerated String
-    | PhotoUploadInitiated File (Result Http.Error PhotoUpload)
+    | PhotoUploadInitiated (Result Http.Error InitPhotoUploadResponse)
     | PollForUploadUrl
     | PhotoUploaded (Result Http.Error ())
     | PollForPhotoId
-    | PolledForPhotoId (Result Http.Error PhotoUpload)
+    | PolledForPhotoId (Result Http.Error PhotoUploadStatus)
 
 
+type alias InitPhotoUploadResponse =
+    { id : Maybe String
+    , uploadUrl : Maybe Url
+    , photoId : Maybe String
+    , materializedStatus : String
+    }
 
-{-
-   type OutMsg
-       = PhotoUploadDone (Maybe String)
-       | UploadFailed String
--}
+
+initPhotoUploadResponseDecoder =
+    D.succeed InitPhotoUploadResponse
+        |> required "id" (D.nullable D.string)
+        |> required "uploadUrl" (D.nullable urlDecoder)
+        |> required "photoId" (D.nullable D.string)
+        |> required "materializedStatus" D.string
 
 
-type alias PhotoUpload =
+type alias PhotoUploadStatus =
     { id : String
     , uploadUrl : Url
     , photoId : Maybe String
@@ -77,17 +82,17 @@ type alias PhotoUpload =
     }
 
 
-init : ( State, Cmd Msg )
-init =
-    ( NoFileSelected, Cmd.none )
-
-
-photoUploadDecoder =
-    D.succeed PhotoUpload
+photoUploadStatusDecoder =
+    D.succeed PhotoUploadStatus
         |> required "id" D.string
         |> required "uploadUrl" urlDecoder
         |> required "photoId" (D.nullable D.string)
         |> required "materializedStatus" D.string
+
+
+init : ( State, Cmd Msg )
+init =
+    ( NoFileSelected, Cmd.none )
 
 
 update : InternalMsg -> State -> ( State, Cmd Msg )
@@ -136,29 +141,43 @@ update msg state =
                 _ ->
                     ( state, Cmd.none )
 
-        PhotoUploadInitiated file result ->
+        PhotoUploadInitiated response ->
             case state of
                 FileReady { photo } ->
-                    case result of
-                        Ok { id, uploadUrl } ->
-                            let
-                                newState =
-                                    WaitingForPhotoId { photoUploadId = id, photo = photo }
+                    case response of
+                        Ok result ->
+                            -- { id, uploadUrl, materializedStatus, photoId } ->
+                            case ( result.photoId, result.id, result.uploadUrl ) of
+                                ( Just photoId, _, _ ) ->
+                                    let
+                                        newState =
+                                            Completed { photoId = photoId, photo = photo }
+                                    in
+                                    ( newState, pureCmd (PhotoUploadDone (Just photoId)) )
 
-                                cmd =
-                                    Http.request
-                                        { method = "PUT"
-                                        , url = Url.toString uploadUrl
-                                        , body = Http.fileBody file
-                                        , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
-                                        , headers = [ Http.header "Content-Type" (File.mime file) ]
-                                        , timeout = Nothing
-                                        , tracker = Nothing
-                                        }
-                            in
-                            ( newState, cmd )
+                                ( _, Just id, Just uploadUrl ) ->
+                                    let
+                                        newState =
+                                            WaitingForPhotoId { photoUploadId = id, photo = photo }
 
-                        -- TODO: better error handling
+                                        cmd =
+                                            Http.request
+                                                { method = "PUT"
+                                                , url = Url.toString uploadUrl
+                                                , body = Http.fileBody photo.file
+                                                , expect = Http.expectWhatever (InternalMsg << PhotoUploaded)
+                                                , headers = [ Http.header "Content-Type" (File.mime photo.file) ]
+                                                , timeout = Nothing
+                                                , tracker = Nothing
+                                                }
+                                    in
+                                    ( newState, cmd )
+
+                                -- TODO: better error handling
+                                _ ->
+                                    ( Failure, Cmd.none )
+
+                        -- TODO: Handle 409 case
                         Err err ->
                             ( Failure, Cmd.none )
 
@@ -172,7 +191,7 @@ update msg state =
                         cmd =
                             Http.get
                                 { url = "/api/v1/photo-upload/" ++ photoUploadId
-                                , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo.file) photoUploadDecoder
+                                , expect = Http.expectJson (InternalMsg << PolledForPhotoId) photoUploadStatusDecoder
                                 }
                     in
                     ( state, cmd )
@@ -189,7 +208,7 @@ update msg state =
                                 cmd =
                                     Http.get
                                         { url = "/api/v1/photo-upload/" ++ photoState.photoUploadId
-                                        , expect = Http.expectJson (InternalMsg << PolledForPhotoId) photoUploadDecoder
+                                        , expect = Http.expectJson (InternalMsg << PolledForPhotoId) photoUploadStatusDecoder
                                         }
                             in
                             ( state, cmd )
@@ -233,7 +252,7 @@ update msg state =
                         cmd =
                             Http.get
                                 { url = "/api/v1/photo-upload/" ++ photoUploadId
-                                , expect = Http.expectJson (InternalMsg << PolledForPhotoId) photoUploadDecoder
+                                , expect = Http.expectJson (InternalMsg << PolledForPhotoId) photoUploadStatusDecoder
                                 }
                     in
                     ( state, cmd )
@@ -306,7 +325,7 @@ submitPhoto state =
                 cmd =
                     Http.post
                         { url = "/api/v1/photo-upload"
-                        , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated photo.file) photoUploadDecoder
+                        , expect = Http.expectJson (InternalMsg << PhotoUploadInitiated) initPhotoUploadResponseDecoder
                         , body = Http.jsonBody body
                         }
             in
