@@ -10,7 +10,7 @@ BEGIN;
       output_ jsonb;
       attendees_ jsonb;
       comments_ jsonb;
-      photo_ jsonb := '{}'::jsonb;
+      photo_ jsonb;
     begin
       -- Get event base info
       select
@@ -88,15 +88,11 @@ BEGIN;
 
       -- Get photo
       select
-        coalesce(
-          jsonb_build_object(
-            'id', photos.id,
-            'url', photos.photo_url,
-            'name', photos.name
-          ),
-          '{}'::jsonb
-        )
-      into photo_
+        jsonb_build_object(
+          'id', photos.id,
+          'url', photos.photo_url,
+          'name', photos.name
+        )      into photo_
       from event_data
       join photos
         on photos.id = event_data.photo_id
@@ -104,7 +100,7 @@ BEGIN;
         event_data.id = event_id_
         and event_data.superseded_at is null;
 
-      output_ := jsonb_set(output_, '{photo}', photo_);
+      output_ := jsonb_set(output_, '{photo}', coalesce(photo_, 'null'));
 
       return output_;
     end;

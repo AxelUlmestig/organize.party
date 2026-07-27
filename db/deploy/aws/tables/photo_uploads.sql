@@ -24,7 +24,7 @@ BEGIN;
   create unique index if not exists idx_aws_photo_uploads_photo_id
     on aws.photo_uploads (photo_id);
 
-  create unique index if not exists idx_aws_photo_file_base64_sha256
+  create index if not exists idx_aws_photo_file_base64_sha256
     on aws.photo_uploads (file_base64_sha256);
 
 COMMIT;

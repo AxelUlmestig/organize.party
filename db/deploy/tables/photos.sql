@@ -3,7 +3,7 @@
 BEGIN;
 
   create table if not exists photos (
-    id uuid not null,
+    id uuid not null default uuidv7(),
     uploaded_at timestamptz not null default now(),
     photo_url text not null,
     name text not null,
