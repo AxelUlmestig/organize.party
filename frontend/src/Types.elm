@@ -51,6 +51,7 @@ type alias Event =
 type alias Photo =
     { id : String
     , url : Url
+    , name : String
     }
 
 
@@ -141,6 +142,7 @@ eventDecoder =
             D.succeed Photo
                 |> required "id" D.string
                 |> required "url" urlDecoder
+                |> required "name" D.string
     in
     D.succeed Event
         |> required "id" D.string

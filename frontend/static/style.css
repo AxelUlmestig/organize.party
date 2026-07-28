@@ -88,6 +88,15 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.event-photo-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.event-photo {
+
+}
+
 @media (max-width: 768px) {
   .section-separator, h5 {
     font-size: 1.5rem !important;
