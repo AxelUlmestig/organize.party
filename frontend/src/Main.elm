@@ -62,8 +62,9 @@ view state =
         , Icon.css
         , H.map NavbarMsg (Navbar.view state.navbarState)
         , H.div
-            [ A.class "container"
-            , A.style "max-width" "700px"
+            [ A.class "page-container"
+            -- [ A.class "container"
+            -- , A.style "max-width" "700px"
             ]
             [ case state.state of
                 Loading ->

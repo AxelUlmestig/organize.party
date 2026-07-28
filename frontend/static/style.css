@@ -1,14 +1,38 @@
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('fonts/PlusJakartaSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('fonts/PlusJakartaSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+body {
+  background-color: #f5fbee !important;
+  color: #3f4a3b;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  /*
+  background-color: #fbfafa !important;
+  color: #1c2c3b !important;
+  */
+}
+
+.page-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
 .padded-input {
   padding: 5px;
 }
 
 .clickable {
   cursor: pointer;
-}
-
-body {
-  background-color: #fbfafa !important;
-  color: #1c2c3b !important;
 }
 
 .modal-background {
@@ -80,6 +104,7 @@ body {
   max-width: 50px;
 }
 
+/*
 .event-title {
   font-size: 2rem;
   font-weight: bold;
@@ -87,6 +112,7 @@ body {
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
 }
+*/
 
 @media (max-width: 768px) {
   .section-separator, h5 {
