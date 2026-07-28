@@ -33,7 +33,7 @@ editEvent eventId CreateEventInput{..} = do
   hostUrl <- asks getHostUrl
   Db.queryDbOr handleError do
     Db.statement
-      (hostUrl, eventId, title, description, startTime, endTime, location, googleMapsLink, coerce password)
+      (hostUrl, eventId, title, description, startTime, endTime, location, googleMapsLink, coerce password, photoId)
       [Db.resultlessStatement|
         select edit_event(
           host_url_ => $1::text,
@@ -44,7 +44,8 @@ editEvent eventId CreateEventInput{..} = do
           end_time_ => $6::timestamptz?,
           location_ => $7::text,
           google_maps_link_ => $8::text?,
-          password_ => $9::text
+          password_ => $9::text,
+          photo_id_ => $10::uuid?
         )::text
       |]
 

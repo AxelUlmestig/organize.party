@@ -62,7 +62,7 @@ init timezone time =
     -- ( NewEvent { timezone = timezone, picker = DP.init, input = emptyEventInput time, photo = Nothing }, Cmd.none )
     let
         ( eventEditorState, eventEditorMsg ) =
-            EventEditor.init timezone (emptyEventInput time)
+            EventEditor.init timezone (emptyEventInput time) Nothing
     in
     ( NewEvent eventEditorState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorMsg )
 

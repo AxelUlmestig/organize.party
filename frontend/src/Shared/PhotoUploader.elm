@@ -22,6 +22,7 @@ import Json.Encode as Encode
 import Process
 import SHA256
 import Task
+import Types
 import Url exposing (Url)
 
 
@@ -34,6 +35,7 @@ type alias PhotoDetails =
 
 type State
     = NoFileSelected
+    | ExistingPhoto Types.Photo
     | PreparingFile { photo : Maybe File, photoUrl : Maybe String }
     | FileReady { photo : PhotoDetails }
     | WaitingForUploadUrl { photo : PhotoDetails, photoUploadId : String }
@@ -90,9 +92,14 @@ photoUploadStatusDecoder =
         |> required "materializedStatus" D.string
 
 
-init : ( State, Cmd Msg )
-init =
-    ( NoFileSelected, Cmd.none )
+init : Maybe Types.Photo -> ( State, Cmd Msg )
+init mPhoto =
+    case mPhoto of
+        Nothing ->
+            ( NoFileSelected, Cmd.none )
+
+        Just photo ->
+            ( ExistingPhoto photo, Cmd.none )
 
 
 update : InternalMsg -> State -> ( State, Cmd Msg )
@@ -267,6 +274,9 @@ view state =
         NoFileSelected ->
             H.text "Waiting for input"
 
+        ExistingPhoto _ ->
+            H.text "File ready for upload"
+
         PreparingFile _ ->
             H.text "Preparing file"
 
@@ -299,6 +309,9 @@ getPhotoUrl state =
         FileReady { photo } ->
             Just photo.url
 
+        ExistingPhoto photo ->
+            Just (Url.toString photo.url)
+
         _ ->
             Nothing
 
@@ -313,6 +326,9 @@ submitPhoto state =
     case state of
         NoFileSelected ->
             ( state, pureCmd (PhotoUploadDone Nothing) )
+
+        ExistingPhoto photo ->
+            ( state, pureCmd (PhotoUploadDone (Just photo.id)) )
 
         FileReady { photo } ->
             let

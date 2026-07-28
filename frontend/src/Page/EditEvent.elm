@@ -42,6 +42,7 @@ import Util exposing (viewEventDate, viewEventTime)
 type State
     = Loading
     | EditEvent Event (Maybe StateModal) EventEditor.State
+    | PreparingEventInput Event EventEditor.State
     | SubmittedEdit Event EventEditor.State
     | Failure
 
@@ -59,7 +60,7 @@ type Msg
 type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditResponse (Result Http.Error Event)
-    | SubmitUpdate EventInput
+    | SubmitUpdate EventEditor.State -- EventInput
     | CloseModal
     | EventEditorMsg EventEditor.Msg
 
@@ -72,13 +73,14 @@ type alias EditEventInput =
     , endTime : Maybe Time.Posix
     , location : String
     , password : String
+    , photoId : Maybe String
 
     -- , photoId : Maybe String
     }
 
 
 encodeEditEventInput : EditEventInput -> Value
-encodeEditEventInput { title, description, location, startTime, endTime, password } =
+encodeEditEventInput { title, description, location, startTime, endTime, password, photoId } =
     Encode.object
         [ ( "title", Encode.string title )
         , ( "description", Encode.string description )
@@ -86,6 +88,7 @@ encodeEditEventInput { title, description, location, startTime, endTime, passwor
         , ( "startTime", Iso8601.encode startTime )
         , ( "endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime )
         , ( "password", Encode.string password )
+        , ( "photoId", Maybe.withDefault Encode.null <| Maybe.map Encode.string photoId )
         ]
 
 
@@ -100,6 +103,11 @@ view pageState =
         Loading ->
             H.div [ A.class "center" ]
                 [ H.text "Loading..."
+                ]
+
+        PreparingEventInput _ eventEditorState ->
+            H.div [ A.class "center" ]
+                [ EventEditor.viewPhotoUploadStatus eventEditorState
                 ]
 
         SubmittedEdit _ _ ->
@@ -135,7 +143,7 @@ view pageState =
                 , H.map (InternalMsg << EventEditorMsg) (EventEditor.view copy eventEditorState)
                 , H.div [ A.class "button-wrapper" ]
                     [ H.button [ A.class "submit-button", onClick (EditCancelled event.id) ] [ H.text "Cancel" ]
-                    , H.button [ A.class "submit-button", onClick (InternalMsg (SubmitUpdate (EventEditor.getInput eventEditorState))) ] [ H.text "Submit" ]
+                    , H.button [ A.class "submit-button", onClick (InternalMsg (SubmitUpdate eventEditorState)) ] [ H.text "Submit" ]
                     ]
                 , viewAttendees event.attendees
                 , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
@@ -161,14 +169,16 @@ update msg pageState =
                             , endTime = Nothing
                             , location = event.location
                             , password = ""
-                            , photoId =
-                                case event.photo of
-                                    Just p ->
-                                        Just p.id
+                            , photoId = Nothing
 
-                                    Nothing ->
-                                        Nothing
+                            {-
+                               case event.photo of
+                                   Just p ->
+                                       Just p.id
 
+                                   Nothing ->
+                                       Nothing
+                            -}
                             {-
                                , eventPhotoUrl = event.eventPhotoUrl
                             -}
@@ -178,7 +188,7 @@ update msg pageState =
                         ( newState, newMsg ) =
                             let
                                 ( eventEditorState, eventEditorMsg ) =
-                                    EventEditor.init pageState.timeZone editEventInput
+                                    EventEditor.init pageState.timeZone editEventInput event.photo
                             in
                             ( EditEvent event Nothing eventEditorState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorMsg )
                     in
@@ -241,13 +251,20 @@ update msg pageState =
                             in
                             ( format (EditEvent event modal newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
 
+                        PreparingEventInput event eventEditorState ->
+                            let
+                                ( newEventEditorState, newEventEditorMsg ) =
+                                    EventEditor.update internalMsg eventEditorState
+                            in
+                            ( format (PreparingEventInput event newEventEditorState), Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+
                         state ->
                             ( format pageState.state, Cmd.none )
 
                 EventEditor.EventInputReady eventInput ->
-                    -- TODO: include photoId when updating events
                     case pageState.state of
-                        EditEvent event _ eventEditorState ->
+                        PreparingEventInput event eventEditorState ->
+                            -- EditEvent event _ eventEditorState ->
                             let
                                 editEventInput =
                                     { id = event.id
@@ -257,6 +274,7 @@ update msg pageState =
                                     , endTime = eventInput.endTime
                                     , location = eventInput.location
                                     , password = eventInput.password
+                                    , photoId = eventInput.photoId -- Maybe.map (\{ id } -> id) eventInput.photo
                                     }
                             in
                             ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
@@ -264,24 +282,41 @@ update msg pageState =
                         otherState ->
                             ( format otherState, Cmd.none )
 
-        SubmitUpdate eventInput ->
+        SubmitUpdate eventEditorState ->
             case pageState.state of
-                EditEvent event _ eventEditorState ->
+                EditEvent event _ _ ->
                     let
-                        editEventInput =
-                            { id = event.id
-                            , title = eventInput.title
-                            , description = eventInput.description
-                            , startTime = eventInput.startTime
-                            , endTime = eventInput.endTime
-                            , location = eventInput.location
-                            , password = eventInput.password
-                            }
+                        ( newEventEditorState, eventEditorCmd ) =
+                            EventEditor.prepareInput eventEditorState
                     in
-                    ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
+                    ( format (PreparingEventInput event eventEditorState), Cmd.map (InternalMsg << EventEditorMsg) eventEditorCmd )
 
                 otherState ->
                     ( format otherState, Cmd.none )
+
+
+
+{-
+   SubmitUpdate eventInput ->
+       case pageState.state of
+           EditEvent event _ eventEditorState ->
+               let
+                   editEventInput =
+                       { id = event.id
+                       , title = eventInput.title
+                       , description = eventInput.description
+                       , startTime = eventInput.startTime
+                       , endTime = eventInput.endTime
+                       , location = eventInput.location
+                       , password = eventInput.password
+                       , photoId = eventInput.photoId
+                       }
+               in
+               ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
+
+           otherState ->
+               ( format otherState, Cmd.none )
+-}
 
 
 init : String -> ( State, Cmd Msg )

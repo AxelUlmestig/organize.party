@@ -1,7 +1,6 @@
 module Shared.EventEditor exposing
     ( Msg(..)
     , State
-    , getInput
     , handleSubscription
     , init
     , prepareInput
@@ -29,7 +28,7 @@ import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Task
 import Time
-import Types exposing (EventInput, emptyEventInput)
+import Types exposing (EventInput, Photo, emptyEventInput)
 import Util exposing (viewEventDate, viewEventTime)
 
 
@@ -58,11 +57,11 @@ type InternalMsg
     | ClearPhotoButton
 
 
-init : Time.Zone -> EventInput -> ( State, Cmd Msg )
-init timezone eventInput =
+init : Time.Zone -> EventInput -> Maybe Photo -> ( State, Cmd Msg )
+init timezone eventInput photo =
     let
         ( photoState, photoMsg ) =
-            Photo.init
+            Photo.init photo
     in
     ( { timezone = timezone, picker = DP.init, input = eventInput, photoUploader = photoState }
     , Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg
@@ -252,11 +251,6 @@ pickerSettings timeZone picker input =
                     InternalMsg (UpdateEventInput dp { input | startTime = newStart })
     in
     DP.defaultSettings timeZone getValueFromPicker
-
-
-getInput : State -> EventInput
-getInput state =
-    state.input
 
 
 prepareInput : State -> ( State, Cmd Msg )

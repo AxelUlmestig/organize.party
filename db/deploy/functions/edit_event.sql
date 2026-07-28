@@ -11,7 +11,8 @@ BEGIN;
     end_time_ timestamptz,
     location_ text,
     google_maps_link_ text,
-    password_ text
+    password_ text,
+    photo_id_ uuid
   )
   returns void
   as
@@ -47,6 +48,7 @@ BEGIN;
           and time_end is not distinct from end_time_
           and location is not distinct from location_
           and location_google_maps_link is not distinct from google_maps_link_
+          and photo_id is not distinct from photo_id_
       ) into no_changes_;
 
       if no_changes_ then
@@ -67,7 +69,8 @@ BEGIN;
         time_start,
         time_end,
         location,
-        location_google_maps_link
+        location_google_maps_link,
+        photo_id
       )
       values (
         event_id_,
@@ -76,7 +79,8 @@ BEGIN;
         start_time_,
         end_time_,
         location_,
-        google_maps_link_
+        google_maps_link_,
+        photo_id_
       );
 
       -- send email notifying attendees of update
