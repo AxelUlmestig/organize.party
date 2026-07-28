@@ -7,6 +7,15 @@
   --gap-button: var(--space-1);
   --gap-section: var(--space-4);
   --padding-container: var(--space-4);
+
+  --primary-color: #346555;
+  --primary-color-light: #c1efb4;
+  --background-color: #f5fbee;
+  --text-color: #3f4a3b;
+  --accent-color: #9ed1bd;
+  --disabled-background-color: #bdc8bc;
+
+  --primary-input-field-background-color: #dee5d7;
 }
 
 .event-container {
@@ -56,17 +65,66 @@
   color: #555;
 }
 
-.attending-form {
-  margin-top: var(--gap-section);
-  margin-bottom: var(--gap-section);
-  box-shadow: 0px 0px 0.5rem gray;
-  padding: 2rem;
-  border-radius: 1rem;
-}
-
 .checkbox {
   margin-right: 0.5rem;
   border-radius: 0.5rem;
+}
+
+/* large submit button */
+.large-submit-button {
+  width: 100%;
+  padding: 1rem 1rem;
+  border-radius: 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  font-weight: 700;
+}
+
+.large-submit-button:not([disabled]):hover {
+  color: var(--primary-color-light);
+  /*
+  transition-property: color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0s;
+  */
+}
+
+.large-submit-button:not([disabled]) {
+  transition-property: background-color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0s;
+}
+
+.large-submit-button:disabled {
+  background-color: var(--disabled-background-color);
+  cursor: default;
+  transition-property: background-color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0s;
+}
+
+/* attending form */
+.attending-form {
+  margin-top: var(--gap-section);
+  margin-bottom: var(--gap-section);
+  /*box-shadow: 0px 0px 0.5rem gray;*/
+  padding: 2rem;
+  border-radius: 1rem;
+  background-color: white;
+}
+
+.attending-form-field {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.attending-form-field:focus {
+  border-color: #346555;
+  border: medium;
 }
 
 .attending-form-header {
@@ -79,17 +137,96 @@
 .attending-form-field-name {
   margin-top: 1rem;
   margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .attending-form-text-field {
   width: 100%;
   padding: 1rem;
   border: none;
-  background-color: #dee5d7;
+  background-color: var(--primary-input-field-background-color)/*#dee5d7*/;
   border-radius: 0.5rem;
 }
 
+/* guest list */
+.guest-list-card {
+  background-color: #f0f6e8;
+  margin-top: var(--gap-section);
+  margin-bottom: var(--gap-section);
+  /*box-shadow: 0px 0px 0.5rem gray;*/
+  padding: 2rem;
+  border-radius: 1rem;
+  color: black;
+}
+
+/* checkbox */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: sans-serif;
+  cursor: pointer;
+  /*
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  */
+}
+
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.custom-checkbox .checkmark {
+  position: relative;
+  display: inline-block;
+  width: 1.2rem;
+  height: 1.2rem;
+  background-color: white;
+  border: 1px solid #aaa;
+  border-radius: 0.5rem;
+  
+  /* Center the checkmark inside */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.custom-checkbox .checkmark::after {
+    content: "";
+    position: absolute;
+    display: none; /* hidden until checked */
+    
+    /* This creates the checkmark shape */
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.custom-checkbox input:checked ~ .checkmark::after {
+    display: block;
+}
+
+/* radio buttons */
 .radio-button-group {
   display: flex;
   flex-direction: row;
@@ -98,16 +235,20 @@
 
 .radio-button {
   flex: 1;
-  text-align: center;
-  background-color: #dee5d7;
-  border-radius: 1rem;
+  background-color: var(--primary-input-field-background-color) /*#dee5d7*/;
+  border-radius: 1.5rem;
   padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
 }
 
 .radio-button.selected {
   background-color: #c1efb4;
   border: solid;
-  border-width: thin;
+  border-width: medium;
+  border-color: #466e3f;
 }
 
 .hidden-radio-button {
@@ -117,21 +258,38 @@
     height: 0;
 }
 
+.attendee-flex-list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  /*
+  padding: 0;
+  margin: 0;
+  */
+  gap: 1rem;
+}
+
 .attendee-count-card {
   margin-top: var(--gap-section);
   margin-bottom: var(--gap-section);
 }
 
 .attendee-count-header {
-  font-size: 1.5rem;
+  /*font-size: 1.5rem;*/
   font-weight: 700;
   line-height: 1.2;
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-2);
+  color: var(--primary-color);
 }
 
 .attendee-name-wrapper {
   display: flex;
   flex-direction: row;
+  gap: 0.5rem;
+  background-color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 1.5rem;
+  width: 18rem;
 }
 
 .attendee-name {
@@ -139,6 +297,31 @@
   background-color: #f0f0f0;
   border-radius: 8px;
   */
+  /*
   padding: 0.5rem 1rem;
+  */
   max-width: fit-content;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendee-plus-one-bubble {
+  background-color: var(--primary-input-field-background-color);
+  border-radius: 1rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 66%;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* comments */
+.add-comment-card {
+  background-color: #f0f6e8;
+  margin-top: var(--gap-section);
+  margin-bottom: var(--gap-section);
+  padding: 2rem;
+  border-radius: 1rem;
+  color: black;
 }

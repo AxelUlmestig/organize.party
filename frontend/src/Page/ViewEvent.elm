@@ -130,7 +130,8 @@ disableUnlessValidInput { email, name } =
         mContains =
             Maybe.map (\regex -> Regex.contains regex email) mRegex
     in
-    A.disabled (mContains /= Just True || name == "")
+    {- A.disabled -}
+    mContains /= Just True || name == ""
 
 
 disableUnlessValidCommentInput { email, name, comment } =
@@ -315,10 +316,32 @@ view pageState =
                        ]
                 -}
                 , viewAttendees attendees
-                , H.h2 [ A.class "mb-3", A.class "comments-header" ] [ H.text "Comments" ]
+                , H.h2 [ A.class "comments-header" ] [ H.text "Discussion" ]
                 , addCommentView attendeeInput
                 , viewComments pageState.currentTime comments
                 ]
+
+
+checkbox : Bool -> String -> (Bool -> msg) -> Html msg
+checkbox checked description onUpdate =
+    H.label
+        [ A.class "custom-checkbox" ]
+        [ H.input [ A.type_ "checkbox", A.checked checked, onCheck onUpdate ] []
+        , H.span [ A.class "checkmark" ] []
+        , H.text description
+        ]
+
+
+largeSubmitButton : Bool -> String -> msg -> Html msg
+largeSubmitButton disable text msg =
+    H.button
+        [ A.attribute "data-testid" "view-event-submit-attendee"
+        , A.disabled disable
+        , onClick msg
+        , A.class "large-submit-button"
+        ]
+        [ H.text text
+        ]
 
 
 attendingForm : AttendeeInput -> Html ViewEventMsg
@@ -372,80 +395,104 @@ attendingForm attendeeInput =
     in
     H.div [ A.class "attending-form" ]
         [ H.h2 [ A.class "attending-form-header" ] [ H.text "Reserve your spot" ]
-        , H.div [ A.class "attending-form-field-name" ] [ H.text "Name" ]
-        , H.div
-            []
-            [ H.input
-                [ A.attribute "data-testid" "view-event-attendee-name"
-                , A.class "attending-form-text-field"
-                , A.attribute "autocomplete" "name"
-                , A.value attendeeInput.name
-                , onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn }))
-                , A.placeholder "e.g. Cave Johnson"
-                ]
+        , H.div [ A.class "attending-form-field" ]
+            [ H.div [ A.class "attending-form-field-name" ] [ H.text "Name" ]
+            , H.div
                 []
-            ]
-        , H.div [ A.class "attending-form-field-name" ] [ H.text "Email Address" ]
-        , H.div
-            []
-            [ H.input
-                [ A.attribute "data-testid" "view-event-attendee-email"
-                , A.class "attending-form-text-field"
-                , A.attribute "type" "email"
-                , A.attribute "autocomplete" "email"
-                , A.value attendeeInput.email
-                , onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e }))
-                , A.placeholder "e.g. cave.johnson@aperture.com"
+                [ H.input
+                    [ A.attribute "data-testid" "view-event-attendee-name"
+                    , A.class "attending-form-text-field"
+                    , A.attribute "autocomplete" "name"
+                    , A.value attendeeInput.name
+                    , onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn }))
+                    , A.placeholder "e.g. Cave Johnson"
+                    ]
+                    []
                 ]
-                []
             ]
-        , H.div [ A.class "attending-form-field-name" ] [ H.text "Are you coming?" ]
-        , radioButtons
-            [ Coming, MaybeComing, NotComing ]
-            (\status -> InternalMsg <| UpdateAttendeeInput { attendeeInput | status = status })
-            attendeeStatusToString
-            attendeeInput.status
+        , H.div [ A.class "attending-form-field" ]
+            [ H.div [ A.class "attending-form-field-name" ] [ H.text "Email Address" ]
+            , H.div
+                []
+                [ H.input
+                    [ A.attribute "data-testid" "view-event-attendee-email"
+                    , A.class "attending-form-text-field"
+                    , A.attribute "type" "email"
+                    , A.attribute "autocomplete" "email"
+                    , A.value attendeeInput.email
+                    , onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e }))
+                    , A.placeholder "e.g. cave.johnson@aperture.com"
+                    ]
+                    []
+                ]
+            ]
+        , H.div [ A.class "attending-form-field" ]
+            [ H.div [ A.class "attending-form-field-name" ] [ H.text "Are you coming?" ]
+            , radioButtons
+                [ Coming, MaybeComing, NotComing ]
+                (\status -> InternalMsg <| UpdateAttendeeInput { attendeeInput | status = status })
+                attendeeStatusToString
+                attendeeInput.status
+            ]
         , H.hr [] []
-        , H.div
-            [ A.style "margin-top" "0.5rem" ]
-            [ H.input
-                [ A.attribute "data-testid" "view-event-attendee-plus-one"
-                , A.type_ "checkbox"
-                , A.class "checkbox"
-                , A.checked attendeeInput.plusOne
-                , onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po }))
+        , H.div [ A.class "attending-form-field", A.class "checkbox-group" ]
+            [ H.div []
+                [ checkbox
+                    attendeeInput.plusOne
+                    "I am bringing a plus one"
+                    (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po }))
                 ]
-                []
-            , H.text "I am bringing a plus one"
-            ]
-        , H.div
-            [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-            [ H.input
-                [ A.type_ "checkbox"
-                , A.class "checkbox"
-                , A.checked attendeeInput.getNotifiedOnComments
-                , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
-                ]
-                []
-            , H.text "Notify me when someone comments"
-            ]
-        , H.div []
-            [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
-                [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
-                , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
-                , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
+            , H.div []
+                [ checkbox
+                    attendeeInput.getNotifiedOnComments
+                    "Notify me when someone comments"
+                    (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
                 ]
             ]
-        , H.div [ A.class "button-wrapper" ]
-            [ H.button
-                [ A.attribute "data-testid" "view-event-submit-attendee"
-                , disableUnlessValidInput attendeeInput
-                , onClick (InternalMsg (AttendMsg attendeeInput))
-                , A.class "submit-button"
-                ]
-                [ H.text "Submit RSVP"
-                ]
-            ]
+        , largeSubmitButton (disableUnlessValidInput attendeeInput) "Submit RSVP" (InternalMsg (AttendMsg attendeeInput))
+
+        {-
+              , H.div
+                  [ A.style "margin-top" "0.5rem" ]
+                  [ H.input
+                      [ A.attribute "data-testid" "view-event-attendee-plus-one"
+                      , A.type_ "checkbox"
+                      , A.class "checkbox"
+                      , A.checked attendeeInput.plusOne
+                      , onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po }))
+                      ]
+                      []
+                  , H.text "I am bringing a plus one"
+                  ]
+              , H.div
+                  [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
+                  [ H.input
+                      [ A.type_ "checkbox"
+                      , A.class "checkbox"
+                      , A.checked attendeeInput.getNotifiedOnComments
+                      , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
+                      ]
+                      []
+                  , H.text "Notify me when someone comments"
+                  ]
+           , H.div []
+               [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
+                   [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
+                   , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
+                   , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
+                   ]
+               ]
+           , H.div [ A.class "button-wrapper" ]
+               [ H.button
+                   [ A.attribute "data-testid" "view-event-submit-attendee"
+                   , A.disabled (disableUnlessValidInput attendeeInput)
+                   , onClick (InternalMsg (AttendMsg attendeeInput))
+                   , A.class "submit-button"
+                   ]
+                   [ H.text "Submit RSVP"
+                   ]
+               ]
+        -}
         ]
 
 
@@ -610,8 +657,8 @@ commentOnEvent input =
 addCommentView : AttendeeInput -> Html ViewEventMsg
 addCommentView attendeeInput =
     H.map InternalMsg <|
-        H.div []
-            [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
+        H.div [ A.class "add-comment-card" ]
+            [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Full Name" ]
             , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
             , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
             , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]

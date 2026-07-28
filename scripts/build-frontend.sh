@@ -87,12 +87,14 @@ cat << EOF > frontend/index.html
     <link rel="stylesheet" href="/$NAVBAR_CSS">
     <link rel="stylesheet" href="/$ABOUT_CSS">
     <link rel="stylesheet" href="/$EVENT_PAGE_CSS">
+    <!--
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
       integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
       crossorigin="anonymous"
     >
+    -->
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>
       <text y=%22.9em%22 font-size=%2290%22>📅</text>
