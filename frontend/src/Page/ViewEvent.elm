@@ -236,7 +236,7 @@ view pageState =
                             H.div [ A.class "event-photo-wrapper" ]
                                 [ H.img
                                     [ A.src (Url.toString p.url)
-                                    , A.alt p.name
+                                    , A.alt "" -- p.name
                                     , A.class "event-photo"
                                     ]
                                     []
