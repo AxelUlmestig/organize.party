@@ -109,7 +109,7 @@ update msg state =
     case msg of
         AddPhoto ->
             ( state
-            , File.Select.file [ "image/jpg", "image/jpeg", "image/png" ] (InternalMsg << FileSelected)
+            , File.Select.file [ "image/*" ] (InternalMsg << FileSelected)
             )
 
         ClearPhoto ->
