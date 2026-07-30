@@ -53,8 +53,6 @@ type InternalMsg
     | FocusTimePickerSoon
     | DoNothing
     | PhotoUploaderMsg Photo.Msg
-    | AddPhotoButton
-    | ClearPhotoButton
 
 
 init : Time.Zone -> EventInput -> Maybe Photo -> ( State, Cmd Msg )
@@ -106,7 +104,7 @@ view copy { picker, input, timezone, photoUploader } =
                         ]
                     , H.div [ A.class "button-wrapper" ]
                         [ H.button
-                            [ onClick (InternalMsg ClearPhotoButton)
+                            [ onClick (InternalMsg (PhotoUploaderMsg Photo.clearPhoto))
                             , A.class "submit-button"
                             ]
                             [ H.text "Clear Photo" ]
@@ -116,7 +114,7 @@ view copy { picker, input, timezone, photoUploader } =
             Nothing ->
                 H.div [ A.class "button-wrapper" ]
                     [ H.button
-                        [ onClick (InternalMsg AddPhotoButton)
+                        [ onClick (InternalMsg (PhotoUploaderMsg Photo.addPhoto))
                         , A.class "submit-button"
                         ]
                         [ H.text "Add Photo" ]
@@ -213,20 +211,6 @@ update msg state =
                             state.input
                     in
                     ( state, pureCmd (EventInputReady { eventInput | photoId = photoId }) )
-
-        AddPhotoButton ->
-            let
-                ( newPhotoState, photoMsg ) =
-                    Photo.newPhoto state.photoUploader
-            in
-            ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
-
-        ClearPhotoButton ->
-            let
-                ( newPhotoState, photoMsg ) =
-                    Photo.clear state.photoUploader
-            in
-            ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
 
         DoNothing ->
             ( state, Cmd.none )

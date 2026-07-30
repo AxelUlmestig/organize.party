@@ -2,10 +2,10 @@ module Shared.PhotoUploader exposing
     ( Msg(..)
       -- , OutMsg
     , State
-    , clear
+    , addPhoto
+    , clearPhoto
     , getPhotoUrl
     , init
-    , newPhoto
     , submitPhoto
     , update
     , view
@@ -50,7 +50,9 @@ type Msg
 
 
 type InternalMsg
-    = FileSelected File
+    = AddPhoto
+    | ClearPhoto
+    | FileSelected File
     | PhotoUrlGenerated String
     | PhotoHashGenerated String
     | PhotoUploadInitiated (Result Http.Error InitPhotoUploadResponse)
@@ -105,13 +107,14 @@ init mPhoto =
 update : InternalMsg -> State -> ( State, Cmd Msg )
 update msg state =
     case msg of
-        {-
-           FileRequested ->
-               ( state
-               , File.Select.file [ "image/jpg", "image/jpeg", "image/png" ] (InternalMsg << FileSelected)
-               , Nothing
-               )
-        -}
+        AddPhoto ->
+            ( state
+            , File.Select.file [ "image/jpg", "image/jpeg", "image/png" ] (InternalMsg << FileSelected)
+            )
+
+        ClearPhoto ->
+            ( NoFileSelected, Cmd.none )
+
         FileSelected file ->
             -- TODO: verify file size
             ( PreparingFile { photo = Just file, photoUrl = Nothing }
@@ -296,11 +299,14 @@ view state =
             H.text "Photo upload failed"
 
 
-newPhoto : State -> ( State, Cmd Msg )
-newPhoto state =
-    ( state
-    , File.Select.file [ "image/jpg", "image/jpeg", "image/png" ] (InternalMsg << FileSelected)
-    )
+addPhoto : Msg
+addPhoto =
+    InternalMsg AddPhoto
+
+
+clearPhoto : Msg
+clearPhoto =
+    InternalMsg ClearPhoto
 
 
 getPhotoUrl : State -> Maybe String
@@ -314,11 +320,6 @@ getPhotoUrl state =
 
         _ ->
             Nothing
-
-
-clear : State -> ( State, Cmd Msg )
-clear _ =
-    ( NoFileSelected, Cmd.none )
 
 
 submitPhoto : State -> ( State, Cmd Msg )
