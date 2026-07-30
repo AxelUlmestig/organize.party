@@ -93,6 +93,34 @@ view copy { picker, input, timezone, photoUploader } =
         [ sectionSeparator "What"
         , H.div [] [ H.text "Event name" ]
         , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+        , case Photo.getPhotoUrl photoUploader of
+            Just photoUrl ->
+                H.div []
+                    [ H.div
+                        [ A.class "event-photo-wrapper" ]
+                        [ H.img
+                            [ A.src photoUrl
+                            , A.class "event-photo"
+                            ]
+                            []
+                        ]
+                    , H.div [ A.class "button-wrapper" ]
+                        [ H.button
+                            [ onClick (InternalMsg ClearPhotoButton)
+                            , A.class "submit-button"
+                            ]
+                            [ H.text "Clear Photo" ]
+                        ]
+                    ]
+
+            Nothing ->
+                H.div [ A.class "button-wrapper" ]
+                    [ H.button
+                        [ onClick (InternalMsg AddPhotoButton)
+                        , A.class "submit-button"
+                        ]
+                        [ H.text "Add Photo" ]
+                    ]
         , H.div [] [ H.text "Description" ]
         , expandingTextarea
             { text = input.description
@@ -126,16 +154,6 @@ view copy { picker, input, timezone, photoUploader } =
         , sectionSeparator (Maybe.withDefault "Password For Future Edits" <| Dict.get "password_header" copy)
 
         -- , sectionSeparator "Password For Future Edits"
-        , H.button [ onClick (InternalMsg AddPhotoButton) ] [ H.text "add photo" ]
-        , case Photo.getPhotoUrl photoUploader of
-            Just photoUrl ->
-                H.div []
-                    [ H.img [ A.src photoUrl ] []
-                    , H.button [ onClick (InternalMsg ClearPhotoButton) ] [ H.text "clear photo" ]
-                    ]
-
-            Nothing ->
-                H.span [] []
         , H.div [] [ H.text "Password" ]
         , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
             [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
