@@ -17,6 +17,7 @@ import           Servant
 import           System.Environment                          (lookupEnv)
 import           System.Exit                                 (die)
 
+import qualified Op.Aws                                      as Aws
 import qualified Op.Cache                                    as Cache
 import qualified Op.Db                                       as Db
 import qualified Op.WebAPI.Endpoints.Attend
@@ -148,6 +149,7 @@ main = do
     hostUrl <- getHostUrl >>= either die pure
     connectionPool <- Db.createPool dbSettings
     awsSnsPubKeyCache <- Cache.initCache
+    awsEnv <- Aws.loadAwsEnvFromEnvVars
     let port = 8081
 
     runRIO logFunc do

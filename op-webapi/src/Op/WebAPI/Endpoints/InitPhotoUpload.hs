@@ -2,14 +2,11 @@
 
 module Op.WebAPI.Endpoints.InitPhotoUpload (initPhotoUpload, InitPhotoUploadInput, InitPhotoUploadResult (..)) where
 
-import qualified Amazonka                as AWS
-import qualified Amazonka.S3             as AWS.S3
 import           Control.Monad.Catch     (MonadCatch)
 import           Control.Monad.Except    (MonadError (throwError))
 import qualified Data.Aeson              as Aeson
 import qualified Data.ByteString.Lazy    as LBS
 import           Data.String.Interpolate (i)
-import           Data.Text.Encoding      (decodeUtf8, encodeUtf8)
 import           Data.Time               (getCurrentTime)
 import           Data.Time.Clock         (UTCTime)
 import           Data.UUID               (UUID)
@@ -17,7 +14,7 @@ import qualified Data.UUID.V7            as UUID
 import           RIO
 import           Servant                 (ServerError (errBody), err409, err500)
 
-
+import qualified Op.Aws                  as Aws
 import qualified Op.Db                   as Db
 
 data InitPhotoUploadInput
@@ -57,6 +54,7 @@ initPhotoUpload ::
   , MonadReader env m
   , Db.HasDbConnection env
   , HasLogFunc env
+  , Aws.HasAwsEnv env
   , MonadCatch m
   ) => InitPhotoUploadInput
   -> m (InitPhotoUploadResult Maybe)
@@ -65,21 +63,16 @@ initPhotoUpload InitPhotoUploadInput{fileName, base64Sha256} = do
   let urlValidSeconds = 10
 
   presignedUploadUrl <- do
-    -- TODO: move aws env to reader env
-    env <- AWS.newEnv AWS.discover --  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION env variables needed here
-
     let objectKey = [i|photos/#{photoUploadId}/#{fileName}|]
-    let bucketName = AWS.S3.BucketName "organize-party"
-    let s3PutRequestBody = AWS.toBody ("" :: ByteString)
-
-    let putObject = AWS.S3.newPutObject bucketName objectKey s3PutRequestBody
+    let bucketName = "organize-party"
     currentTime <- liftIO getCurrentTime
-    decodeUtf8 <$> AWS.presignURL env currentTime (fromIntegral urlValidSeconds) putObject
+
+    Aws.presignUploadUrl Aws.PresignS3PutUrlArguments{..}
 
   jsonResult <- do
     Db.queryDbOr handleErr do
       Db.statement
-        (photoUploadId, fileName, presignedUploadUrl, base64Sha256, urlValidSeconds)
+        (photoUploadId, fileName, presignedUploadUrl, base64Sha256, fromIntegral urlValidSeconds)
         [Db.singletonStatement|
           select aws.init_photo_upload(
             upload_id_                    => $1::uuid,

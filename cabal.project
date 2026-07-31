@@ -1,4 +1,5 @@
 packages:
+  op-aws
   op-cache
   op-db
   op-webapi
