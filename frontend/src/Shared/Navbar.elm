@@ -24,8 +24,8 @@ type NavbarMsg
 
 view : NavbarState -> Html NavbarMsg
 view state =
-    H.nav [ A.class "navbar" ]
-        [ H.div [ A.class "navbar-container container" ]
+    H.nav [ A.class "site-nav" ]
+        [ H.div [ A.class "site-nav-bar" ]
             [ H.input
                 [ A.type_ "checkbox"
                 , A.checked (navbarStateToBool state)
@@ -39,18 +39,18 @@ view state =
                     )
                 ]
                 []
-            , H.div [ A.class "hamburger-lines" ]
+            , H.div [ A.class "site-nav-hamburger" ]
                 [ H.span [ A.class "line line1" ] []
                 , H.span [ A.class "line line2" ] []
                 , H.span [ A.class "line line3" ] []
                 ]
-            , H.ul [ A.class "menu-items" ]
+            , H.ul [ A.class "site-nav-menu" ]
                 [ H.li [] [ H.a [ A.href "/", onClick CloseNavbar ] [ H.text "Create a new event" ] ]
                 , H.li [] [ H.a [ A.href "/forget-me", onClick CloseNavbar ] [ H.text "Forget Me" ] ]
                 , H.li [] [ H.a [ A.href "/about", onClick CloseNavbar ] [ H.text "About" ] ]
                 ]
             , H.a
-                [ A.href "/", A.class "logo" ]
+                [ A.href "/", A.class "site-nav-logo" ]
                 [ H.img [ A.src "/logo.svg", A.alt "organize.party" ] [] ]
             ]
         ]
