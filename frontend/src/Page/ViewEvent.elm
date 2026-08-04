@@ -224,8 +224,19 @@ view pageState =
                                 ]
                             ]
                 , H.div []
-                    [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
-                        [ H.span [ A.attribute "data-testid" "view-event-title", A.class "event-title" ] [ H.text title ]
+                    {-
+                       [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
+                           [ H.span [ A.attribute "data-testid" "view-event-title", A.class "event-title" ] [ H.text title ]
+                           , H.a [ A.attribute "data-testid" "edit-event", A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.pencil) ]
+                           ]
+                    -}
+                    [ H.div
+                        [ A.class "event-title-wrapper" ]
+                        [ H.h1
+                            [ A.attribute "data-testid" "view-event-title"
+                            , A.class "event-title"
+                            ]
+                            [ H.text title ]
                         , H.a [ A.attribute "data-testid" "edit-event", A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.pencil) ]
                         ]
                     , case photo of
@@ -268,16 +279,28 @@ view pageState =
                     , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
                     , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
                     , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "plus one? ", H.input [ A.attribute "data-testid" "view-event-attendee-plus-one", A.type_ "checkbox", A.checked attendeeInput.plusOne, onCheck (\po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })) ] [] ]
+                    , H.div [ A.style "margin-top" "0.5rem" ]
+                        [ let
+                            args =
+                                { checked = attendeeInput.plusOne
+                                , description = "I am bringing a plus one"
+                                , onUpdate = \po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })
+                                , testId = "view-event-attendee-plus-one"
+                                }
+                          in
+                          checkbox args
+                        ]
                     , H.div
                         [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-                        [ H.text "get notified on comments? "
-                        , H.input
-                            [ A.type_ "checkbox"
-                            , A.checked attendeeInput.getNotifiedOnComments
-                            , onCheck (\gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc }))
-                            ]
-                            []
+                        [ let
+                            args =
+                                { checked = attendeeInput.getNotifiedOnComments
+                                , description = "Notify me when someone leaves a comment"
+                                , onUpdate = \gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc })
+                                , testId = "view-event-get-notified-on-comments"
+                                }
+                          in
+                          checkbox args
                         ]
                     , H.div []
                         [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
@@ -481,16 +504,35 @@ addCommentView attendeeInput =
                 }
             , H.div
                 [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-                [ H.text "send email notification to everyone? "
-                , H.input
-                    [ A.type_ "checkbox"
-                    , A.checked attendeeInput.forceNotificationOnComment
-                    , A.attribute "data-testid" "view-event-notify-everyone-on-comment"
-                    , onCheck (\fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc })
-                    ]
-                    []
+                [ let
+                    args =
+                        { checked = attendeeInput.forceNotificationOnComment
+                        , description = "Send email notification to everyone"
+                        , onUpdate = \fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc }
+                        , testId = "view-event-notify-everyone-on-comment"
+                        }
+                  in
+                  checkbox args
                 ]
             , H.div [ A.class "button-wrapper" ]
                 [ H.button [ A.class "submit-button", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput) ] [ H.text "Comment" ]
                 ]
             ]
+
+
+type alias CheckboxArgs msg =
+    { checked : Bool
+    , description : String
+    , onUpdate : Bool -> msg
+    , testId : String
+    }
+
+
+checkbox : CheckboxArgs msg -> Html msg
+checkbox { checked, description, onUpdate, testId } =
+    H.label
+        [ A.class "custom-checkbox", A.attribute "data-testid" testId ]
+        [ H.input [ A.type_ "checkbox", A.checked checked, onCheck onUpdate ] []
+        , H.span [ A.class "checkmark" ] []
+        , H.text description
+        ]

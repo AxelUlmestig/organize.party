@@ -9,4 +9,13 @@
   --padding-container: var(--space-4);
 
   --border-radius: 5px;
+
+  --primary-color: #346555;
+  --primary-color-light: #c1efb4;
+  --background-color: #f5fbee;
+  --text-color: #3f4a3b;
+  --accent-color: #9ed1bd;
+  --disabled-background-color: #bdc8bc;
+
+  --primary-input-field-background-color: #dee5d7;
 }

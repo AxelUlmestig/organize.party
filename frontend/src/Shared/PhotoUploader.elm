@@ -130,7 +130,6 @@ update msg state =
                 ( NoFileSelected, pureCmd (PhotoError "Photo is too large. Files bigger than 10MB aren't allowed.") )
 
             else
-                -- TODO: verify file size
                 ( PreparingFile { photo = Just file, photoUrl = Nothing }
                 , Task.perform (InternalMsg << PhotoUrlGenerated) (File.toUrl file)
                 )
