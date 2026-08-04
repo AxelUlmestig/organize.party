@@ -37,7 +37,12 @@ type alias State =
     , input : EventInput
     , timezone : Time.Zone
     , photoUploader : Photo.State
+    , maybeModal : Maybe EventEditorModal
     }
+
+
+type EventEditorModal
+    = PhotoUploadFailure String
 
 
 type Msg
@@ -53,6 +58,7 @@ type InternalMsg
     | FocusTimePickerSoon
     | DoNothing
     | PhotoUploaderMsg Photo.Msg
+    | CloseModal
 
 
 init : Time.Zone -> EventInput -> Maybe Photo -> ( State, Cmd Msg )
@@ -61,7 +67,7 @@ init timezone eventInput photo =
         ( photoState, photoMsg ) =
             Photo.init photo
     in
-    ( { timezone = timezone, picker = DP.init, input = eventInput, photoUploader = photoState }
+    ( { timezone = timezone, picker = DP.init, input = eventInput, photoUploader = photoState, maybeModal = Nothing }
     , Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg
     )
 
@@ -76,7 +82,7 @@ viewPhotoUploadStatus state =
 
 
 view : Dict String String -> State -> Html Msg
-view copy { picker, input, timezone, photoUploader } =
+view copy { picker, input, timezone, photoUploader, maybeModal } =
     let
         updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         updatePicker input2 ( picker2, mTimestamp ) =
@@ -88,7 +94,25 @@ view copy { picker, input, timezone, photoUploader } =
                     InternalMsg (UpdateEventInput picker2 input2)
     in
     H.div []
-        [ sectionSeparator "What"
+        [ case maybeModal of
+            Nothing ->
+                H.text ""
+
+            Just modal ->
+                H.div [ A.class "modal-background" ]
+                    [ H.div [ A.class "modal-window" ]
+                        [ case modal of
+                            PhotoUploadFailure errorMessage ->
+                                H.div []
+                                    [ H.div [] [ H.text "Something went wrong when uploading photo" ]
+                                    , H.div [] [ H.text errorMessage ]
+                                    , H.div [ A.class "button-wrapper" ]
+                                        [ H.button [ A.class "submit-button", onClick (InternalMsg CloseModal) ] [ H.text "Ok" ]
+                                        ]
+                                    ]
+                        ]
+                    ]
+        , sectionSeparator "What"
         , H.div [] [ H.text "Event name" ]
         , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
         , case Photo.getPhotoUrl photoUploader of
@@ -211,6 +235,12 @@ update msg state =
                             state.input
                     in
                     ( state, pureCmd (EventInputReady { eventInput | photoId = photoId }) )
+
+                Photo.PhotoError errorMessage ->
+                    ( { state | maybeModal = Just (PhotoUploadFailure errorMessage) }, Cmd.none )
+
+        CloseModal ->
+            ( { state | maybeModal = Nothing }, Cmd.none )
 
         DoNothing ->
             ( state, Cmd.none )

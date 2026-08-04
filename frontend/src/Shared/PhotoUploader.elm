@@ -26,6 +26,15 @@ import Types
 import Url exposing (Url)
 
 
+
+-- Limit photo size to 10MB
+
+
+fileSizeLimit : Int
+fileSizeLimit =
+    10000000
+
+
 type alias PhotoDetails =
     { file : File
     , url : String
@@ -46,6 +55,7 @@ type State
 
 type Msg
     = PhotoUploadDone (Maybe String)
+    | PhotoError String
     | InternalMsg InternalMsg
 
 
@@ -116,10 +126,14 @@ update msg state =
             ( NoFileSelected, Cmd.none )
 
         FileSelected file ->
-            -- TODO: verify file size
-            ( PreparingFile { photo = Just file, photoUrl = Nothing }
-            , Task.perform (InternalMsg << PhotoUrlGenerated) (File.toUrl file)
-            )
+            if File.size file > fileSizeLimit then
+                ( NoFileSelected, pureCmd (PhotoError "Photo is too large. Files bigger than 10MB aren't allowed.") )
+
+            else
+                -- TODO: verify file size
+                ( PreparingFile { photo = Just file, photoUrl = Nothing }
+                , Task.perform (InternalMsg << PhotoUrlGenerated) (File.toUrl file)
+                )
 
         PhotoUrlGenerated photoUrl ->
             case state of

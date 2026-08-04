@@ -211,6 +211,7 @@ update msg pageState =
                                     , timezone = pageState.timeZone
                                     , photoUploader = state.photoUploader
                                     , input = state.input
+                                    , maybeModal = Nothing
 
                                     {-
                                        { title = state.input.title
