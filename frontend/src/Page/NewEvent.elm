@@ -49,7 +49,7 @@ type Msg
 
 type InternalMsg
     = EventEditorMsg EventEditor.Msg
-    | SubmitEvent EventEditor.State -- EventInput
+    | SubmitEvent EventEditor.State
     | InternalCreatedEvent (Result Http.Error Event)
 
 
@@ -59,7 +59,6 @@ borderRadius =
 
 init : Time.Zone -> Time.Posix -> ( State, Cmd Msg )
 init timezone time =
-    -- ( NewEvent { timezone = timezone, picker = DP.init, input = emptyEventInput time, photo = Nothing }, Cmd.none )
     let
         ( eventEditorState, eventEditorMsg ) =
             EventEditor.init timezone (emptyEventInput time) Nothing
@@ -93,8 +92,6 @@ view pageState =
                     [ H.button
                         [ A.attribute "data-testid" "event-editor-event-submit-button"
                         , A.class "submit-button"
-
-                        -- , onClick (InternalMsg (SubmitEvent (EventEditor.getInput eventEditorState)))
                         , onClick (InternalMsg (SubmitEvent eventEditorState))
                         ]
                         [ H.text "Submit"
@@ -145,17 +142,6 @@ update msg pageState =
             in
             ( setPageState (PreparingEventInput eventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorCmd )
 
-        {-
-           let
-               cmd =
-                   Http.post
-                       { url = "/api/v1/events"
-                       , expect = Http.expectJson (InternalMsg << InternalCreatedEvent) eventDecoder
-                       , body = Http.jsonBody (encodeEventInput event)
-                       }
-           in
-           ( setPageState Loading pageState, cmd )
-        -}
         InternalCreatedEvent result ->
             case result of
                 Ok event ->
@@ -173,16 +159,6 @@ handleSubscription pageState =
 
         _ ->
             Sub.none
-
-
-
-{-
-   prepareEventInputForSubmission : PageState navbarState State -> ( PageState navbarState State, Cmd Msg )
-   prepareEventInputForSubmission pageState =
-     case pageState.state of
-       NewEvent eventEditorState ->
-         Photo
--}
 
 
 wrapCmd : msg -> Cmd msg

@@ -156,21 +156,6 @@ eventDecoder =
         |> optional "photo" (D.nullable photoDecoder) Nothing
 
 
-
-{-
-   D.map9 Event
-       (D.field "id" D.string)
-       (D.field "title" D.string)
-       (D.field "description" D.string)
-       (D.field "startTime" Iso8601.decoder)
-       (D.maybe (D.field "endTime" Iso8601.decoder))
-       (D.field "location" D.string)
-       (D.field "attendees" (D.list attendeeDecoder))
-       (D.field "comments" (D.list commentDecoder))
-       (D.maybe (D.field "eventPhotoUrl" urlDecoder))
--}
-
-
 attendeeDecoder : D.Decoder Attendee
 attendeeDecoder =
     D.map4 Attendee
@@ -244,9 +229,6 @@ encodeEventInput { title, description, location, startTime, endTime, password, p
         , ( "endTime", Maybe.withDefault Encode.null <| Maybe.map Iso8601.encode endTime )
         , ( "password", Encode.string password )
         , ( "photoId", Maybe.withDefault Encode.null <| Maybe.map Encode.string photoId )
-
-        --, ( "photoId", Maybe.withDefault Encode.null photoId )
-        -- , ( "photoId", photoId )
         ]
 
 

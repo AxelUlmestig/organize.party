@@ -224,12 +224,6 @@ view pageState =
                                 ]
                             ]
                 , H.div []
-                    {-
-                       [ H.div [ A.style "display" "flex", A.style "justify-content" "space-between" ]
-                           [ H.span [ A.attribute "data-testid" "view-event-title", A.class "event-title" ] [ H.text title ]
-                           , H.a [ A.attribute "data-testid" "edit-event", A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.pencil) ]
-                           ]
-                    -}
                     [ H.div
                         [ A.class "event-title-wrapper" ]
                         [ H.h1
@@ -247,7 +241,7 @@ view pageState =
                             H.div [ A.class "event-photo-wrapper" ]
                                 [ H.img
                                     [ A.src (Url.toString p.url)
-                                    , A.alt "" -- p.name
+                                    , A.alt ""
                                     , A.class "event-photo"
                                     ]
                                     []

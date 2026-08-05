@@ -60,7 +60,7 @@ initPhotoUpload ::
   -> m (InitPhotoUploadResult Maybe)
 initPhotoUpload InitPhotoUploadInput{fileName, base64Sha256} = do
   photoUploadId <- UUID.genUUID
-  let urlValidSeconds = 10
+  let urlValidSeconds = 30
 
   presignedUploadUrl <- do
     let objectKey = [i|photos/#{photoUploadId}/#{fileName}|]

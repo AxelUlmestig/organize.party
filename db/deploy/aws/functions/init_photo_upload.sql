@@ -23,7 +23,6 @@ BEGIN;
         existing_photo_id_ uuid;
       begin
         -- first check if there's already a perfect match
-        -- select output_ || jsonb_build_object('photoId', id, 'materializedStatus', 'upload_completed')
         select id
         into existing_photo_id_
         from photos
@@ -63,7 +62,8 @@ BEGIN;
         from aws.photo_uploads
         where
           file_base64_sha256 = base64_sha256_
-          and materialized_status not in ('upload_completed', 'error');
+          and materialized_status not in ('upload_completed', 'error')
+          and upload_url_expires_at < now();
 
         if in_progress_upload_expires_at_ is not null then
           raise exception '%', jsonb_build_object('expiresAt', in_progress_upload_expires_at_)::text

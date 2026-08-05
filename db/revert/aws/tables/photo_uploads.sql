@@ -2,6 +2,6 @@
 
 BEGIN;
 
--- XXX Add DDLs here.
+  drop table aws.photo_uploads;
 
 COMMIT;

@@ -60,7 +60,7 @@ type Msg
 type InternalMsg
     = LoadedEventForEdit (Result Http.Error Event)
     | EditResponse (Result Http.Error Event)
-    | SubmitUpdate EventEditor.State -- EventInput
+    | SubmitUpdate EventEditor.State
     | CloseModal
     | EventEditorMsg EventEditor.Msg
 
@@ -74,8 +74,6 @@ type alias EditEventInput =
     , location : String
     , password : String
     , photoId : Maybe String
-
-    -- , photoId : Maybe String
     }
 
 
@@ -170,21 +168,8 @@ update msg pageState =
                             , location = event.location
                             , password = ""
                             , photoId = Nothing
-
-                            {-
-                               case event.photo of
-                                   Just p ->
-                                       Just p.id
-
-                                   Nothing ->
-                                       Nothing
-                            -}
-                            {-
-                               , eventPhotoUrl = event.eventPhotoUrl
-                            -}
                             }
 
-                        -- newState = EditEvent event Nothing { timezone = pageState.timeZone, picker = DP.init, input = editEventInput, photo = Nothing }
                         ( newState, newMsg ) =
                             let
                                 ( eventEditorState, eventEditorMsg ) =
@@ -212,17 +197,6 @@ update msg pageState =
                                     , photoUploader = state.photoUploader
                                     , input = state.input
                                     , maybeModal = Nothing
-
-                                    {-
-                                       { title = state.input.title
-                                       , description = state.input.description
-                                       , startTime = state.input.startTime
-                                       , endTime = state.input.endTime
-                                       , location = state.input.location
-                                       , password = state.input.password
-                                       , photoId = state.input.photoId
-                                       }
-                                    -}
                                     }
                             in
                             ( format (EditEvent event (Just WrongPasswordModal) eventEditorState), Cmd.none )
@@ -265,7 +239,6 @@ update msg pageState =
                 EventEditor.EventInputReady eventInput ->
                     case pageState.state of
                         PreparingEventInput event eventEditorState ->
-                            -- EditEvent event _ eventEditorState ->
                             let
                                 editEventInput =
                                     { id = event.id
@@ -275,7 +248,7 @@ update msg pageState =
                                     , endTime = eventInput.endTime
                                     , location = eventInput.location
                                     , password = eventInput.password
-                                    , photoId = eventInput.photoId -- Maybe.map (\{ id } -> id) eventInput.photo
+                                    , photoId = eventInput.photoId
                                     }
                             in
                             ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
@@ -294,30 +267,6 @@ update msg pageState =
 
                 otherState ->
                     ( format otherState, Cmd.none )
-
-
-
-{-
-   SubmitUpdate eventInput ->
-       case pageState.state of
-           EditEvent event _ eventEditorState ->
-               let
-                   editEventInput =
-                       { id = event.id
-                       , title = eventInput.title
-                       , description = eventInput.description
-                       , startTime = eventInput.startTime
-                       , endTime = eventInput.endTime
-                       , location = eventInput.location
-                       , password = eventInput.password
-                       , photoId = eventInput.photoId
-                       }
-               in
-               ( format (SubmittedEdit event eventEditorState), submitEdit editEventInput )
-
-           otherState ->
-               ( format otherState, Cmd.none )
--}
 
 
 init : String -> ( State, Cmd Msg )

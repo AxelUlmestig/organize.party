@@ -1,6 +1,5 @@
 module Shared.PhotoUploader exposing
     ( Msg(..)
-      -- , OutMsg
     , State
     , addPhoto
     , clearPhoto
@@ -169,7 +168,6 @@ update msg state =
                 FileReady { photo } ->
                     case response of
                         Ok result ->
-                            -- { id, uploadUrl, materializedStatus, photoId } ->
                             case ( result.photoId, result.id, result.uploadUrl ) of
                                 ( Just photoId, _, _ ) ->
                                     let
