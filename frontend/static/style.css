@@ -190,18 +190,22 @@ body {
 
 .custom-checkbox .checkmark {
   position: relative;
-  display: inline-block;
-  width: 1.2rem;
-  height: 1.2rem;
+
+  /* the one size knob: everything below is a fraction of this */
+  font-size: 1.2rem;
+  width: 1em;
+  height: 1em;
+  flex: none;
+
   background-color: white;
   border: 1px solid #aaa;
-  border-radius: 0.5rem;
-  
+  border-radius: 0.4em;
+
   /* Center the checkmark inside */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  
+
   transition: all 0.2s ease;
 }
 
@@ -212,15 +216,17 @@ body {
 
 .custom-checkbox .checkmark::after {
     content: "";
-    position: absolute;
     display: none; /* hidden until checked */
-    
-    /* This creates the checkmark shape */
-    width: 5px;
-    height: 10px;
+
+    /* This creates the checkmark shape, sized as a fraction of the box so it
+       stays proportional when the root font-size shrinks on small screens */
+    width: 0.25em;
+    height: 0.5em;
     border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    border-width: 0 0.11em 0.11em 0;
+
+    /* rotating leaves it optically low; nudge it back up */
+    transform: translateY(-0.05em) rotate(45deg);
 }
 
 .custom-checkbox input:checked ~ .checkmark::after {
