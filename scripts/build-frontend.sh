@@ -34,6 +34,10 @@ if [ $optimize = true ]; then
 
   ELM_JS_FILE=$CACHE_BUST_JS_FILE
 
+  # ------------ variables.css -----------------------
+  VARIABLES_CSS=variables.$(sha256sum frontend/static/variables.css | cut -d " " -f1).css
+  cp frontend/static/variables.css frontend/static/$VARIABLES_CSS
+
   # ------------ style.css ---------------------------
   STYLE_CSS=style.$(sha256sum frontend/static/style.css | cut -d " " -f1).css
   cp frontend/static/style.css frontend/static/$STYLE_CSS
@@ -61,6 +65,7 @@ else
   mv frontend/$ELM_JS_FILE frontend/static/$ELM_JS_FILE
 
   # ------------ CSS ---------------------------------
+  VARIABLES_CSS=variables.css
   STYLE_CSS=style.css
   EXPANDING_TEXTAREA_CSS=expanding-textarea.css
   DATEPICKER_CSS=datepicker.css
@@ -74,6 +79,7 @@ cat << EOF > frontend/index.html
   <head>
     <script src="/$ELM_JS_FILE"></script>
 
+    <link rel="stylesheet" href="/$VARIABLES_CSS">
     <link rel="stylesheet" href="/$STYLE_CSS">
     <link rel="stylesheet" href="/$EXPANDING_TEXTAREA_CSS">
     <link rel="stylesheet" href="/$DATEPICKER_CSS">

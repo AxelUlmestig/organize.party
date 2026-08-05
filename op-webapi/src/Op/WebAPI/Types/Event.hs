@@ -1,6 +1,7 @@
-module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..)) where
+module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..), Photo(..)) where
 
 import qualified Data.Aeson               as Aeson
+import           Data.Char                (toLower)
 import           Data.Time.Clock          (UTCTime)
 import           Data.UUID                (UUID)
 import           Op.WebAPI.Types.Attendee (AttendeeStatus (..))
@@ -19,11 +20,35 @@ data Event
     , createdAt      :: UTCTime
     , modifiedAt     :: UTCTime
     , comments       :: [Comment]
+    , photo          :: Maybe Photo
     }
     deriving (Generic, Eq, Show)
 
 instance Aeson.ToJSON Event
 instance Aeson.FromJSON Event
+
+data Photo
+  = Photo
+  { photoId   :: UUID
+  , photoUrl  :: Text
+  , photoName :: Text
+  }
+  deriving (Eq, Show, Generic)
+
+photoOptions :: Aeson.Options
+photoOptions =
+  let prefix = "photo" :: String
+  in Aeson.defaultOptions { Aeson.fieldLabelModifier = lowerFirst . drop (length prefix) }
+  where
+    lowerFirst (c : cs) = toLower c : cs
+    lowerFirst []       = []
+
+instance Aeson.ToJSON Photo where
+  toJSON     = Aeson.genericToJSON photoOptions
+  toEncoding = Aeson.genericToEncoding photoOptions
+
+instance Aeson.FromJSON Photo where
+  parseJSON = Aeson.genericParseJSON photoOptions
 
 data Attendee
   = Attendee

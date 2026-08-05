@@ -17,6 +17,7 @@ import           Servant
 import           System.Environment                          (lookupEnv)
 import           System.Exit                                 (die)
 
+import qualified Op.Aws                                      as Aws
 import qualified Op.Cache                                    as Cache
 import qualified Op.Db                                       as Db
 import qualified Op.WebAPI.Endpoints.Attend
@@ -25,8 +26,12 @@ import qualified Op.WebAPI.Endpoints.CreateEvent
 import qualified Op.WebAPI.Endpoints.EditEvent
 import qualified Op.WebAPI.Endpoints.ExecuteForgetMeRequest
 import qualified Op.WebAPI.Endpoints.GetEvent
+import qualified Op.WebAPI.Endpoints.GetPhotoUpload
 import qualified Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns
 import qualified Op.WebAPI.Endpoints.InitForgetMeRequest
+import           Op.WebAPI.Endpoints.InitPhotoUpload         (InitPhotoUploadInput,
+                                                              InitPhotoUploadResult)
+import qualified Op.WebAPI.Endpoints.InitPhotoUpload
 import qualified Op.WebAPI.Endpoints.Unsubscribe
 import qualified Op.WebAPI.Endpoints.ViewForgetMeRequest
 import           Op.WebAPI.Html                              (HTML, RawHtml,
@@ -52,6 +57,8 @@ type API
   :<|> InitForgetMeRequestApi
   :<|> ViewForgetMeRequestApi
   :<|> AwsSnsWebhookApi
+  :<|> InitPhotoUploadApi
+  :<|> GetPhotoUploadApi
   :<|> ExecuteForgetMeRequestApi
   :<|> UnsubscribeApi
   :<|> CreateEventHtml
@@ -76,6 +83,9 @@ type ExecuteForgetMeRequestApi = "api" :> "v1" :> "forget-me" :> Capture "forget
 type UnsubscribeApi = "api" :> "v1" :> "unsubscribe" :> Capture "unsubscribe_id" UUID :> Put '[JSON] UnsubscribeResult
 
 type AwsSnsWebhookApi = "api" :> "v1" :> "incoming-webhook" :> "aws-sns" :> ReqBody '[PlainText] Text :> Post '[JSON] ()
+
+type InitPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> ReqBody '[JSON] InitPhotoUploadInput :> Post '[JSON] (InitPhotoUploadResult Maybe)
+type GetPhotoUploadApi = "api" :> "v1" :> "photo-upload" :> Capture "photo_upload_id" UUID :> Get '[JSON] (InitPhotoUploadResult Identity)
 
 type CreateEventHtml = Get '[HTML] RawHtml
 type ViewEventHtml = "e" :> Capture "event_id" UUID :> Get '[HTML] RawHtml
@@ -102,6 +112,8 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> Op.WebAPI.Endpoints.InitForgetMeRequest.initForgetMe
         :<|> Op.WebAPI.Endpoints.ViewForgetMeRequest.viewForgetMeRequest
         :<|> Op.WebAPI.Endpoints.IncomingWebhooks.AwsSns.handleAwsSnsWebhook
+        :<|> Op.WebAPI.Endpoints.InitPhotoUpload.initPhotoUpload
+        :<|> Op.WebAPI.Endpoints.GetPhotoUpload.getPhotoUpload
         :<|> Op.WebAPI.Endpoints.ExecuteForgetMeRequest.executeForgetMeRequest
         :<|> Op.WebAPI.Endpoints.Unsubscribe.unsubscribe
         :<|> frontPage
@@ -137,6 +149,7 @@ main = do
     hostUrl <- getHostUrl >>= either die pure
     connectionPool <- Db.createPool dbSettings
     awsSnsPubKeyCache <- Cache.initCache
+    awsEnv <- Aws.loadAwsEnvFromEnvVars
     let port = 8081
 
     runRIO logFunc do

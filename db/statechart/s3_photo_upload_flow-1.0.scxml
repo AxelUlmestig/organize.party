@@ -1,0 +1,31 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml"
+              name="aws.s3_photo_upload_flow"
+              version="1.0"
+              initial="upload_url_ready">
+
+  <state id="upload_url_ready" name="UPLOAD_URL_READY">
+    <transition event="check_upload_progress" target="upload_url_ready"/>
+    <transition event="upload_verified" target="upload_completed"/>
+    <transition event="poll_upload_status_again" target="upload_url_ready"/>
+    <transition event="error" target="error"/>
+
+    <onentry>
+      <script src="aws.materialize_s3_upload_status"/>
+      <script src="aws.enqueue_s3_file_upload_status_check_job"/>
+    </onentry>
+  </state>
+
+  <final id="upload_completed" name="UPLOAD_COMPLETED">
+    <onentry>
+      <script src="aws.materialize_s3_upload_status"/>
+      <script src="aws.promote_uploaded_photo"/>
+    </onentry>
+  </final>
+
+  <final id="error" name="ERROR">
+    <onentry>
+      <script src="aws.materialize_s3_upload_status"/>
+    </onentry>
+  </final>
+
+</scxml>

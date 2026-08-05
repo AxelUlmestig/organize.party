@@ -1,7 +1,17 @@
-module Shared.EventEditor exposing (Msg(..), State, getInput, handleSubscription, update, view)
+module Shared.EventEditor exposing
+    ( Msg(..)
+    , State
+    , handleSubscription
+    , init
+    , prepareInput
+    , update
+    , view
+    , viewPhotoUploadStatus
+    )
 
 import Browser.Dom as Dom
 import Dict exposing (Dict)
+import File exposing (File)
 import FontAwesome as Icon exposing (Icon)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
@@ -13,11 +23,12 @@ import Html.Attributes as A
 import Html.Events exposing (on, onCheck, onClick, onInput)
 import Process
 import Shared.ExpandingTextarea exposing (expandingTextarea)
+import Shared.PhotoUploader as Photo
 import Shared.SectionSeparator exposing (sectionSeparator)
 import SingleDatePicker as DP
 import Task
 import Time
-import Types exposing (EventInput)
+import Types exposing (EventInput, Photo, emptyEventInput)
 import Util exposing (viewEventDate, viewEventTime)
 
 
@@ -25,13 +36,18 @@ type alias State =
     { picker : DP.DatePicker
     , input : EventInput
     , timezone : Time.Zone
+    , photoUploader : Photo.State
+    , maybeModal : Maybe EventEditorModal
     }
 
 
-type
-    Msg
-    -- = Submit EventInput
+type EventEditorModal
+    = PhotoUploadFailure String
+
+
+type Msg
     = InternalMsg InternalMsg
+    | EventInputReady EventInput
 
 
 type InternalMsg
@@ -41,14 +57,32 @@ type InternalMsg
     | FocusTimePicker
     | FocusTimePickerSoon
     | DoNothing
+    | PhotoUploaderMsg Photo.Msg
+    | CloseModal
+
+
+init : Time.Zone -> EventInput -> Maybe Photo -> ( State, Cmd Msg )
+init timezone eventInput photo =
+    let
+        ( photoState, photoMsg ) =
+            Photo.init photo
+    in
+    ( { timezone = timezone, picker = DP.init, input = eventInput, photoUploader = photoState, maybeModal = Nothing }
+    , Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg
+    )
 
 
 borderRadius =
     A.style "border-radius" "5px"
 
 
+viewPhotoUploadStatus : State -> Html a
+viewPhotoUploadStatus state =
+    Photo.view state.photoUploader
+
+
 view : Dict String String -> State -> Html Msg
-view copy { picker, input, timezone } =
+view copy { picker, input, timezone, photoUploader, maybeModal } =
     let
         updatePicker : EventInput -> ( DP.DatePicker, Maybe Time.Posix ) -> Msg
         updatePicker input2 ( picker2, mTimestamp ) =
@@ -60,9 +94,55 @@ view copy { picker, input, timezone } =
                     InternalMsg (UpdateEventInput picker2 input2)
     in
     H.div []
-        [ sectionSeparator "What"
+        [ case maybeModal of
+            Nothing ->
+                H.text ""
+
+            Just modal ->
+                H.div [ A.class "modal-background" ]
+                    [ H.div [ A.class "modal-window" ]
+                        [ case modal of
+                            PhotoUploadFailure errorMessage ->
+                                H.div []
+                                    [ H.div [] [ H.text "Something went wrong when uploading photo" ]
+                                    , H.div [] [ H.text errorMessage ]
+                                    , H.div [ A.class "button-wrapper" ]
+                                        [ H.button [ A.class "submit-button", onClick (InternalMsg CloseModal) ] [ H.text "Ok" ]
+                                        ]
+                                    ]
+                        ]
+                    ]
+        , sectionSeparator "What"
         , H.div [] [ H.text "Event name" ]
         , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+        , case Photo.getPhotoUrl photoUploader of
+            Just photoUrl ->
+                H.div []
+                    [ H.div
+                        [ A.class "event-photo-wrapper" ]
+                        [ H.img
+                            [ A.src photoUrl
+                            , A.class "event-photo"
+                            ]
+                            []
+                        ]
+                    , H.div [ A.class "button-wrapper" ]
+                        [ H.button
+                            [ onClick (InternalMsg (PhotoUploaderMsg Photo.clearPhoto))
+                            , A.class "submit-button"
+                            ]
+                            [ H.text "Clear Photo" ]
+                        ]
+                    ]
+
+            Nothing ->
+                H.div [ A.class "button-wrapper" ]
+                    [ H.button
+                        [ onClick (InternalMsg (PhotoUploaderMsg Photo.addPhoto))
+                        , A.class "submit-button"
+                        ]
+                        [ H.text "Add Photo" ]
+                    ]
         , H.div [] [ H.text "Description" ]
         , expandingTextarea
             { text = input.description
@@ -140,6 +220,28 @@ update msg state =
         FocusTimePickerSoon ->
             ( state, delay100ms (InternalMsg FocusTimePicker) )
 
+        PhotoUploaderMsg pumsg ->
+            case pumsg of
+                Photo.InternalMsg imsg ->
+                    let
+                        ( newPhotoState, photoMsg ) =
+                            Photo.update imsg state.photoUploader
+                    in
+                    ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoMsg )
+
+                Photo.PhotoUploadDone photoId ->
+                    let
+                        eventInput =
+                            state.input
+                    in
+                    ( state, pureCmd (EventInputReady { eventInput | photoId = photoId }) )
+
+                Photo.PhotoError errorMessage ->
+                    ( { state | maybeModal = Just (PhotoUploadFailure errorMessage) }, Cmd.none )
+
+        CloseModal ->
+            ( { state | maybeModal = Nothing }, Cmd.none )
+
         DoNothing ->
             ( state, Cmd.none )
 
@@ -183,6 +285,15 @@ pickerSettings timeZone picker input =
     DP.defaultSettings timeZone getValueFromPicker
 
 
-getInput : State -> EventInput
-getInput state =
-    state.input
+prepareInput : State -> ( State, Cmd Msg )
+prepareInput state =
+    let
+        ( newPhotoState, photoCmd ) =
+            Photo.submitPhoto state.photoUploader
+    in
+    ( { state | photoUploader = newPhotoState }, Cmd.map (InternalMsg << PhotoUploaderMsg) photoCmd )
+
+
+pureCmd : msg -> Cmd msg
+pureCmd =
+    Task.perform identity << Task.succeed

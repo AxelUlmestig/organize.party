@@ -10,6 +10,7 @@ BEGIN;
       output_ jsonb;
       attendees_ jsonb;
       comments_ jsonb;
+      photo_ jsonb;
     begin
       -- Get event base info
       select
@@ -84,6 +85,22 @@ BEGIN;
         latest_attendee_data.event_id = event_id_;
 
       output_ := jsonb_set(output_, '{comments}', comments_);
+
+      -- Get photo
+      select
+        jsonb_build_object(
+          'id', photos.id,
+          'url', photos.photo_url,
+          'name', photos.name
+        )      into photo_
+      from event_data
+      join photos
+        on photos.id = event_data.photo_id
+      where
+        event_data.id = event_id_
+        and event_data.superseded_at is null;
+
+      output_ := jsonb_set(output_, '{photo}', coalesce(photo_, 'null'));
 
       return output_;
     end;

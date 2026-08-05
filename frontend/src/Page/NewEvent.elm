@@ -38,6 +38,7 @@ import Util exposing (viewEventDate, viewEventTime)
 type State
     = NewEvent EventEditor.State
     | Loading
+    | PreparingEventInput EventEditor.State
     | Failure
 
 
@@ -48,7 +49,7 @@ type Msg
 
 type InternalMsg
     = EventEditorMsg EventEditor.Msg
-    | SubmitEvent EventInput
+    | SubmitEvent EventEditor.State
     | InternalCreatedEvent (Result Http.Error Event)
 
 
@@ -58,7 +59,11 @@ borderRadius =
 
 init : Time.Zone -> Time.Posix -> ( State, Cmd Msg )
 init timezone time =
-    ( NewEvent { timezone = timezone, picker = DP.init, input = emptyEventInput time }, Cmd.none )
+    let
+        ( eventEditorState, eventEditorMsg ) =
+            EventEditor.init timezone (emptyEventInput time) Nothing
+    in
+    ( NewEvent eventEditorState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorMsg )
 
 
 view : PageState navbarState State -> Html Msg
@@ -67,6 +72,11 @@ view pageState =
         Loading ->
             H.div [ A.class "center" ]
                 [ H.text "Creating event..."
+                ]
+
+        PreparingEventInput eventEditorState ->
+            H.div [ A.class "center" ]
+                [ EventEditor.viewPhotoUploadStatus eventEditorState
                 ]
 
         Failure ->
@@ -82,7 +92,7 @@ view pageState =
                     [ H.button
                         [ A.attribute "data-testid" "event-editor-event-submit-button"
                         , A.class "submit-button"
-                        , onClick (InternalMsg (SubmitEvent (EventEditor.getInput eventEditorState)))
+                        , onClick (InternalMsg (SubmitEvent eventEditorState))
                         ]
                         [ H.text "Submit"
                         ]
@@ -93,28 +103,44 @@ view pageState =
 update : InternalMsg -> PageState navbarState State -> ( PageState navbarState State, Cmd Msg )
 update msg pageState =
     case msg of
-        EventEditorMsg (EventEditor.InternalMsg internalMsg) ->
-            case pageState.state of
-                NewEvent eventEditorState ->
+        EventEditorMsg eventEditorMsg ->
+            case eventEditorMsg of
+                EventEditor.InternalMsg internalMsg ->
+                    case pageState.state of
+                        NewEvent eventEditorState ->
+                            let
+                                ( newEventEditorState, newEventEditorMsg ) =
+                                    EventEditor.update internalMsg eventEditorState
+                            in
+                            ( setPageState (NewEvent newEventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+
+                        PreparingEventInput eventEditorState ->
+                            let
+                                ( newEventEditorState, newEventEditorMsg ) =
+                                    EventEditor.update internalMsg eventEditorState
+                            in
+                            ( setPageState (PreparingEventInput newEventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+
+                        state ->
+                            ( pageState, Cmd.none )
+
+                EventEditor.EventInputReady eventInput ->
                     let
-                        ( newEventEditorState, newEventEditorMsg ) =
-                            EventEditor.update internalMsg eventEditorState
+                        cmd =
+                            Http.post
+                                { url = "/api/v1/events"
+                                , expect = Http.expectJson (InternalMsg << InternalCreatedEvent) eventDecoder
+                                , body = Http.jsonBody (encodeEventInput eventInput)
+                                }
                     in
-                    ( setPageState (NewEvent newEventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) newEventEditorMsg )
+                    ( setPageState Loading pageState, cmd )
 
-                state ->
-                    ( pageState, Cmd.none )
-
-        SubmitEvent event ->
+        SubmitEvent eventEditorState ->
             let
-                cmd =
-                    Http.post
-                        { url = "/api/v1/events"
-                        , expect = Http.expectJson (InternalMsg << InternalCreatedEvent) eventDecoder
-                        , body = Http.jsonBody (encodeEventInput event)
-                        }
+                ( newEventEditorState, eventEditorCmd ) =
+                    EventEditor.prepareInput eventEditorState
             in
-            ( setPageState Loading pageState, cmd )
+            ( setPageState (PreparingEventInput eventEditorState) pageState, Cmd.map (InternalMsg << EventEditorMsg) eventEditorCmd )
 
         InternalCreatedEvent result ->
             case result of

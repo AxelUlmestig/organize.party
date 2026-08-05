@@ -80,13 +80,36 @@ body {
   max-width: 50px;
 }
 
-.event-title {
-  font-size: 2rem;
-  font-weight: bold;
-  margin-top: 0.5rem;
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
+.event-title-wrapper {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--gap-section);
+  margin-bottom: var(--gap-section);
 }
+
+.event-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.event-photo-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-2) 0;
+}
+
+.event-photo-wrapper:hover .event-photo { transform: scale(1.03); }
+
+.event-photo {
+  display: block;
+  border-radius: var(--border-radius);
+  box-shadow: 0px 0px 5px gray;
+  max-height: 60vh;
+  max-width: 100%;
+}
+
+.event-photo { transition: transform 0.3s ease; }
 
 @media (max-width: 768px) {
   .section-separator, h5 {
@@ -137,3 +160,79 @@ body {
   cursor: default;
 }
 
+/* checkbox */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: sans-serif;
+  cursor: pointer;
+  /*
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  */
+}
+
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.custom-checkbox .checkmark {
+  position: relative;
+
+  /* the one size knob: everything below is a fraction of this */
+  font-size: 1.2rem;
+  width: 1em;
+  height: 1em;
+  flex: none;
+
+  background-color: white;
+  border: 1px solid #aaa;
+  border-radius: 0.4em;
+
+  /* Center the checkmark inside */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+    /*
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    */
+    background-color: rgb(28, 44, 59);
+    border-color: rgb(28, 44, 59);
+}
+
+.custom-checkbox .checkmark::after {
+    content: "";
+    display: none; /* hidden until checked */
+
+    /* This creates the checkmark shape, sized as a fraction of the box so it
+       stays proportional when the root font-size shrinks on small screens */
+    width: 0.25em;
+    height: 0.5em;
+    border: solid white;
+    border-width: 0 0.11em 0.11em 0;
+
+    /* rotating leaves it optically low; nudge it back up */
+    transform: translateY(-0.05em) rotate(45deg);
+}
+
+.custom-checkbox input:checked ~ .checkmark::after {
+    display: block;
+}

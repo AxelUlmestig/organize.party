@@ -1,3 +1,6 @@
+include .env
+export
+
 .PHONY: deploy-database
 deploy-database:
 	docker compose up -d pgbouncer
@@ -6,12 +9,12 @@ deploy-database:
 
 .PHONY: start-dev-webapi
 start-dev-webapi: deploy-database
-	HOST_URL=http://localhost:8081 DB_HOST=localhost DB_PORT=6432 cabal run op-webapi
+	cabal run op-webapi
 
 .PHONY: start-dev-worker
 start-dev-worker: deploy-database
 	docker compose up -d mailhog
-	LOG_LEVEL=LevelDebug DB_HOST=localhost DB_PORT=6432 LISTEN_DB_HOST=localhost LISTEN_DB_PORT=5432 SMTP_SERVER=localhost SMTP_PORT=1025 SMTP_LOGIN= SMTP_PASSWORD= cabal run op-worker
+	cabal run op-worker
 
 .PHONY: build-frontend
 build-frontend:

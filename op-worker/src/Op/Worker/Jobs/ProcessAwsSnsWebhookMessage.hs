@@ -10,6 +10,7 @@ import           Data.Aeson.Lens
 import qualified Data.ByteString.Lazy    as LBS
 import qualified Data.List
 import           Data.String.Interpolate (i)
+import qualified Data.Text               as Text
 import qualified Data.UUID               as UUID
 import qualified Network.HTTP.Req        as Req
 import           RIO
@@ -23,6 +24,17 @@ newtype ProcessAwsSnsWebhookMessageJob = ProcessAwsSnsWebhookMessageJob { awsSns
 
 instance Aeson.ToJSON ProcessAwsSnsWebhookMessageJob
 instance Aeson.FromJSON ProcessAwsSnsWebhookMessageJob
+
+data NotificationSource
+  = S3
+  | SES
+  deriving (Show)
+
+getNotificationSource :: Aeson.Value -> Maybe NotificationSource
+getNotificationSource message
+  | isJust $ message ^? key "notificationType" = Just SES
+  | message ^? key "Records" . nth 0 . key "eventSource" . _String == Just "aws:s3" = Just S3
+  | otherwise = Nothing
 
 instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env ProcessAwsSnsWebhookMessageJob where
   processJob (ProcessAwsSnsWebhookMessageJob awsSnsWebhookMessageId) = do
@@ -48,11 +60,16 @@ instance (HasLogFunc env, Db.HasDbConnection env) => Job.JobDefinition env Proce
     case (mWebhookType, mWebhookMessage) of
       (Just "SubscriptionConfirmation", _) -> handleSubscriptionConfirmation webhookContents
       (Just "Notification", Just message) -> do
-        case message ^? key "notificationType" of
-          Just "Delivery" -> handleSesDelivery message
-          Just "Bounce" -> handleSesBounce message
-          Just "Complaint" -> handleSesComplaint message
-          _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+        case getNotificationSource message of
+          Just SES -> do
+            case message ^? key "notificationType" of
+              Just "Delivery" -> handleSesDelivery message
+              Just "Bounce" -> handleSesBounce message
+              Just "Complaint" -> handleSesComplaint message
+              _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
+          Just S3 -> do
+            handleS3Notification message
+          Nothing -> Job.giveUpJob [i|Unexpected AWS SNS webhook message (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
       _ -> Job.giveUpJob [i|Unexpected AWS SNS webhook type (id: #{awsSnsWebhookMessageId}): #{Aeson.encode webhookContents}|]
 
     Db.queryDbOr retryDbErr do
@@ -115,6 +132,47 @@ handleSubscriptionConfirmation webhookContents = do
   case Req.responseStatusCode response `div` 100 of
     2 -> pure ()
     _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
+
+handleS3Notification :: (Db.HasDbConnection env) => Aeson.Value -> Job.Job env ()
+handleS3Notification message = do
+  let mEventName = message ^? key "Records" . nth 0 . key "eventName" . _String
+
+  let mKey = do
+        keyString <- message ^? key "Records" . nth 0 . key "s3" . key "object" . key "key" . _String
+        photoUploadIdText <- Text.splitOn "/" keyString Data.List.!? 1
+        UUID.fromText photoUploadIdText
+
+  let mObjectUrl = do
+        record <- message ^? key "Records" . nth 0
+        region <- record ^? key "awsRegion" . _String
+        bucketName <- record ^? key "s3" . key "bucket" . key "name" . _String
+        objectKey <- record ^? key "s3" . key "object" . key "key" . _String
+        Just [i|https://#{bucketName}.s3.#{region}.amazonaws.com/#{objectKey}|]
+
+  case (mEventName, mKey, mObjectUrl) of
+    (Just "ObjectCreated:Put", Just photoUploadId, Just photoUrl) -> notifyPhotoUploadStateMachine photoUploadId photoUrl
+    _ -> Job.giveUpJob [i|Unexpected S3 notification. mEventName: #{mEventName}, mKey: #{mKey}, mObjectUrl: #{mObjectUrl}, Message: #{Aeson.encode message}|]
+  where
+    notifyPhotoUploadStateMachine photoUploadId photoUrl = do
+      -- TODO: verify size
+      photoUploadFound <- do
+        fmap isJust do
+          Db.queryDbOr retryDbErr do
+            Db.statement
+              (photoUploadId, photoUrl)
+              [Db.maybeStatement|
+                select fsm.notify_state_machine(
+                  shard => 1,
+                  machine => state_machine_id,
+                  event => 'upload_verified',
+                  data => jsonb_build_object('photoUrl', $2::text)
+                )::text?
+                from aws.photo_uploads
+                where id = $1::uuid
+              |]
+
+      when (not photoUploadFound) do
+        Job.giveUpJob [i|`aws.photo_uploads where id = '#{photoUploadId}'` was not found. S3 webhook message: #{Aeson.encode message}|]
 
 
 extractEmailId :: Aeson.Value -> Maybe UUID.UUID

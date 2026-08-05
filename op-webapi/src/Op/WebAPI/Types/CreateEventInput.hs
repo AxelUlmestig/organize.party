@@ -3,6 +3,7 @@ module Op.WebAPI.Types.CreateEventInput (CreateEventInput(..)) where
 import           Data.Aeson               (FromJSON, ToJSON)
 import           Data.Text
 import           Data.Time.Clock          (UTCTime)
+import           Data.UUID                (UUID)
 import           RIO
 
 import           Op.WebAPI.Types.Password (Password (..))
@@ -15,6 +16,7 @@ data CreateEventInput = CreateEventInput
                         , location       :: Text
                         , googleMapsLink :: Maybe Text
                         , password       :: Password
+                        , photoId        :: Maybe UUID
                         }
                         deriving (Generic)
 

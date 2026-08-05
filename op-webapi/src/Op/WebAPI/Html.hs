@@ -12,12 +12,12 @@ import           Control.Monad.Except         (MonadError)
 import qualified Data.ByteString.Lazy         as LBS
 import           Data.ByteString.Lazy.Search  (replace)
 import           Data.ByteString.UTF8         as BSU
-import           Data.String.Interpolate      (__i)
+import           Data.String.Interpolate      (__i, i)
 import           Data.UUID                    (UUID)
 import           Network.HTTP.Media           ((//), (/:))
 import qualified Op.WebAPI.Endpoints.GetEvent
 import           Op.WebAPI.Types.AppEnv       (AppEnv (..))
-import           Op.WebAPI.Types.Event        (Event (..))
+import           Op.WebAPI.Types.Event        (Event (..), Photo (..))
 import           Op.WebAPI.Types.HasHostUrl   (HasHostUrl (..))
 import           RIO
 import           Servant
@@ -96,13 +96,15 @@ eventPage eventId = do
 
   pure $ RawHtml indexHtmlWithOpenGraph
   where
-    eventPageOg Event{title, description} hostUrl =
-      [__i|
-        <meta property="og:title" content="#{title}" />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="#{hostUrl}/e/#{eventId}" />
-        <meta property="og:image" content="#{hostUrl}/logo.svg" />
-        <meta property="og:image:type" content="image/svg+xml" />
-        <meta property="og:description" content="#{description}" />
-      |] :: LBS.ByteString
+    eventPageOg Event{title, description, photo} hostUrl =
+      let image = maybe [i|#{hostUrl}/logo.svg|] (\Photo{photoUrl} -> photoUrl) photo
+      in
+        [__i|
+          <meta property="og:title" content="#{title}" />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content="#{hostUrl}/e/#{eventId}" />
+          <meta property="og:image" content="#{image}" />
+          <meta property="og:image:type" content="image/svg+xml" />
+          <meta property="og:description" content="#{description}" />
+        |] :: LBS.ByteString
 
