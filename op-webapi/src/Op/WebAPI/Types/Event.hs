@@ -1,4 +1,4 @@
-module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..)) where
+module Op.WebAPI.Types.Event (Event(..), Attendee, Comment(..), Photo(..)) where
 
 import qualified Data.Aeson               as Aeson
 import           Data.Char                (toLower)
