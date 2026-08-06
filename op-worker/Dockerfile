@@ -23,6 +23,7 @@ COPY op-webapi/op-webapi.cabal /op-webapi/
 COPY op-cache/op-cache.cabal /op-cache/
 COPY op-db/op-db.cabal /op-db/
 COPY op-worker/op-worker.cabal /op-worker/
+COPY op-aws/op-aws.cabal /op-aws/
 COPY cabal.project /
 COPY cabal.project.freeze /
 
@@ -40,6 +41,7 @@ COPY op-webapi/src /op-webapi/src
 COPY op-cache/src /op-cache/src
 COPY op-db/src /op-db/src
 COPY op-worker/src /op-worker/src
+COPY op-aws/src /op-aws/src
 
 # Build the executable
 RUN cabal build op-worker

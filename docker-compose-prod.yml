@@ -46,7 +46,7 @@ services:
       - app-network
 
   webapi:
-    image: axelulmestig/organize.party-webapi:${WEBAPI_VERSION:-0.1}
+    image: axelulmestig/organize.party-webapi:${WEBAPI_VERSION:-0.2}
     ports:
       - "8081:8081"
     build:
@@ -60,11 +60,12 @@ services:
       DB_PORT: 6432
       HOST_URL: "https://organize.party"
       LOG_LEVEL: LevelInfo
+    env_file: .env
     networks:
       - app-network
 
   worker:
-    image: axelulmestig/organize.party-worker:${WORKER_VERSION:-0.1}
+    image: axelulmestig/organize.party-worker:${WORKER_VERSION:-0.2}
     build:
       context: .
       dockerfile: op-worker/Dockerfile
