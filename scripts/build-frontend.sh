@@ -107,20 +107,6 @@ cat << EOF > frontend/index.html
     const eventsLocalStorageKey = 'events';
     const nameAndEmailLocalStorageKey = 'lastUsedNameAndEmail';
 
-    // convert from storing all attendee input on the top level mapped from
-    // event ids to a more future proof structure
-    if(!localStorage.getItem('events')) {
-      const events =
-        Object
-          .keys(localStorage)
-          .map(eventId => ({[eventId]: { attendeeInput: JSON.parse(localStorage.getItem(eventId))}}))
-          .reduce((obj1, obj2) => ({...obj1, ...obj2}), {})
-
-      localStorage.clear()
-
-      localStorage.setItem('events', JSON.stringify(events))
-    }
-
     const app = Elm.Main.init({
       node: document.getElementById('myapp')
     })
@@ -128,11 +114,13 @@ cat << EOF > frontend/index.html
     // Store the input from looking at specific events
     app.ports.writeAttendeeInputToLocalStorage.subscribe(
       ({ eventId, attendeeInput }) => {
-        const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || '{}')
-        const updatedEvent = { ...(events[eventId]), attendeeInput: attendeeInput }
-        const updatedEvents = { ...events, [eventId]: updatedEvent }
+        try {
+          const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || '{}')
+          const updatedEvent = { ...(events[eventId]), attendeeInput: attendeeInput }
+          const updatedEvents = { ...events, [eventId]: updatedEvent }
 
-        localStorage.setItem(eventsLocalStorageKey, JSON.stringify(updatedEvents))
+          localStorage.setItem(eventsLocalStorageKey, JSON.stringify(updatedEvents))
+        } catch (e) { console.warn('localStorage unavailable', e) }
       }
     );
 
@@ -146,21 +134,30 @@ cat << EOF > frontend/index.html
 
     app.ports.requestLocalStorageAttendeeInput.subscribe(
       (eventId) => {
-        const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || {})
-        const attendeeInput = events[eventId]?.attendeeInput
+        try {
+          const events = JSON.parse(localStorage.getItem(eventsLocalStorageKey) || '{}')
+          const attendeeInput = events[eventId]?.attendeeInput
 
-        if(attendeeInput) {
-          app
-            .ports
-            .localStorageAttendeeInputReceiver
-            .send(JSON.stringify(attendeeInput))
-        } else {
-          const nameAndEmail = localStorage.getItem(nameAndEmailLocalStorageKey)
+          if(attendeeInput) {
+            app
+              .ports
+              .localStorageAttendeeInputReceiver
+              .send(JSON.stringify(attendeeInput))
+          } else {
+            const nameAndEmail = localStorage.getItem(nameAndEmailLocalStorageKey)
 
-          app
-            .ports
-            .localStorageAttendeeInputReceiver
-            .send(nameAndEmail)
+            app
+              .ports
+              .localStorageAttendeeInputReceiver
+              .send(nameAndEmail)
+          }
+        } catch (e) {
+            console.warn('localStorage unavailable', e)
+
+            app
+              .ports
+              .localStorageAttendeeInputReceiver
+              .send(null)
         }
       }
     );
