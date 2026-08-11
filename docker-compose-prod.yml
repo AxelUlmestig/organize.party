@@ -55,6 +55,7 @@ services:
     depends_on:
       - pgbouncer
       - nginx
+    restart: always
     environment:
       DB_HOST: pgbouncer
       DB_PORT: 6432
@@ -72,6 +73,7 @@ services:
     depends_on:
       - db
       - pgbouncer
+    restart: always
     environment:
       DB_HOST: pgbouncer
       DB_PORT: 6432
