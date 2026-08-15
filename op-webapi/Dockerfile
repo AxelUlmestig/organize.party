@@ -116,4 +116,6 @@ COPY --from=build-server /op-webapi/webapi-real /webapi
 COPY --from=build-frontend /frontend/index.html /frontend/index.html
 COPY --from=build-frontend /frontend/static/ /frontend/static/
 
+USER nobody
+
 CMD ["/webapi"]

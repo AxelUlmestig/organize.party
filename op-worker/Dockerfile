@@ -64,4 +64,6 @@ RUN apt-get update && apt-get install -y \
 # Copy the server binary
 COPY --from=build-server /op-worker/worker-exe /worker
 
+USER nobody
+
 CMD ["/worker"]
