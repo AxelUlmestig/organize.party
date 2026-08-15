@@ -11,6 +11,7 @@ import qualified Data.ByteString.Lazy                       as LBS
 import           Data.ByteString.UTF8                       as BSU
 import qualified Data.Pool                                  as Pool
 import           Data.String.Interpolate                    (i, iii)
+import qualified Data.Text                                  as Text
 import           Data.Typeable                              (typeOf)
 import           GHC.Generics
 import qualified Hasql.Notifications                        as Notifications
@@ -309,27 +310,38 @@ processOneJob = do
 
 
 
+-- LISTEN_DATABASE_URL wins over DATABASE_URL, for setups where the latter
+-- points at a connection pooler
 getListenDbConnectionSettings :: IO (Either String Db.Settings)
 getListenDbConnectionSettings = do
+    mUrl <- fmap Text.pack <$> lookupEnv "LISTEN_DATABASE_URL"
+    mSharedUrl <- fmap Text.pack <$> lookupEnv "DATABASE_URL"
     mHost <- fmap BSU.fromString <$> lookupEnv "LISTEN_DB_HOST"
     mPort <- lookupEnv "LISTEN_DB_PORT"
-    pure do
-      host <- maybeToEither "Error: Missing env variable LISTEN_DB_HOST" mHost
-      port :: Int <- maybeToEither "Error: Missing env variable LISTEN_DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from LISTEN_DB_PORT" . readMaybe
+    pure case mUrl <|> mSharedUrl of
+      Just url -> Right $ Db.connectionString url
+      Nothing -> do
+        host <- maybeToEither "Error: Missing env variable LISTEN_DB_HOST" mHost
+        port :: Int <- maybeToEither "Error: Missing env variable LISTEN_DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from LISTEN_DB_PORT" . readMaybe
 
-      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ Db.connectionString connectionString
+        let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
+        pure $ Db.connectionString connectionString
 
+-- DATABASE_URL wins if it's set, DB_HOST/DB_PORT can only point at a database
+-- with the hardcoded user/password/dbname
 getDbConnectionSettings :: IO (Either String Db.Settings)
 getDbConnectionSettings = do
+    mUrl <- fmap Text.pack <$> lookupEnv "DATABASE_URL"
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
-    pure do
-      host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
-      port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
+    pure case mUrl of
+      Just url -> Right $ Db.connectionString url
+      Nothing -> do
+        host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
+        port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
-      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ Db.connectionString connectionString
+        let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
+        pure $ Db.connectionString connectionString
 
 
 getSmtpSettings :: IO (Either String SendEmail.SmtpConfig)
