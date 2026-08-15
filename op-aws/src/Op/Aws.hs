@@ -1,13 +1,16 @@
-module Op.Aws (AwsEnv (..), HasAwsEnv (..), presignUploadUrl, loadAwsEnvFromEnvVars, PresignS3PutUrlArguments(..)) where
+module Op.Aws (AwsEnv (..), HasAwsEnv (..), presignUploadUrl, loadAwsEnvFromEnvVars, PresignS3PutUrlArguments(..), photoObjectKey, objectExists) where
 
-import qualified Amazonka            as AWS
-import qualified Amazonka.S3         as AWS.S3
-import           Control.Monad.Catch (MonadCatch)
-import qualified Data.Text           as Text
-import           Data.Text.Encoding  (decodeUtf8, encodeUtf8)
-import           Data.Time.Clock     (UTCTime)
+import qualified Amazonka                  as AWS
+import qualified Amazonka.S3               as AWS.S3
+import           Control.Monad.Catch       (MonadCatch)
+import qualified Data.Text                 as Text
+import           Data.Text.Encoding        (decodeUtf8, encodeUtf8)
+import           Data.Time.Clock           (UTCTime)
+import           Data.UUID                 (UUID)
+import qualified Data.UUID                 as UUID
+import           Network.HTTP.Types.Status (statusCode)
 import           RIO
-import           System.Environment  (lookupEnv)
+import           System.Environment        (lookupEnv)
 
 data AwsEnv = AwsEnv
   { awsEnv   :: AWS.Env
@@ -87,3 +90,33 @@ presignUploadUrl PresignS3PutUrlArguments{..} = do
       putObject
 
   pure $ decodeUtf8 uploadUrlByteString
+
+-- | The webapi presigns an upload url for this key and the worker later polls
+-- it, so they need to agree on it
+photoObjectKey :: UUID -> Text -> Text
+photoObjectKey photoUploadId fileName =
+  "photos/" <> UUID.toText photoUploadId <> "/" <> fileName
+
+-- | Check if the object is in the bucket with a HEAD request under our own
+-- credentials. An anonymous request can't tell "not there" from "not yours",
+-- a private bucket answers 403 to both
+objectExists ::
+  ( MonadIO m
+  , MonadReader env m
+  , HasAwsEnv env
+  )
+  => Text
+  -> m Bool
+objectExists objectKey = do
+  AwsEnv{awsEnv, s3Bucket} <- asks getAwsEnv
+
+  let headObject = AWS.S3.newHeadObject (AWS.S3.BucketName s3Bucket) (AWS.S3.ObjectKey objectKey)
+
+  liftIO do
+    result <- try $ AWS.runResourceT $ AWS.send awsEnv headObject
+
+    case result of
+      Right _ -> pure True
+      Left (AWS.ServiceError AWS.ServiceError'{status})
+        | statusCode status == 404 -> pure False
+      Left err -> throwIO err

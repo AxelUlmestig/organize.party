@@ -35,7 +35,7 @@ RUN if [ -f cabal.project.freeze ]; then \
     mv cabal.project.freeze.tmp cabal.project.freeze || true; \
     fi
 
-RUN cabal build op-worker op-db op-cache --only-dependencies
+RUN cabal build op-worker op-db op-cache op-aws --only-dependencies
 
 COPY op-webapi/src /op-webapi/src
 COPY op-cache/src /op-cache/src

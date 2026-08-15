@@ -63,7 +63,7 @@ initPhotoUpload InitPhotoUploadInput{fileName, base64Sha256} = do
   let urlValidSeconds = 30
 
   presignedUploadUrl <- do
-    let objectKey = [i|photos/#{photoUploadId}/#{fileName}|]
+    let objectKey = Aws.photoObjectKey photoUploadId fileName
     currentTime <- liftIO getCurrentTime
 
     Aws.presignUploadUrl Aws.PresignS3PutUrlArguments{..}
