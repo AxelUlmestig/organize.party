@@ -31,6 +31,20 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib
 `make deploy-production`, this will run it on your local machine with the
 latest pushed image from dockerhub.
 
+## Deploy to Fogpipe Cloud
+`infra/` holds an OpenTofu stack that runs the whole setup on Fogpipe Cloud:
+the webapi, the worker, a managed Postgres and a bucket for photo uploads.
+`tofu` and `fpcloud` are included in the nix dev shell.
+
+1. Build and push the images from `op-webapi/Dockerfile` and
+   `op-worker/Dockerfile` to `registry.cloud.fogpipe.com/<org>/organizeparty/`
+1. `fpcloud login`
+1. `tofu -chdir=infra init`
+1. `tofu -chdir=infra apply -var org=<org> -var image_tag=<tag>`
+1. Run the migrations through a tunnel:
+   `fpcloud db connect events` and `sqitch --chdir db deploy` against the
+   printed connection url
+
 Set up daily database backups
 ```
 make schedule-backup
