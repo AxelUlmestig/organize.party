@@ -2,9 +2,12 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    # not in nixpkgs, the CLI repo ships it as a flake
+    fpcloud.url = "github:fogpipe/cloud-cli";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system:
+  outputs = { nixpkgs, flake-utils, fpcloud, ... }: flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs {
         inherit system;
@@ -34,6 +37,10 @@
           pkgs.pkg-config
           pkgs.playwright-driver.browsers
           pkgs.sqitchPg
+
+          # Deploying to Fogpipe Cloud via infra/
+          pkgs.opentofu
+          fpcloud.packages.${system}.fpcloud
         ];
 
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
