@@ -1,7 +1,6 @@
-# organize.party on Fogpipe Cloud, mirroring docker-compose-prod.yml. nginx and
-# certbot are not needed since the platform terminates TLS, pgbouncer isn't
-# either since the managed database hands out its own connection url, and the
-# custom postgres image is replaced by the platform's extension images.
+# organize.party on Fogpipe Cloud. the platform terminates TLS, the managed
+# database hands out its own pooled connection url and mounts the extensions,
+# so there is no nginx, certbot, pgbouncer or custom postgres image here.
 
 terraform {
   required_providers {
@@ -23,8 +22,8 @@ variable "org" {
 
 variable "host" {
   type        = string
-  description = "Public hostname for the web API."
-  default     = "organizeparty.fogpipe.cloud"
+  description = "Custom domain to serve the site on. Empty serves it on the hostname the platform assigns."
+  default     = ""
 }
 
 variable "image_tag" {
@@ -78,6 +77,12 @@ variable "offsite_backup" {
   })
   default   = null
   sensitive = true
+}
+
+# an app with ingress=all is served at <app>-<project>-<org>-app.fogpipe.cloud,
+# which is where the site lives until someone points a domain of their own at it
+locals {
+  host = var.host != "" ? var.host : "webapi-${fpcloud_project.organizeparty.name}-${var.org}-app.fogpipe.cloud"
 }
 
 resource "fpcloud_project" "organizeparty" {
@@ -142,13 +147,13 @@ resource "fpcloud_bucket" "photos" {
   website_enabled = true
 }
 
-# the page is on var.host and the upload PUT goes to the object store, without
+# the page is on local.host and the upload PUT goes to the object store, without
 # this the browser refuses to send it. Presigning doesn't cover the preflight
 resource "fpcloud_bucket_cors" "photos" {
   bucket_id = fpcloud_bucket.photos.id
 
   rule = [{
-    allowed_origins = ["https://${var.host}"]
+    allowed_origins = ["https://${local.host}"]
     allowed_methods = ["GET", "PUT", "HEAD"]
     allowed_headers = ["*"]
     expose_headers  = ["ETag"]
@@ -166,7 +171,7 @@ resource "fpcloud_app" "webapi" {
   ingress    = "all"
 
   env = {
-    HOST_URL  = "https://${var.host}"
+    HOST_URL  = "https://${local.host}"
     LOG_LEVEL = "LevelInfo"
 
     # where the bucket's objects are publicly readable, the rest of the S3
@@ -216,13 +221,15 @@ resource "fpcloud_app_bucket" "worker_photos" {
 # on_demand: the host is a label in our own wildcard zone, DNS already points
 # at the cluster and there is no external owner to verify against
 resource "fpcloud_domain" "organizeparty" {
+  count = var.host != "" ? 1 : 0
+
   app_id = fpcloud_app.webapi.id
   domain = var.host
   mode   = "on_demand"
 }
 
 output "url" {
-  value = "https://${var.host}"
+  value = "https://${local.host}"
 }
 
 output "photos_url" {
