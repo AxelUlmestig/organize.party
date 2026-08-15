@@ -28,10 +28,6 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib
 1. Go to http://localhost:8081
 
 ## Run in production
-`make deploy-production`, this will run it on your local machine with the
-latest pushed image from dockerhub.
-
-## Deploy to Fogpipe Cloud
 `infra/` holds an OpenTofu stack that runs the whole setup on Fogpipe Cloud:
 the webapi, the worker, a managed Postgres and a bucket for photo uploads.
 `tofu` and `fpcloud` are included in the nix dev shell.
@@ -40,26 +36,14 @@ the webapi, the worker, a managed Postgres and a bucket for photo uploads.
    `op-worker/Dockerfile` to `registry.cloud.fogpipe.com/<org>/organizeparty/`
 1. `fpcloud login`
 1. `tofu -chdir=infra init`
-1. `tofu -chdir=infra apply -var org=<org> -var image_tag=<tag>`
+1. `tofu -chdir=infra apply -var org=<org> -var image_tag=<tag>`. The site is
+   served on the hostname the platform assigns; add `-var host=<domain>` to put
+   it on a domain of your own
+
 1. Run the migrations through a tunnel:
    `fpcloud db connect events` and `sqitch --chdir db deploy` against the
    printed connection url
 
-Set up daily database backups
-```
-make schedule-backup
-```
-
-## Set up SSL with Let's Encrypt
-1. `make deploy-production`
-1. `docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d organize.party`
-1. Schedule monthly renewal of the certificate:
-    `crontab -e` and add (make sure to update the path to work with your setup):
-    ```
-    0 0 1 * * cd /home/admin/organize.party && docker compose run --rm certbot renew && docker compose restart nginx
-    ```
-
-It should now be possible to view https://organize.party with full
-SSL protection.
-
+The certificate for the custom domain and the database backups are the
+platform's, there is nothing to schedule.
 
