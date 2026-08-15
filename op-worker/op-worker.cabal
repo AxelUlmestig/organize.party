@@ -32,6 +32,7 @@ executable op-worker
                     , modern-uri
                     , mtl
                     , network
+                    , op-aws
                     , op-db
                     , req
                     , resource-pool

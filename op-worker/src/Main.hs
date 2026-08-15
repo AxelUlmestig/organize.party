@@ -15,6 +15,7 @@ import qualified Data.Text                                  as Text
 import           Data.Typeable                              (typeOf)
 import           GHC.Generics
 import qualified Hasql.Notifications                        as Notifications
+import qualified Op.Aws                                     as Aws
 import qualified Op.Db                                      as Db
 import           RIO
 import           System.Environment                         (lookupEnv)
@@ -45,6 +46,10 @@ main = do
       Db.createPool dbSettings
 
     smtpConfig <- getSmtpSettings >>= either die pure
+
+    -- The poll s3 file upload job checks the bucket with the same credentials
+    -- that the webapi presigns upload urls with
+    awsEnv <- Aws.loadAwsEnvFromEnvVars
 
     -- Initiate a shard state that keeps track of how many parallel jobs are
     -- running and if the worker is shutting down
@@ -367,12 +372,16 @@ data WorkerEnv = WorkerEnv
   { connectionPool    :: Pool.Pool Db.Connection
   -- , jobId          :: UUID.UUID
   , smtpConfig        :: SendEmail.SmtpConfig
+  , awsEnv            :: Aws.AwsEnv
   , logFunc           :: LogFunc
   , sharedWorkerState :: JobLogistics.SharedWorkerState
   }
 
 instance HasLogFunc WorkerEnv where
   logFuncL = lens logFunc (\env f -> env { logFunc = f })
+
+instance Aws.HasAwsEnv WorkerEnv where
+  getAwsEnv = awsEnv
 
 instance SendEmail.HasSmtpConfig WorkerEnv where
   getSmtpConfig = smtpConfig
