@@ -125,16 +125,21 @@ app env = simpleCors . serve api $ hoistServer api (`runReaderT` env) servantSer
         :<|> const frontPage -- unsubscribe id
         :<|> serveDirectoryWebApp "frontend/static"
 
+-- DATABASE_URL wins if it's set, DB_HOST/DB_PORT can only point at a database
+-- with the hardcoded user/password/dbname
 getDbConnectionSettings :: IO (Either String Db.Settings)
 getDbConnectionSettings = do
+    mUrl <- fmap Text.pack <$> lookupEnv "DATABASE_URL"
     mHost <- fmap BSU.fromString <$> lookupEnv "DB_HOST"
     mPort <- lookupEnv "DB_PORT"
-    pure do
-      host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
-      port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
+    pure case mUrl of
+      Just url -> Right $ Db.connectionString url
+      Nothing -> do
+        host <- maybeToEither "Error: Missing env variable DB_HOST" mHost
+        port :: Int <- maybeToEither "Error: Missing env variable DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from DB_PORT" . readMaybe
 
-      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
-      pure $ Db.connectionString connectionString
+        let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
+        pure $ Db.connectionString connectionString
 
 
 getHostUrl :: IO (Either String Text)
