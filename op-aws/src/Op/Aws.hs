@@ -13,8 +13,9 @@ import           RIO
 import           System.Environment        (lookupEnv)
 
 data AwsEnv = AwsEnv
-  { awsEnv   :: AWS.Env
-  , s3Bucket :: Text
+  { awsEnv       :: AWS.Env
+  , s3Bucket     :: Text
+  , s3PublicBase :: Maybe Text
   }
 
 class HasAwsEnv a where
@@ -27,12 +28,15 @@ instance HasAwsEnv AwsEnv where
 --
 -- S3_ENDPOINT optionally points at an S3 compatible endpoint other than AWS,
 -- amazonka can only derive endpoints from the region. S3_BUCKET names the
--- bucket, defaulting to the previously hardcoded one.
+-- bucket, defaulting to the previously hardcoded one. S3_PUBLIC_BASE is where
+-- uploaded objects can be read publicly, for S3 implementations that don't
+-- serve anonymous reads from the API endpoint.
 loadAwsEnvFromEnvVars :: (MonadCatch m, MonadIO m) => m AwsEnv
 loadAwsEnvFromEnvVars = do
   env <- AWS.newEnv AWS.discover
   mEndpoint <- liftIO $ lookupEnv "S3_ENDPOINT"
   mBucket <- liftIO $ lookupEnv "S3_BUCKET"
+  mPublicBase <- liftIO $ lookupEnv "S3_PUBLIC_BASE"
 
   let overridden = case mEndpoint of
         Nothing       -> env
@@ -41,6 +45,7 @@ loadAwsEnvFromEnvVars = do
   pure AwsEnv
     { awsEnv = overridden
     , s3Bucket = maybe "organize-party" Text.pack mBucket
+    , s3PublicBase = Text.pack <$> mPublicBase
     }
 
 -- path style addressing since a bucket as a subdomain needs a wildcard

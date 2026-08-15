@@ -43,13 +43,12 @@ instance (Db.HasDbConnection env, Aws.HasAwsEnv env) => Job.JobDefinition env Po
     -- anonymously, a private bucket responds 403 whether it exists or not
     uploaded <- Aws.objectExists (Aws.photoObjectKey uploadId fileName)
 
-    -- the upload url has a bunch of query parameters to enable PUTing, we
-    -- don't need that
-    let photoUrl = Text.takeWhile (/= '?') uploadUrl
-
     (fsmEvent, fsmEventBody) <-
       if uploaded
-        then pure ("upload_verified", Just [aesonQQ|{"photoUrl": #{photoUrl}}|])
+        then do
+          awsEnv <- asks Aws.getAwsEnv
+          let photoUrl = publicPhotoUrl awsEnv uploadUrl
+          pure ("upload_verified", Just [aesonQQ|{"photoUrl": #{photoUrl}}|])
         else pure ("poll_upload_status_again", Nothing)
 
     Db.queryDbOr retryDbErr do
@@ -65,6 +64,28 @@ instance (Db.HasDbConnection env, Aws.HasAwsEnv env) => Job.JobDefinition env Po
           from aws.photo_uploads
           where id = $1::uuid
         |]
+
+-- the upload url has a bunch of query parameters to enable PUTing, we don't
+-- need that. If S3_PUBLIC_BASE is set then the photo is served from there
+-- instead of from the S3 API
+publicPhotoUrl :: Aws.AwsEnv -> Text -> Text
+publicPhotoUrl awsEnv uploadUrl =
+  case awsEnv.s3PublicBase of
+    Nothing   -> unsigned
+    Just base -> publicUrl base awsEnv.s3Bucket unsigned
+  where
+    unsigned = Text.takeWhile (/= '?') uploadUrl
+
+-- replace everything up to and including the bucket path segment with the
+-- public base url, keeping the object key
+publicUrl :: Text -> Text -> Text -> Text
+publicUrl base bucket url =
+  case Text.breakOn bucketSegment url of
+    (_, rest)
+      | Text.null rest -> url
+      | otherwise -> Text.dropWhileEnd (== '/') base <> "/" <> Text.drop (Text.length bucketSegment) rest
+  where
+    bucketSegment = "/" <> bucket <> "/"
 
 retryDbErr :: Db.SessionError -> Job.Job env a
 retryDbErr err = Job.retryJob [i|Error when accessing db for poll s3 file upload job: #{err}|]
