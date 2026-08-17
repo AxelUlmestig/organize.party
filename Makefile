@@ -35,25 +35,6 @@ update-server-container:
 	docker image prune -f
 	docker compose exec db sqitch --chdir db deploy
 
-.PHONY: deploy-production
-deploy-production:
-	docker compose -f docker-compose-prod.yml up -d db
-	./scripts/wait-for-db.sh docker-compose-prod.yml
-	docker compose -f docker-compose-prod.yml exec db sqitch --chdir db deploy --verify
-	docker compose -f docker-compose-prod.yml up --force-recreate -d webapi worker
-
-.PHONY: backup-db
-backup-db:
-	./scripts/backup-database.sh
-
-.PHONY: schedule-backup
-schedule-backup:
-	./scripts/schedule-backup.sh
-
-.PHONY: run-certbot
-run-certbot:
-	./scripts/run-certbot.sh
-
 .PHONY: run-tests
 run-tests:
 	docker compose up -d filehost
@@ -77,7 +58,3 @@ export GEN_CHARTS_QUERY
 gen-charts:
 	sudo chmod 666 db/sqitch.plan
 	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events -c "$$GEN_CHARTS_QUERY"
-
-.PHONY: push-docker-images
-push-docker-images:
-		./scripts/push-docker-images.sh
