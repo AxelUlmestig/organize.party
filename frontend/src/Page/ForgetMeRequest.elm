@@ -60,14 +60,13 @@ view pageState =
         View { id, email, deletedAt } ->
             case ( email, deletedAt ) of
                 ( Just emailValue, _ ) ->
-                    H.div [ A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
+                    H.div [ A.class "text-paragraph" ]
                         [ H.text "Are you sure that you want to purge all references to "
                         , H.b [] [ H.text emailValue ]
                         , H.text " from the database?"
                         , H.div [ A.class "button-wrapper" ]
                             [ H.button
                                 [ onClick (InternalMsg <| Submit id)
-                                , A.style "background-color" "#1c2c3b"
                                 , A.class "submit-button"
                                 ]
                                 [ H.text "Yes, forget me" ]
@@ -75,7 +74,7 @@ view pageState =
                         ]
 
                 ( _, Just deletedAtValue ) ->
-                    H.div [ A.style "margin-top" "1rem", A.style "margin-bottom" "1rem" ]
+                    H.div [ A.class "text-paragraph" ]
                         [ H.text "The request to forget you was successfully processed on "
                         , H.b []
                             [ H.text (viewEventDate pageState.timeZone deletedAtValue)

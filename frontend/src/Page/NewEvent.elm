@@ -53,10 +53,6 @@ type InternalMsg
     | InternalCreatedEvent (Result Http.Error Event)
 
 
-borderRadius =
-    A.style "border-radius" "5px"
-
-
 init : Time.Zone -> Time.Posix -> ( State, Cmd Msg )
 init timezone time =
     let
@@ -86,7 +82,7 @@ view pageState =
 
         NewEvent eventEditorState ->
             H.div []
-                [ H.h1 [ A.style "margin-top" "1rem", A.class "mb-3" ] [ H.text "Create an event" ]
+                [ H.h1 [ A.class "page-title" ] [ H.text "Create an event" ]
                 , H.map (InternalMsg << EventEditorMsg) <| EventEditor.view Dict.empty eventEditorState
                 , H.div [ A.class "button-wrapper" ]
                     [ H.button

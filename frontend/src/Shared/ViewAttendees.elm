@@ -20,10 +20,10 @@ viewAttendees attendees =
         attendeeDict =
             splitAttendees attendees
     in
-    H.div []
+    H.div [ A.class "attendees" ]
         [ case Dict.get "Coming" attendeeDict of
             Nothing ->
-                H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ] [ H.text "Attending: 0" ]
+                H.h3 [ A.attribute "data-testid" "view-attendees-attending-number", A.class "section-heading" ] [ H.text "Attending: 0" ]
 
             Just attending ->
                 let
@@ -31,7 +31,7 @@ viewAttendees attendees =
                         countAttendees attending
                 in
                 H.div []
-                    [ H.h3 [ A.attribute "data-testid" "view-attendees-attending-number" ]
+                    [ H.h3 [ A.attribute "data-testid" "view-attendees-attending-number", A.class "section-heading" ]
                         [ H.text
                             ("Attending: "
                                 ++ String.fromInt comingCount
@@ -61,7 +61,6 @@ viewAttendees attendees =
                             attending
                         )
                     ]
-        , H.br [] []
         , case Dict.get "Maybe Coming" attendeeDict of
             Nothing ->
                 H.div [] []
@@ -72,7 +71,7 @@ viewAttendees attendees =
                         countAttendees maybeAttending
                 in
                 H.div []
-                    [ H.h3 [ A.attribute "data-testid" "view-attendees-maybe-attending-number" ]
+                    [ H.h3 [ A.attribute "data-testid" "view-attendees-maybe-attending-number", A.class "section-heading" ]
                         [ H.text
                             ("Maybe Attending: "
                                 ++ String.fromInt maybeComingCount
@@ -102,7 +101,6 @@ viewAttendees attendees =
                             maybeAttending
                         )
                     ]
-        , H.br [] []
         , case Dict.get "Not Coming" attendeeDict of
             Nothing ->
                 H.div [] []
@@ -113,7 +111,7 @@ viewAttendees attendees =
                         countAttendees notAttending
                 in
                 H.div []
-                    [ H.h3 [] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
+                    [ H.h3 [ A.class "section-heading" ] [ H.text ("Can't Attend: " ++ String.fromInt notComingCount) ]
                     , H.div [] (List.map (\attendee -> H.div [] [ H.text attendee.name ]) notAttending)
                     ]
         ]

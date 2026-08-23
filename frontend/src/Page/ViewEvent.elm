@@ -112,11 +112,6 @@ init viewEventInput newlyCreated =
             ( ViewEvent modal event (emptyAttendeeInput event.id), requestLocalStorageAttendeeInput event.id )
 
 
-borderRadius =
-    A.style "border-radius" "5px"
-
-
-
 -- TODO: refactor these checks into something nicer
 
 
@@ -231,7 +226,7 @@ view pageState =
                             , A.class "event-title"
                             ]
                             [ H.text title ]
-                        , H.a [ A.attribute "data-testid" "edit-event", A.href ("/e/" ++ id ++ "/edit"), A.style "display" "flex", A.style "align-items" "center", A.style "flex-direction" "column" ] [ Icon.view (Icon.styled [ Icon.lg, A.style "margin" "auto" ] Icon.pencil) ]
+                        , H.a [ A.attribute "data-testid" "edit-event", A.href ("/e/" ++ id ++ "/edit"), A.class "edit-event-link" ] [ Icon.view (Icon.styled [ Icon.lg ] Icon.pencil) ]
                         ]
                     , case photo of
                         Nothing ->
@@ -246,58 +241,48 @@ view pageState =
                                     ]
                                     []
                                 ]
-                    , H.div [ A.attribute "data-testid" "view-event-description", A.style "white-space" "pre-wrap" ] [ formatTextWithLinks description ]
-                    , H.div [ A.style "background-color" "white", borderRadius, A.style "box-shadow" "0px 0px 5px gray", A.style "margin-top" "1rem", A.style "margin-bottom" "1rem", A.style "padding" "0.5rem" ]
+                    , H.div [ A.attribute "data-testid" "view-event-description", A.class "event-description" ] [ formatTextWithLinks description ]
+                    , H.div [ A.class "event-info-card" ]
                         [ H.div []
-                            [ H.div [ A.style "margin-bottom" "1rem" ]
-                                [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.locationDot)
-                                , H.span [ A.attribute "data-testid" "view-event-location" ] [ H.text location ]
+                            [ eventInfoIcon Icon.locationDot
+                            , H.span [ A.attribute "data-testid" "view-event-location" ] [ H.text location ]
+                            ]
+                        , H.div [ A.class "event-info-row" ]
+                            [ H.span []
+                                [ eventInfoIcon Icon.calendar
+                                , H.text (viewEventDate pageState.timeZone startTime)
                                 ]
-                            , H.div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin-top" "1rem" ]
-                                [ H.span [ A.style "flex" "1" ]
-                                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.calendar)
-                                    , H.text (viewEventDate pageState.timeZone startTime)
-                                    ]
-                                , H.span [ A.style "flex" "1" ]
-                                    [ Icon.view (Icon.styled [ Icon.lg, A.style "margin-left" "0.5rem", A.style "margin-right" "0.5rem" ] Icon.clock)
-                                    , H.text (viewEventTime pageState.timeZone startTime)
-                                    ]
+                            , H.span []
+                                [ eventInfoIcon Icon.clock
+                                , H.text (viewEventTime pageState.timeZone startTime)
                                 ]
                             ]
                         ]
                     ]
-                , H.br [] []
-                , H.div []
+                , H.div [ A.class "rsvp-section" ]
                     [ H.b [] [ H.text "Are you attending?" ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-                    , H.div [] [ H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] [] ]
-                    , H.div [ A.style "margin-top" "0.5rem" ]
-                        [ let
-                            args =
-                                { checked = attendeeInput.plusOne
-                                , description = "I am bringing a plus one"
-                                , onUpdate = \po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })
-                                , testId = "view-event-attendee-plus-one"
-                                }
-                          in
-                          checkbox args
+                    , H.div [ A.class "form-label" ] [ H.text "Name" ]
+                    , H.input [ A.attribute "data-testid" "view-event-attendee-name", A.class "padded-input", A.attribute "autocomplete" "name", A.value attendeeInput.name, onInput (\fn -> InternalMsg (UpdateAttendeeInput { attendeeInput | name = fn })), A.placeholder "Your name" ] []
+                    , H.div [ A.class "form-label" ] [ H.text "Email" ]
+                    , H.input [ A.attribute "data-testid" "view-event-attendee-email", A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.value attendeeInput.email, onInput (\e -> InternalMsg (UpdateAttendeeInput { attendeeInput | email = e })), A.placeholder "Your email" ] []
+                    , H.div [ A.class "form-field" ]
+                        [ checkbox
+                            { checked = attendeeInput.plusOne
+                            , description = "I am bringing a plus one"
+                            , onUpdate = \po -> InternalMsg (UpdateAttendeeInput { attendeeInput | plusOne = po })
+                            , testId = "view-event-attendee-plus-one"
+                            }
                         ]
-                    , H.div
-                        [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-                        [ let
-                            args =
-                                { checked = attendeeInput.getNotifiedOnComments
-                                , description = "Notify me when someone leaves a comment"
-                                , onUpdate = \gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc })
-                                , testId = "view-event-get-notified-on-comments"
-                                }
-                          in
-                          checkbox args
+                    , H.div [ A.class "form-field" ]
+                        [ checkbox
+                            { checked = attendeeInput.getNotifiedOnComments
+                            , description = "Notify me when someone leaves a comment"
+                            , onUpdate = \gnoc -> InternalMsg (UpdateAttendeeInput { attendeeInput | getNotifiedOnComments = gnoc })
+                            , testId = "view-event-get-notified-on-comments"
+                            }
                         ]
-                    , H.div []
-                        [ H.select [ A.attribute "data-testid" "view-event-attendee-status", onInput onStatusUpdate ]
+                    , H.div [ A.class "form-field" ]
+                        [ H.select [ A.attribute "data-testid" "view-event-attendee-status", A.class "status-select", onInput onStatusUpdate ]
                             [ H.option [ A.selected (attendeeInput.status == Coming) ] [ H.text "Coming" ]
                             , H.option [ A.selected (attendeeInput.status == MaybeComing) ] [ H.text "Maybe Coming" ]
                             , H.option [ A.selected (attendeeInput.status == NotComing) ] [ H.text "Not Coming" ]
@@ -314,10 +299,8 @@ view pageState =
                             ]
                         ]
                     ]
-                , H.br [] []
-                , H.br [] []
                 , viewAttendees attendees
-                , H.h1 [ A.class "mb-3", A.class "comments-header" ] [ H.text "Comments" ]
+                , H.h1 [ A.class "section-heading comments-header" ] [ H.text "Comments" ]
                 , addCommentView attendeeInput
                 , viewComments pageState.currentTime comments
                 ]
@@ -485,33 +468,33 @@ addCommentView : AttendeeInput -> Html ViewEventMsg
 addCommentView attendeeInput =
     H.map InternalMsg <|
         H.div []
-            [ H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Name" ]
-            , H.div [] [ H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.style "width" "100%", borderRadius, A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] [] ]
-            , H.div [ A.style "margin-top" "0.5rem" ] [ H.text "Email" ]
-            , H.div [] [ H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.style "width" "100%", borderRadius, A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] [] ]
-            , H.div [ A.class "submit-comment-button" ] [ H.text "Comment" ]
+            [ H.div [ A.class "form-label" ] [ H.text "Name" ]
+            , H.input [ A.class "padded-input", A.attribute "autocomplete" "name", A.value attendeeInput.name, onInput (\fn -> UpdateAttendeeInput { attendeeInput | name = fn }), A.placeholder "Your name" ] []
+            , H.div [ A.class "form-label" ] [ H.text "Email" ]
+            , H.input [ A.class "padded-input", A.attribute "type" "email", A.attribute "autocomplete" "email", A.value attendeeInput.email, onInput (\e -> UpdateAttendeeInput { attendeeInput | email = e }), A.placeholder "Your email" ] []
+            , H.div [ A.class "form-label" ] [ H.text "Comment" ]
             , expandingTextarea
                 { text = attendeeInput.comment
                 , onInput = \c -> UpdateAttendeeInput { attendeeInput | comment = c }
                 , placeholder = "Leave a comment"
-                , styling = []
                 }
-            , H.div
-                [ A.style "margin-top" "0.5rem", A.style "margin-bottom" "0.5rem" ]
-                [ let
-                    args =
-                        { checked = attendeeInput.forceNotificationOnComment
-                        , description = "Send email notification to everyone"
-                        , onUpdate = \fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc }
-                        , testId = "view-event-notify-everyone-on-comment"
-                        }
-                  in
-                  checkbox args
+            , H.div [ A.class "form-field" ]
+                [ checkbox
+                    { checked = attendeeInput.forceNotificationOnComment
+                    , description = "Send email notification to everyone"
+                    , onUpdate = \fnoc -> UpdateAttendeeInput { attendeeInput | forceNotificationOnComment = fnoc }
+                    , testId = "view-event-notify-everyone-on-comment"
+                    }
                 ]
             , H.div [ A.class "button-wrapper" ]
                 [ H.button [ A.class "submit-button", disableUnlessValidCommentInput attendeeInput, onClick (CommentOnEvent attendeeInput) ] [ H.text "Comment" ]
                 ]
             ]
+
+
+eventInfoIcon : Icon.Icon Icon.WithoutId -> Html msg
+eventInfoIcon icon =
+    H.span [ A.class "event-info-icon" ] [ Icon.view (Icon.styled [ Icon.lg ] icon) ]
 
 
 type alias CheckboxArgs msg =

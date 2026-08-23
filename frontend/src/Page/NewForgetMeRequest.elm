@@ -44,20 +44,16 @@ view pageState =
     case pageState.state of
         InputtingEmail emailAddress ->
             H.div []
-                [ H.p [ A.class "about-paragraph" ] [ H.text "Enter the email that you want to be purged from the database. An email with a confirmation link will be sent to you." ]
-                , H.div []
-                    [ H.input
-                        [ A.class "padded-input"
-                        , A.class "rounded-corners"
-                        , A.style "width" "100%"
-                        , A.attribute "type" "email"
-                        , A.attribute "autocomplete" "email"
-                        , A.value emailAddress
-                        , onInput (InternalMsg << UpdateEmail)
-                        , A.placeholder "Your email"
-                        ]
-                        []
+                [ H.p [ A.class "text-paragraph" ] [ H.text "Enter the email that you want to be purged from the database. An email with a confirmation link will be sent to you." ]
+                , H.input
+                    [ A.class "padded-input"
+                    , A.attribute "type" "email"
+                    , A.attribute "autocomplete" "email"
+                    , A.value emailAddress
+                    , onInput (InternalMsg << UpdateEmail)
+                    , A.placeholder "Your email"
                     ]
+                    []
                 , H.div [ A.class "button-wrapper" ]
                     [ H.button
                         [ A.class "submit-button"
@@ -71,7 +67,7 @@ view pageState =
         Success email ->
             H.div []
                 [ H.p
-                    [ A.class "about-paragraph" ]
+                    [ A.class "text-paragraph" ]
                     [ H.text ("An email has been sent to " ++ email ++ ". Please check your inbox and click the link to confirm the request.") ]
                 ]
 

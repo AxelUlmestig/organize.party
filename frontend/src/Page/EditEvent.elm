@@ -137,14 +137,14 @@ view pageState =
                                             ]
                                 ]
                             ]
-                , H.h1 [ A.class "mb-3" ] [ H.text "Edit event" ]
+                , H.h1 [ A.class "page-title" ] [ H.text "Edit event" ]
                 , H.map (InternalMsg << EventEditorMsg) (EventEditor.view copy eventEditorState)
                 , H.div [ A.class "button-wrapper" ]
-                    [ H.button [ A.class "submit-button", onClick (EditCancelled event.id) ] [ H.text "Cancel" ]
+                    [ H.button [ A.class "submit-button secondary", onClick (EditCancelled event.id) ] [ H.text "Cancel" ]
                     , H.button [ A.class "submit-button", onClick (InternalMsg (SubmitUpdate eventEditorState)) ] [ H.text "Submit" ]
                     ]
                 , viewAttendees event.attendees
-                , H.h1 [ A.class "mb-3" ] [ H.text "Comments" ]
+                , H.h1 [ A.class "section-heading comments-header" ] [ H.text "Comments" ]
                 , viewComments pageState.currentTime event.comments
                 ]
 

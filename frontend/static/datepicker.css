@@ -4,7 +4,7 @@
     color: #22292f;
     font-size: .875rem;
     padding: .75rem;
-    border-radius: 5px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15)
 }
 
@@ -35,7 +35,7 @@
 }
 
 .elm-datetimepicker-single--calendar-header-chevron:hover {
-    color: #38c172;
+    color: var(--color-primary);
 }
 
 .elm-datetimepicker-single--calendar-header-week {
@@ -91,12 +91,12 @@
 }
 
 .elm-datetimepicker-single--calendar-day.elm-datetimepicker-single--picked {
-    background-color: #3490dc;
+    background-color: var(--color-primary);
     color: #fff;
 }
 
 .elm-datetimepicker-single--calendar-day.elm-datetimepicker-single--today {
-    color: #3490dc;
+    color: var(--color-primary);
 }
 
 .elm-datetimepicker-single--footer {

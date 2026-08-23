@@ -98,7 +98,7 @@ view pageState =
                 Nothing ->
                     H.div []
                         [ H.p
-                            [ A.class "about-paragraph" ]
+                            [ A.class "text-paragraph" ]
                             [ H.text "Your email has already been deleted from our database. You won't receive any more emails from this event."
                             ]
                         ]
@@ -106,14 +106,14 @@ view pageState =
                 Just email ->
                     H.div []
                         [ H.p
-                            [ A.class "about-paragraph" ]
+                            [ A.class "text-paragraph" ]
                             [ H.b [] [ H.text email ]
                             , H.text " Will never receive an email update from "
                             , H.a [ A.href ("/e/" ++ unsubscribeResult.event.id) ] [ H.text unsubscribeResult.event.title ]
                             , H.text " ever again."
                             ]
                         , H.p
-                            [ A.class "about-paragraph" ]
+                            [ A.class "text-paragraph" ]
                             [ H.text "But you can still receive updates from other events that you have interacted with. If you want to completely purge your email address from our database you can click "
                             , H.a [ A.href "/forget-me" ] [ H.text "here" ]
                             , H.text "."

@@ -72,10 +72,6 @@ init timezone eventInput photo =
     )
 
 
-borderRadius =
-    A.style "border-radius" "5px"
-
-
 viewPhotoUploadStatus : State -> Html a
 viewPhotoUploadStatus state =
     Photo.view state.photoUploader
@@ -113,8 +109,8 @@ view copy { picker, input, timezone, photoUploader, maybeModal } =
                         ]
                     ]
         , sectionSeparator "What"
-        , H.div [] [ H.text "Event name" ]
-        , H.div [] [ H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.style "width" "100%", borderRadius, A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] [] ]
+        , H.div [ A.class "form-label" ] [ H.text "Event name" ]
+        , H.input [ A.attribute "data-testid" "event-editor-event-name", A.class "padded-input", A.value input.title, onInput (\t -> InternalMsg (UpdateEventInput picker { input | title = t })) ] []
         , case Photo.getPhotoUrl photoUploader of
             Just photoUrl ->
                 H.div []
@@ -143,47 +139,37 @@ view copy { picker, input, timezone, photoUploader, maybeModal } =
                         ]
                         [ H.text "Add Photo" ]
                     ]
-        , H.div [] [ H.text "Description" ]
+        , H.div [ A.class "form-label" ] [ H.text "Description" ]
         , expandingTextarea
             { text = input.description
             , onInput = \d -> InternalMsg (UpdateEventInput picker { input | description = d })
             , placeholder = ""
-            , styling = []
             }
         , sectionSeparator "When"
-        , H.div [ A.style "display" "flex", A.style "color" "black", onClick (InternalMsg OpenPicker) ]
-            [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.calendar) ]
-                , H.input [ A.class "padded-input", A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventDate timezone input.startTime) ] []
-                ]
-            , H.span [ A.style "flex" "1", A.class "d-flex flex-row justify-content-start", A.style "margin-left" "0.5rem" ]
-                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.clock) ]
-                , H.input [ A.class "padded-input", A.readonly True, A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value (viewEventTime timezone input.startTime) ] []
-                ]
+        , H.div [ A.class "icon-input-row date-picker-row", onClick (InternalMsg OpenPicker) ]
+            [ iconInput Icon.calendar [ A.readonly True, A.value (viewEventDate timezone input.startTime) ]
+            , iconInput Icon.clock [ A.readonly True, A.value (viewEventTime timezone input.startTime) ]
             ]
         , DP.view (DP.defaultSettings timezone (updatePicker input)) picker
         , sectionSeparator "Where"
-        , H.div [] [ H.text "Location" ]
-        , H.div [ A.style "display" "flex", A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-            [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.locationDot) ]
-                , H.input [ A.attribute "data-testid" "event-editor-event-location", A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.location, onInput (\l -> InternalMsg (UpdateEventInput picker { input | location = l })) ] []
-                ]
+        , H.div [ A.class "form-label" ] [ H.text "Location" ]
+        , H.div [ A.class "icon-input-row" ]
+            [ iconInput Icon.locationDot [ A.attribute "data-testid" "event-editor-event-location", A.value input.location, onInput (\l -> InternalMsg (UpdateEventInput picker { input | location = l })) ]
             ]
         , sectionSeparator (Maybe.withDefault "Password For Future Edits" <| Dict.get "password_header" copy)
-
-        -- , sectionSeparator "Password For Future Edits"
-        , H.div [] [ H.text "Password" ]
-        , H.div [ A.class "d-flex flex-row justify-content-start", A.style "margin-top" "1rem" ]
-            [ H.span [ A.style "flex" "2", A.class "d-flex flex-row justify-content-start" ]
-                [ H.span [ A.style "background-color" "#eaebef", A.style "width" "2rem", A.style "height" "100%", A.style "display" "flex", A.style "align-items" "center", A.style "border-radius" "5px 0 0 5px" ]
-                    [ Icon.view (Icon.styled [ Icon.lg, A.style "display" "block", A.style "margin" "auto" ] Icon.key) ]
-                , H.input [ A.attribute "data-testid" "event-editor-event-password", A.class "padded-input", A.style "width" "100%", A.style "border-radius" "0 5px 5px 0", A.value input.password, onInput (\pw -> InternalMsg (UpdateEventInput picker { input | password = pw })) ] []
-                ]
+        , H.div [ A.class "form-label" ] [ H.text "Password" ]
+        , H.div [ A.class "icon-input-row" ]
+            [ iconInput Icon.key [ A.attribute "data-testid" "event-editor-event-password", A.value input.password, onInput (\pw -> InternalMsg (UpdateEventInput picker { input | password = pw })) ]
             ]
+        ]
+
+
+{-| A text input with a decorative icon box glued to its left edge -}
+iconInput : Icon.Icon Icon.WithoutId -> List (H.Attribute Msg) -> Html Msg
+iconInput icon attributes =
+    H.span [ A.class "icon-input" ]
+        [ H.span [ A.class "icon-input-icon" ] [ Icon.view (Icon.styled [ Icon.lg ] icon) ]
+        , H.input (A.class "padded-input" :: attributes) []
         ]
 
 

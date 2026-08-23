@@ -1,21 +1,29 @@
+/* Design tokens. Every color, radius and shadow in the other CSS files should
+   come from here, so the theme can be changed in one place. */
+
 :root {
+  /* spacing scale */
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
   --space-4: 2rem;
 
-  --gap-button: var(--space-1);
-  --gap-section: var(--space-4);
-  --padding-container: var(--space-4);
+  /* shape & elevation */
+  --radius: 8px; /* controls: inputs, buttons, selects */
+  --radius-lg: 12px; /* surfaces: cards, modals, photos */
+  --shadow-sm: 0 1px 4px rgba(28, 44, 59, 0.18);
+  --shadow-md: 0 4px 16px rgba(28, 44, 59, 0.22);
 
-  --border-radius: 5px;
-
-  --primary-color: #346555;
-  --primary-color-light: #c1efb4;
-  --background-color: #f5fbee;
-  --text-color: #3f4a3b;
-  --accent-color: #9ed1bd;
-  --disabled-background-color: #bdc8bc;
-
-  --primary-input-field-background-color: #dee5d7;
+  /* palette */
+  --color-primary: #1c2c3b;
+  --color-primary-hover: #33475c;
+  --color-text: #1c2c3b;
+  --color-text-muted: #6c757d;
+  --color-link: #0d6efd;
+  --color-bg: #fbfafa;
+  --color-surface: #ffffff;
+  --color-border: #ced4da;
+  --color-icon-box: #eaebef;
+  --color-bubble: #e4e6eb;
+  --color-disabled: #8a939c;
 }

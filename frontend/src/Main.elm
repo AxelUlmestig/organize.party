@@ -58,13 +58,10 @@ type State
 view : PageState Navbar.NavbarState State -> Browser.Document Msg
 view state =
     Browser.Document "organize.party"
-        [ H.node "meta" [ A.name "viewport", A.attribute "content" "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable = no" ] []
-        , Icon.css
+        [ Icon.css
         , H.map NavbarMsg (Navbar.view state.navbarState)
         , H.div
-            [ A.class "container"
-            , A.style "max-width" "700px"
-            ]
+            [ A.class "page-container" ]
             [ case state.state of
                 Loading ->
                     H.div [ A.class "center" ]

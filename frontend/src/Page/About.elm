@@ -34,10 +34,6 @@ import Time
 import Util exposing (viewEventDate, viewEventTime)
 
 
-borderRadius =
-    A.style "border-radius" "5px"
-
-
 init : ( State, Cmd Msg )
 init =
     ( (), Cmd.none )
@@ -48,14 +44,14 @@ view pageState =
     case pageState.state of
         () ->
             H.div []
-                [ H.p [ A.class "about-paragraph" ]
+                [ H.p [ A.class "text-paragraph" ]
                     [ H.a [ A.href "/" ] [ H.text "organize.party" ]
                     , H.text " is a free to use, ad free, tracker free, "
                     , H.a [ A.href "https://github.com/AxelUlmestig/organize.party" ] [ H.text "open source" ]
                     , H.text " event planning tool."
                     ]
                 , sectionSeparator "How it works"
-                , H.p [ A.class "about-paragraph" ]
+                , H.p [ A.class "text-paragraph" ]
                     [ H.ol []
                         [ H.li [] [ H.text "Create an event, describing when and where it will take place." ]
                         , H.li [] [ H.text "When the event is created you can share the page with your friends and they'll be able to RSVP." ]
