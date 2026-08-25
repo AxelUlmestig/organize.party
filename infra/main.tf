@@ -17,7 +17,13 @@ provider "fpcloud" {
 
 variable "org" {
   type        = string
-  description = "Fogpipe organization name, also used in the registry image paths."
+  description = "Fogpipe organization, by name or id. Only names which org the project is created in — changing it forces a new project, and would take the app and its database with it."
+}
+
+variable "org_id" {
+  type        = string
+  default     = "rkv"
+  description = "The organization's opaque id, which is what the registry path is built from. Separate from var.org because the readable name is mutable and nothing derives from it any more: an image path spelled with the name resolves to no project, and the push is refused."
 }
 
 variable "host" {
@@ -80,7 +86,11 @@ variable "offsite_backup" {
 }
 
 # an app with ingress=all is served at <app>-<project>-<org>-app.fogpipe.cloud,
-# which is where the site lives until someone points a domain of their own at it
+# which is where the site lives until someone points a domain of their own at it.
+#
+# Still the readable name rather than var.org_id: this host was handed out under
+# the old derivation and the platform kept it when the derivation changed, so
+# what serves the site is this exact string and not what a new app would derive.
 locals {
   host = var.host != "" ? var.host : "webapi-${fpcloud_project.organizeparty.name}-${var.org}-app.fogpipe.cloud"
 }
@@ -166,7 +176,7 @@ resource "fpcloud_bucket_cors" "photos" {
 resource "fpcloud_app" "webapi" {
   project_id = fpcloud_project.organizeparty.id
   name       = "webapi"
-  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/webapi:${var.image_tag}"
+  image      = "registry.cloud.fogpipe.com/${var.org_id}/organizeparty/webapi:${var.image_tag}"
   port       = 8081
   ingress    = "all"
 
@@ -187,7 +197,7 @@ resource "fpcloud_app" "webapi" {
 resource "fpcloud_app" "worker" {
   project_id = fpcloud_project.organizeparty.id
   name       = "worker"
-  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/worker:${var.image_tag}"
+  image      = "registry.cloud.fogpipe.com/${var.org_id}/organizeparty/worker:${var.image_tag}"
   type       = "worker"
 
   env = {
