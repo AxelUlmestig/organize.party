@@ -23,11 +23,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1786809436,
-        "narHash": "sha256-q9X9Q007HEnzUhTTx4wHA23OcBqpLMItEIYnLypSfdI=",
+        "lastModified": 1787663695,
+        "narHash": "sha256-7GbVQrTZDkXCqBtZJNCGl5PBcTCqN0M6rwC/mIncQFg=",
         "owner": "fogpipe",
         "repo": "cloud-cli",
-        "rev": "96bc204e7ca3554fd8d10209bac3cb9e9fc2f0e1",
+        "rev": "3ea78d5d94b8e294e7bd70417c69ff7c04665eb7",
         "type": "github"
       },
       "original": {
