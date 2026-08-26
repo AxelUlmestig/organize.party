@@ -1,5 +1,62 @@
-include .env
+-include .env
 export
+
+# --- Fogpipe Cloud deployment ---------------------------------------------
+#
+# ORG is the organization's opaque id — the one image paths are built from,
+# not its readable name. TAG defaults to the current commit.
+#
+# Secrets (SMTP, and an off-platform backup target if you want one) go in
+# infra/secrets.auto.tfvars, which tofu loads on its own and git ignores.
+# infra/secrets.auto.tfvars.example is the template.
+
+ORG ?=
+TAG ?= $(shell git rev-parse --short HEAD)
+
+REPO := registry.cloud.fogpipe.com/$(ORG)/organizeparty
+TF    := tofu -chdir=infra
+TFVAR := -var org=$(ORG) -var image_tag=$(TAG)
+
+require-org:
+	@test -n "$(ORG)" || { echo "set ORG=<org-id> (the opaque id, not the readable name)"; exit 1; }
+
+# The whole deployment. Ordering is not cosmetic: the registry refuses a push
+# to a repository path no project owns, so the project exists before the
+# images do — and the apps cannot be created before their images are pushed.
+.PHONY: deploy
+deploy: project images apply migrate
+
+.PHONY: project
+project: require-org
+	$(TF) init -input=false
+	$(TF) apply $(TFVAR) -target=fpcloud_project.organizeparty
+
+.PHONY: images
+images: require-org
+	fpcloud registry login
+	docker build -f op-webapi/Dockerfile -t $(REPO)/webapi:$(TAG) .
+	docker build -f op-worker/Dockerfile -t $(REPO)/worker:$(TAG) .
+	docker push $(REPO)/webapi:$(TAG)
+	docker push $(REPO)/worker:$(TAG)
+
+.PHONY: apply
+apply: require-org
+	$(TF) apply $(TFVAR)
+
+.PHONY: plan
+plan: require-org
+	$(TF) plan $(TFVAR)
+
+# The database is cluster-internal, so the migrations run through a tunnel.
+.PHONY: migrate
+migrate: require-org
+	ORG=$(ORG) ./scripts/deploy-migrations-fpcloud.sh
+
+.PHONY: logs
+logs: require-org
+	fpcloud app logs webapi --org $(ORG) --project organizeparty --since 1h --follow
+
+# --- Local development ----------------------------------------------------
 
 .PHONY: deploy-database
 deploy-database:
@@ -26,13 +83,6 @@ access-database:
 
 .PHONY: deploy-migrations
 deploy-migrations:
-	docker compose exec db sqitch --chdir db deploy
-
-.PHONY: update-server-container
-update-server-container:
-	./scripts/build-frontend.sh --optimize
-	docker compose up --force-recreate --build -d server
-	docker image prune -f
 	docker compose exec db sqitch --chdir db deploy
 
 .PHONY: run-tests
