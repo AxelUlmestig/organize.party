@@ -4,13 +4,18 @@ export
 # --- Fogpipe Cloud deployment ---------------------------------------------
 #
 # ORG is the organization's opaque id — the one image paths are built from,
-# not its readable name. TAG defaults to the current commit.
+# not its readable name. It is read from your login when you belong to exactly
+# one organization, so there is usually nothing to pass. TAG defaults to the
+# current commit.
 #
 # Secrets (SMTP, and an off-platform backup target if you want one) go in
 # infra/secrets.auto.tfvars, which tofu loads on its own and git ignores.
 # infra/secrets.auto.tfvars.example is the template.
 
-ORG ?=
+DEPLOY_GOALS := deploy project images apply plan migrate logs
+ifneq ($(filter $(DEPLOY_GOALS),$(MAKECMDGOALS)),)
+ORG ?= $(shell ./scripts/fpcloud-org.sh)
+endif
 TAG ?= $(shell git rev-parse --short HEAD)
 
 REPO := registry.cloud.fogpipe.com/$(ORG)/organizeparty
@@ -18,7 +23,7 @@ TF    := tofu -chdir=infra
 TFVAR := -var org=$(ORG) -var image_tag=$(TAG)
 
 require-org:
-	@test -n "$(ORG)" || { echo "set ORG=<org-id> (the opaque id, not the readable name)"; exit 1; }
+	@test -n "$(ORG)" || { echo "could not resolve the organization — see above, or pass ORG=<org-id>"; exit 1; }
 
 # The whole deployment. Ordering is not cosmetic: the registry refuses a push
 # to a repository path no project owns, so the project exists before the
