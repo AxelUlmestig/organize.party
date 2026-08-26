@@ -13,20 +13,19 @@ if ! orgs=$(fpcloud org list -o json 2>/dev/null); then
     exit 1
 fi
 
-ids=$(echo "$orgs" | grep -o '"short_id": *"[^"]*"' | sed 's/.*: *"//; s/"$//')
-count=$(echo "$ids" | grep -c . || true)
+mapfile -t ids < <(jq -r '.[].short_id' <<<"$orgs")
 
-case "$count" in
+case "${#ids[@]}" in
     0)
         echo "no organizations — ask an operator to grant you one" >&2
         exit 1
         ;;
     1)
-        echo "$ids"
+        echo "${ids[0]}"
         ;;
     *)
         echo "several organizations, name one with ORG=<org-id>:" >&2
-        echo "$ids" | sed 's/^/  /' >&2
+        jq -r '.[] | "  \(.short_id)\t\(.display_name)"' <<<"$orgs" >&2
         exit 1
         ;;
 esac
