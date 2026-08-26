@@ -17,18 +17,18 @@ provider "fpcloud" {
 
 variable "org" {
   type        = string
-  description = "Fogpipe organization, by name or id. Only names which org the project is created in — changing it forces a new project, and would take the app and its database with it."
+  description = "The Fogpipe organization's opaque id — the frozen one, not the readable name. It says which org the project lives in AND is what the registry path is built from, because nothing derives from the readable name any more: an image path spelled with the name resolves to no project and the push is refused. Frozen, so changing it is not something that happens to you."
 }
 
-variable "org_id" {
+variable "host_label" {
   type        = string
-  default     = "rkv"
-  description = "The organization's opaque id, which is what the registry path is built from. Separate from var.org because the readable name is mutable and nothing derives from it any more: an image path spelled with the name resolves to no project, and the push is refused."
+  default     = ""
+  description = "Pins the label the site is served on, under fogpipe.cloud. Empty takes the one the platform derives. Set it only for a deployment whose host predates a change to that derivation — the app stores its label, so it keeps serving a name the current rule would not produce."
 }
 
 variable "host" {
   type        = string
-  description = "Custom domain to serve the site on. Empty serves it on the hostname the platform assigns."
+  description = "Custom domain to serve the site on. Empty serves it on var.host_label."
   default     = ""
 }
 
@@ -85,14 +85,14 @@ variable "offsite_backup" {
   sensitive = true
 }
 
-# an app with ingress=all is served at <app>-<project>-<org>-app.fogpipe.cloud,
-# which is where the site lives until someone points a domain of their own at it.
-#
-# Still the readable name rather than var.org_id: this host was handed out under
-# the old derivation and the platform kept it when the derivation changed, so
-# what serves the site is this exact string and not what a new app would derive.
+# <app>-<project>-<org>-app is the label the platform derives for an app's
+# default host, off the org's frozen id — not its readable name, which nothing
+# derives from since it became renameable. A deployment older than that change
+# still answers on the name-spelled label, because the app stores its own label
+# rather than re-deriving it; var.host_label is how such a deployment says so.
 locals {
-  host = var.host != "" ? var.host : "webapi-${fpcloud_project.organizeparty.name}-${var.org}-app.fogpipe.cloud"
+  host_label = var.host_label != "" ? var.host_label : "webapi-organizeparty-${var.org}-app"
+  host       = var.host != "" ? var.host : "${local.host_label}.fogpipe.cloud"
 }
 
 resource "fpcloud_project" "organizeparty" {
@@ -176,9 +176,10 @@ resource "fpcloud_bucket_cors" "photos" {
 resource "fpcloud_app" "webapi" {
   project_id = fpcloud_project.organizeparty.id
   name       = "webapi"
-  image      = "registry.cloud.fogpipe.com/${var.org_id}/organizeparty/webapi:${var.image_tag}"
+  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/webapi:${var.image_tag}"
   port       = 8081
   ingress    = "all"
+  url_slug   = var.host_label != "" ? var.host_label : null
 
   env = {
     HOST_URL  = "https://${local.host}"
@@ -197,7 +198,7 @@ resource "fpcloud_app" "webapi" {
 resource "fpcloud_app" "worker" {
   project_id = fpcloud_project.organizeparty.id
   name       = "worker"
-  image      = "registry.cloud.fogpipe.com/${var.org_id}/organizeparty/worker:${var.image_tag}"
+  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/worker:${var.image_tag}"
   type       = "worker"
 
   env = {
