@@ -18,14 +18,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-fpcloud db connect "$DATABASE" --org "$ORG" --project "$PROJECT" >"$tunnel_log" 2>&1 &
+fpcloud db connect "$DATABASE" --org "$ORG" --project "$PROJECT" -o json >"$tunnel_log" 2>&1 &
 tunnel_pid=$!
 
 # The URL carries live credentials the platform rotates out of band, so it is
-# read from the tunnel rather than assembled here.
+# read from the tunnel rather than assembled here. The tunnel prints its whole
+# object before it starts accepting, so jq failing means it is not printed yet.
 url=""
 for _ in $(seq 1 60); do
-    url=$(grep -o 'postgres://[^[:space:]]*' "$tunnel_log" | head -1 || true)
+    url=$(jq -r '.url // empty' <"$tunnel_log" 2>/dev/null || true)
     [[ -n "$url" ]] && break
     kill -0 "$tunnel_pid" 2>/dev/null || { cat "$tunnel_log" >&2; echo "the tunnel exited before printing a connection url" >&2; exit 1; }
     sleep 1
