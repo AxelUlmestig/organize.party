@@ -33,12 +33,13 @@ the webapi, the worker, a managed Postgres and a bucket for photo uploads.
 `tofu` and `fpcloud` are included in the nix dev shell.
 
 1. Build and push the images from `op-webapi/Dockerfile` and
-   `op-worker/Dockerfile` to `registry.cloud.fogpipe.com/<org>/organizeparty/`
+   `op-worker/Dockerfile` to `registry.cloud.fogpipe.com/<org-id>/organizeparty/`
 1. `fpcloud login`
 1. `tofu -chdir=infra init`
-1. `tofu -chdir=infra apply -var org=<org> -var image_tag=<tag>`. The site is
-   served on the hostname the platform assigns; add `-var host=<domain>` to put
-   it on a domain of your own
+1. `tofu -chdir=infra apply -var org=<org-id> -var image_tag=<tag>`, where
+   `<org-id>` is the organization's opaque id — the one image paths are built
+   from, not its readable name. The site is served on the hostname the platform
+   assigns; add `-var host=<domain>` to put it on a domain of your own
 
 1. Run the migrations through a tunnel:
    `fpcloud db connect events` and `sqitch --chdir db deploy` against the
