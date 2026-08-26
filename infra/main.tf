@@ -91,8 +91,9 @@ variable "offsite_backup" {
 # still answers on the name-spelled label, because the app stores its own label
 # rather than re-deriving it; var.host_label is how such a deployment says so.
 locals {
-  host_label = var.host_label != "" ? var.host_label : "webapi-organizeparty-${var.org}-app"
-  host       = var.host != "" ? var.host : "${local.host_label}.fogpipe.cloud"
+  host_label   = var.host_label != "" ? var.host_label : "webapi-organizeparty-${var.org}-app"
+  default_host = "${local.host_label}.fogpipe.cloud"
+  host         = var.host != "" ? var.host : local.default_host
 }
 
 resource "fpcloud_project" "organizeparty" {
@@ -162,8 +163,10 @@ resource "fpcloud_bucket" "photos" {
 resource "fpcloud_bucket_cors" "photos" {
   bucket_id = fpcloud_bucket.photos.id
 
+  # both, not just local.host: a custom domain does not stop the app answering
+  # on its default one, and an upload from there would fail the preflight alone
   rule = [{
-    allowed_origins = ["https://${local.host}"]
+    allowed_origins = distinct(["https://${local.host}", "https://${local.default_host}"])
     allowed_methods = ["GET", "PUT", "HEAD"]
     allowed_headers = ["*"]
     expose_headers  = ["ETag"]
