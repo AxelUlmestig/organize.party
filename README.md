@@ -38,11 +38,12 @@ platform terminates TLS, backs the database up and pools its connections.
    the SMTP relay. Mail is the one thing with no working default — without a
    real relay the worker starts and every send fails at the TLS handshake.
 1. `fpcloud login`
-1. `make deploy ORG=<org-id>`
+1. `make deploy`
 
-`<org-id>` is the organization's opaque id, not its readable name — it is what
-image paths are built from. `TAG=` overrides the image tag, which defaults to
-the current commit.
+The organization is read from your login. If you belong to more than one, it
+lists them and you pick: `make deploy ORG=<org-id>`. That id is the opaque one,
+not the readable name — it is what image paths are built from. `TAG=` overrides
+the image tag, which defaults to the current commit.
 
 The site is served on the hostname the platform assigns. Add `host = "…"` to
 your tfvars to put it on a domain of your own; the certificate is the

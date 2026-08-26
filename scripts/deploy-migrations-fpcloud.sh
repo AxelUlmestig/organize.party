@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Run the sqitch migrations against the managed database on Fogpipe Cloud.
