@@ -29,22 +29,27 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib
 
 ## Run in production
 `infra/` holds an OpenTofu stack that runs the whole setup on Fogpipe Cloud:
-the webapi, the worker, a managed Postgres and a bucket for photo uploads.
-`tofu` and `fpcloud` are included in the nix dev shell.
+the webapi, the worker, a managed Postgres and a bucket for photo uploads. The
+platform terminates TLS, backs the database up and pools its connections.
+`tofu`, `fpcloud` and `sqitch` are in the nix dev shell; `docker` and
+`make` come from the host, as they do for local development.
 
-1. Build and push the images from `op-webapi/Dockerfile` and
-   `op-worker/Dockerfile` to `registry.cloud.fogpipe.com/<org-id>/organizeparty/`
+1. `cp infra/secrets.auto.tfvars.example infra/secrets.auto.tfvars` and fill in
+   the SMTP relay. Mail is the one thing with no working default — without a
+   real relay the worker starts and every send fails at the TLS handshake.
 1. `fpcloud login`
-1. `tofu -chdir=infra init`
-1. `tofu -chdir=infra apply -var org=<org-id> -var image_tag=<tag>`, where
-   `<org-id>` is the organization's opaque id — the one image paths are built
-   from, not its readable name. The site is served on the hostname the platform
-   assigns; add `-var host=<domain>` to put it on a domain of your own
+1. `make deploy ORG=<org-id>`
 
-1. Run the migrations through a tunnel:
-   `fpcloud db connect events` and `sqitch --chdir db deploy` against the
-   printed connection url
+`<org-id>` is the organization's opaque id, not its readable name — it is what
+image paths are built from. `TAG=` overrides the image tag, which defaults to
+the current commit.
 
-The certificate for the custom domain and the database backups are the
-platform's, there is nothing to schedule.
+The site is served on the hostname the platform assigns. Add `host = "…"` to
+your tfvars to put it on a domain of your own; the certificate is the
+platform's, and the database backups are on already, so there is nothing to
+schedule.
 
+`make deploy` is `project`, `images`, `apply` and `migrate` in that order. The
+order matters: the registry refuses a push to a repository path no project owns
+yet, and the apps cannot be created before their images exist. Any of the four
+runs on its own.
