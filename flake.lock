@@ -25,16 +25,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1787663695,
-        "narHash": "sha256-7GbVQrTZDkXCqBtZJNCGl5PBcTCqN0M6rwC/mIncQFg=",
+        "lastModified": 1787773416,
+        "narHash": "sha256-l+nSoBnqVPdKuc0j9alREw4DIV7RvJRZtgwEOx3du4I=",
         "owner": "fogpipe",
         "repo": "cloud-cli",
-        "rev": "3ea78d5d94b8e294e7bd70417c69ff7c04665eb7",
+        "rev": "66d1f66da1290c8fe94f45a378a3fab362698466",
         "type": "github"
       },
       "original": {
         "owner": "fogpipe",
-        "ref": "v0.144.1",
+        "ref": "v0.148.0",
         "repo": "cloud-cli",
         "type": "github"
       }
