@@ -94,6 +94,8 @@ locals {
   host_label   = var.host_label != "" ? var.host_label : "webapi-organizeparty-${var.org}-app"
   default_host = "${local.host_label}.fogpipe.cloud"
   host         = var.host != "" ? var.host : local.default_host
+
+  host_mode = endswith(local.host, ".fogpipe.cloud") ? "on_demand" : "verified"
 }
 
 resource "fpcloud_project" "organizeparty" {
@@ -234,14 +236,12 @@ resource "fpcloud_app_bucket" "worker_photos" {
   read_only = true
 }
 
-# on_demand: the host is a label in our own wildcard zone, DNS already points
-# at the cluster and there is no external owner to verify against
 resource "fpcloud_domain" "organizeparty" {
   count = var.host != "" ? 1 : 0
 
   app_id = fpcloud_app.webapi.id
   domain = var.host
-  mode   = "on_demand"
+  mode   = local.host_mode
 }
 
 output "url" {
@@ -250,4 +250,11 @@ output "url" {
 
 output "photos_url" {
   value = fpcloud_bucket.photos.website_url
+}
+
+output "domain_verification" {
+  value = var.host == "" || local.host_mode != "verified" ? null : {
+    txt        = one(fpcloud_domain.organizeparty[*].verification_token)
+    tls_status = one(fpcloud_domain.organizeparty[*].tls_status)
+  }
 }
