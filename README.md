@@ -46,9 +46,19 @@ not the readable name — it is what image paths are built from. `TAG=` override
 the image tag, which defaults to the current commit.
 
 The site is served on the hostname the platform assigns. Add `host = "…"` to
-your tfvars to put it on a domain of your own; the certificate is the
+your tfvars to put it on a domain of your own. The certificate is the
 platform's, and the database backups are on already, so there is nothing to
 schedule.
+
+A domain you own has to be proved and pointed before it is served, so the first
+apply leaves it pending. `fpcloud domain status <host>` prints the exact
+records to add — a TXT proving the domain is yours, and a CNAME or A pointing
+it here — and the certificate is issued once both resolve. The apply also
+outputs `domain_verification` with the TXT value and where the certificate has
+got to.
+
+A hostname in the platform's own zone skips all of this: it already points here
+and has no outside owner to prove.
 
 `make deploy` is `project`, `images` and `apply` in that order. The order
 matters: the registry refuses a push to a repository path no project owns yet,
