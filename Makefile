@@ -12,7 +12,7 @@ export
 # infra/secrets.auto.tfvars, which tofu loads on its own and git ignores.
 # infra/secrets.auto.tfvars.example is the template.
 
-DEPLOY_GOALS := deploy project images apply plan migrate logs
+DEPLOY_GOALS := deploy project images apply plan logs
 ifneq ($(filter $(DEPLOY_GOALS),$(MAKECMDGOALS)),)
 ORG ?= $(shell ./scripts/fpcloud-org.sh)
 endif
@@ -29,7 +29,7 @@ require-org:
 # to a repository path no project owns, so the project exists before the
 # images do — and the apps cannot be created before their images are pushed.
 .PHONY: deploy
-deploy: project images apply migrate
+deploy: project images apply
 
 .PHONY: project
 project: require-org
@@ -51,11 +51,6 @@ apply: require-org
 .PHONY: plan
 plan: require-org
 	$(TF) plan $(TFVAR)
-
-# The database is cluster-internal, so the migrations run through a tunnel.
-.PHONY: migrate
-migrate: require-org
-	ORG=$(ORG) ./scripts/deploy-migrations-fpcloud.sh
 
 .PHONY: logs
 logs: require-org

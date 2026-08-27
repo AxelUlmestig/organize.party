@@ -193,6 +193,8 @@ resource "fpcloud_app" "webapi" {
     S3_PUBLIC_BASE = fpcloud_bucket.photos.website_url
   }
 
+  release_command = ["sqitch --chdir /db deploy \"db:pg://$${DATABASE_URL#postgres://}\" --mode change --verify"]
+
   depends_on = [fpcloud_database.events]
 }
 

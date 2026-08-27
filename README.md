@@ -31,8 +31,8 @@ sudo apt install -y libpq-dev zlib1g-dev postgresql postgresql-contrib
 `infra/` holds an OpenTofu stack that runs the whole setup on Fogpipe Cloud:
 the webapi, the worker, a managed Postgres and a bucket for photo uploads. The
 platform terminates TLS, backs the database up and pools its connections.
-`tofu`, `fpcloud` and `sqitch` are in the nix dev shell; `docker` and
-`make` come from the host, as they do for local development.
+`tofu` and `fpcloud` are in the nix dev shell; `docker` and `make` come from
+the host, as they do for local development.
 
 1. `cp infra/secrets.auto.tfvars.example infra/secrets.auto.tfvars` and fill in
    the SMTP relay. Mail is the one thing with no working default — without a
@@ -50,7 +50,14 @@ your tfvars to put it on a domain of your own; the certificate is the
 platform's, and the database backups are on already, so there is nothing to
 schedule.
 
-`make deploy` is `project`, `images`, `apply` and `migrate` in that order. The
-order matters: the registry refuses a push to a repository path no project owns
-yet, and the apps cannot be created before their images exist. Any of the four
-runs on its own.
+`make deploy` is `project`, `images` and `apply` in that order. The order
+matters: the registry refuses a push to a repository path no project owns yet,
+and the apps cannot be created before their images exist. Any of the three runs
+on its own.
+
+The migrations are not a step here. They are the webapi's release command, so
+the platform runs them itself on every deploy — in the cluster, from the image
+being deployed, before that image serves anything. A migration that fails fails
+the deploy and the previous version keeps serving. Nothing connects to the
+database from your machine: it is cluster-internal, and `sqitch` ships inside
+the image instead.
