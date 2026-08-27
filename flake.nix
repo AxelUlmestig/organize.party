@@ -7,7 +7,7 @@
     # tag rather than a branch: the platform, CLI and OpenTofu provider release
     # on one version number, so this is the same release infra/main.tf pins the
     # provider to, and moving either is a deliberate edit to both
-    fpcloud.url = "github:fogpipe/cloud-cli/v0.144.1";
+    fpcloud.url = "github:fogpipe/cloud-cli/v0.148.0";
     fpcloud.inputs.nixpkgs.follows = "nixpkgs";
   };
 

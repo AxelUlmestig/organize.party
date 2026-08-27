@@ -6,7 +6,7 @@ terraform {
   required_providers {
     fpcloud = {
       source  = "fogpipe/fpcloud"
-      version = "~> 0.144"
+      version = "~> 0.148"
     }
   }
 }
