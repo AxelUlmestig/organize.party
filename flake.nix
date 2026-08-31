@@ -8,7 +8,7 @@
     # on one version number, so this is the same release infra/main.tf pins the
     # provider to, and moving either is a deliberate edit to both
     fpcloud.url = "github:fogpipe/cloud-cli/v0.149.0";
-    fpcloud.inputs.nixpkgs.follows = "nixpkgs";
+    # fpcloud.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = { nixpkgs, flake-utils, fpcloud, ... }: flake-utils.lib.eachDefaultSystem (system:
