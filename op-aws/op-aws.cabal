@@ -23,9 +23,11 @@ library
                     , amazonka
                     , amazonka-s3
                     , exceptions
+                    , http-types
                     , rio
                     , text
                     , time
+                    , uuid
     hs-source-dirs:   src
     default-language: GHC2021
     default-extensions:  BlockArguments

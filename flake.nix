@@ -2,9 +2,16 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    # not in nixpkgs, the CLI repo ships it as a flake. pinned to the release
+    # tag rather than a branch: the platform, CLI and OpenTofu provider release
+    # on one version number, so this is the same release infra/main.tf pins the
+    # provider to, and moving either is a deliberate edit to both
+    fpcloud.url = "github:fogpipe/cloud-cli/v0.149.0";
+    # fpcloud.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system:
+  outputs = { nixpkgs, flake-utils, fpcloud, ... }: flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs {
         inherit system;
@@ -34,6 +41,13 @@
           pkgs.pkg-config
           pkgs.playwright-driver.browsers
           pkgs.sqitchPg
+
+          # Deploying to Fogpipe Cloud via infra/. docker is the client only,
+          # `make images` still needs a daemon a dev shell cannot provide
+          pkgs.opentofu
+          fpcloud.packages.${system}.fpcloud
+          pkgs.docker
+          pkgs.jq
         ];
 
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [

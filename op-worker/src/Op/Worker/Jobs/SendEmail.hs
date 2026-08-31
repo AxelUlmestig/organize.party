@@ -68,7 +68,7 @@ sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipi
         case server of
           "localhost"            -> SMTP.sendMailWithLogin'
           "host.docker.internal" -> SMTP.sendMailWithLogin'
-          _                      -> SMTP.sendMailWithLoginTLS'
+          _                      -> SMTP.sendMailWithLoginSTARTTLS'
 
   liftIO $ sendMailWithLogin server port login password mail
 
