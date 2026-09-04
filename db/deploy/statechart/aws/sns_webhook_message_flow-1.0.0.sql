@@ -7,7 +7,7 @@ do $$
 declare
 chart bigint;
 begin
-insert into fsm.statechart (name, version) values ('aws.sns_webhook_message_flow', to_semver('1.0.0')) returning id into chart;
+insert into fsm.statechart (name, version) values ('aws.sns_webhook_message_flow', fsm.to_semver('1.0.0')) returning id into chart;
 insert into fsm.state (statechart_id, id, name, parent_id, is_initial, is_final, on_entry, on_exit) values
 (chart, 'queued', 'QUEUED', null, true, false, array[('aws', 'materialize_sns_webhook_message_status'),('aws', 'enqueue_process_sns_webhook_job')]::fsm_callback_name[], array[]::fsm_callback_name[]),
 (chart, 'processing_failed', 'PROCESSING_FAILED', null, false, false, array[('aws', 'materialize_sns_webhook_message_status')]::fsm_callback_name[], array[]::fsm_callback_name[]),

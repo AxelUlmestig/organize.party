@@ -8,7 +8,7 @@ BEGIN;
 with chart as (
     delete from fsm.statechart
     where name = 'aws.s3_photo_upload_flow'
-    and version = to_semver('1.0')
+    and version = fsm.to_semver('1.0')
     returning id
 )
 delete from fsm.state

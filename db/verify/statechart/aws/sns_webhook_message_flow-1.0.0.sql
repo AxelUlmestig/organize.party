@@ -9,7 +9,7 @@ select 1 / count(*)
 from fsm.statechart
 where
     name = 'aws.sns_webhook_message_flow'
-    and version = to_semver('1.0.0');
+    and version = fsm.to_semver('1.0.0');
 
 -- Verify that the functions that the statechart depends on exist
 do $$
@@ -30,7 +30,7 @@ join fsm.state
 , lateral unnest(on_entry || on_exit)
 where
   statechart.name = 'aws.sns_webhook_message_flow'
-  and statechart.version = to_semver('1.0.0')
+  and statechart.version = fsm.to_semver('1.0.0')
   and not exists (
     select 1
     from pg_proc p

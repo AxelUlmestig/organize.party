@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: db/postgres.Dockerfile
+    # Run as current user to avoid problems with file ownership when generating files from inside postgres
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5432:5432"
     environment:
@@ -14,10 +16,12 @@ services:
       POSTGRES_USER: postgres
       TZ: Europe/Stockholm
       PGTZ: Europe/Stockholm
+      # sqitch needs a name/email to record who deployed; uid 1000 has no passwd entry inside the container so it cannot fall back to the system user
+      SQITCH_FULLNAME: "${SQITCH_FULLNAME:-${USER}}"
+      SQITCH_EMAIL: "${SQITCH_EMAIL:-${USER}@localhost}"
     volumes:
-      - dbdata:/var/lib/postgresql/18/docker
+      - dbdata:/var/lib/postgresql
       - .:/repo
-      - ~/.sqitch:/root/.sqitch
     working_dir: /repo
     restart: always
     networks:
