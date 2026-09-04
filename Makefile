@@ -64,18 +64,18 @@ lint:
 	hlint -X QuasiQuotes -X OverloadedRecordDot .
 
 define GEN_CHARTS_QUERY
+	create extension if not exists pg_statecharts_dev cascade;
+
 	select fsm.gen_statechart_sqitch_migrations(
 		source_path => '/repo/db/statechart',
 		sqitch_plan_file_path => '/repo/db/sqitch.plan',
-		recursive => true,
-		file_permission_666 => true
+		recursive => true
 	);
 endef
 
 export GEN_CHARTS_QUERY
 .PHONY: gen-charts
 gen-charts:
-	sudo chmod 666 db/sqitch.plan
 	docker compose exec db psql postgres://postgres:postgres@pgbouncer:6432/events -c "$$GEN_CHARTS_QUERY"
 
 .PHONY: push-docker-images
