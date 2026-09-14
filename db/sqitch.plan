@@ -96,3 +96,9 @@ tables/event_data [tables/event_data@photo-feature] 2026-07-13T20:12:16Z Axel <a
 functions/create_event 2026-07-13T20:49:19Z Axel <axel@axel-thinkpad> # create event function
 aws/functions/init_photo_upload 2026-07-23T14:46:12Z Axel <axel@axel-thinkpad> # init photo upload
 functions/edit_event [functions/edit_event@photo-feature] 2026-07-28T04:47:15Z Axel <axel@axel-thinkpad> # add photo support
+@email-deliverability 2026-09-14T20:09:43Z Axel <axel@axel-thinkpad> # email deliverability fixes
+email/tables/emails [email/tables/emails@email-deliverability] 2026-09-14T20:09:44Z Axel <axel@axel-thinkpad> # add list_unsubscribe_url column
+migrations/add-list_unsubscribe_url-column-to-emails-table 2026-09-14T20:09:45Z Axel <axel@axel-thinkpad> # add list_unsubscribe_url column to emails table
+functions/add_attendee_data [functions/add_attendee_data@email-deliverability] 2026-09-14T20:09:46Z Axel <axel@axel-thinkpad> # record list unsubscribe url
+functions/add_comment [functions/add_comment@email-deliverability] 2026-09-14T20:09:47Z Axel <axel@axel-thinkpad> # record list unsubscribe url
+functions/edit_event [functions/edit_event@email-deliverability] 2026-09-14T20:09:48Z Axel <axel@axel-thinkpad> # record list unsubscribe url and fix broken unsubscribe link

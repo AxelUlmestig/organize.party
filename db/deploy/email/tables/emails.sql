@@ -11,6 +11,8 @@ BEGIN;
     recipient_name text,
     subject text not null,
     body text not null,
+    -- Target of the List-Unsubscribe header, where the email has one.
+    list_unsubscribe_url text,
     materialized_status text not null default 'queued',
 
     primary key (id)
