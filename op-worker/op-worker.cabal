@@ -14,7 +14,8 @@ common warnings
 executable op-worker
     import:           warnings
     main-is:          Main.hs
-    other-modules:    Op.Worker.Job
+    other-modules:    Op.Worker.Email.Html
+                    , Op.Worker.Job
                     , Op.Worker.JobLogistics
                     , Op.Worker.Jobs.Debug
                     , Op.Worker.Jobs.PollS3FileUpload

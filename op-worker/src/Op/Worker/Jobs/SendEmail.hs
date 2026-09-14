@@ -20,6 +20,7 @@ import           Network.Socket          (PortNumber)
 import           RIO
 
 import qualified Op.Db                   as Db
+import qualified Op.Worker.Email.Html    as Html
 import qualified Op.Worker.Job           as Job
 
 
@@ -34,11 +35,12 @@ class HasSmtpConfig env where
   getSmtpConfig :: env -> SmtpConfig
 
 data EmailContents = EmailContents
-  { recipientEmail :: Text
-  , recipientName  :: Maybe Text
-  , subject        :: Text
-  , body           :: Text
-  , attachments    :: [EmailAttachment]
+  { recipientEmail     :: Text
+  , recipientName      :: Maybe Text
+  , subject            :: Text
+  , body               :: Text
+  , listUnsubscribeUrl :: Maybe Text
+  , attachments        :: [EmailAttachment]
   }
 
 data EmailAttachment = EmailAttachment
@@ -48,18 +50,28 @@ data EmailAttachment = EmailAttachment
   }
 
 sendEmail :: MonadIO m => SmtpConfig -> UUID -> EmailContents -> m ()
-sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipientEmail, recipientName, subject, body, attachments} = do
-  let mailFrom       = SMTP.Address Nothing "noreply@organize.party"
+sendEmail SmtpConfig{server, port, login, password} emailId EmailContents{recipientEmail, recipientName, subject, body, listUnsubscribeUrl, attachments} = do
+  let mailFrom       = SMTP.Address (Just "organize.party") "noreply@organize.party"
   let mailTo         = [SMTP.Address recipientName recipientEmail]
   let mailCc         = []
   let mailBcc        = []
 
+  -- Each element of mailParts is a group of alternative representations of the
+  -- same content, so the body's plain text and HTML forms belong together in
+  -- one group and every attachment needs a group of its own. Putting them all
+  -- in a single group announces the .ics file as an alternative to the body
+  -- rather than as an attachment.
   let mailParts =
         let attachments' = (\EmailAttachment{contentType, fileName, fileContents} -> Mail.filePartBS contentType fileName fileContents) <$> attachments
-            body' = Mail.htmlPart $ fromStrict body
-        in [body' : attachments']
+            -- Least preferred alternative first.
+            body' = [ Mail.plainPart . fromStrict $ Html.htmlToPlainText body
+                    , Mail.htmlPart . fromStrict $ Html.htmlDocument subject body
+                    ]
+        in body' : fmap pure attachments'
 
-  let mailHeaders = [("Subject", subject), ("X-OP-EMAIL-ID", tshow emailId)]
+  let mailHeaders =
+        [("Subject", subject), ("X-OP-EMAIL-ID", tshow emailId)]
+        <> foldMap (\url -> [("List-Unsubscribe", "<" <> url <> ">")]) listUnsubscribeUrl
 
   let mail = Mail.Mail {..}
 
@@ -113,12 +125,13 @@ instance (HasSmtpConfig env, Db.HasDbConnection env) => Job.JobDefinition env Se
                 recipient_email::text,
                 recipient_name::text?,
                 subject::text,
-                body::text
+                body::text,
+                list_unsubscribe_url::text?
               from email.emails
               where id = $1::uuid
             |]
 
-        for mEmail \(recipientEmail, recipientName, subject, body) -> do
+        for mEmail \(recipientEmail, recipientName, subject, body, listUnsubscribeUrl) -> do
           rawAttachments <- Vector.toList <$> do
             Db.statement
               emailId

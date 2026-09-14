@@ -109,7 +109,8 @@ BEGIN;
               recipient_email,
               recipient_name,
               subject,
-              body
+              body,
+              list_unsubscribe_url
             )
             select
               email_,
@@ -125,7 +126,8 @@ BEGIN;
 <div style="font-size: x-small">
   If you never want to receive an email from this event again, <a href="' || host_url_ || '/unsubscribe/' || attendees.unsubscribe_id || '">click here to unsubscribe</a>. Warning, this can not be undone
 </div>
-'
+',
+              host_url_ || '/unsubscribe/' || attendees.unsubscribe_id
             from attendees
             join event_data
               on event_data.id = attendees.event_id
