@@ -115,7 +115,7 @@ resource "fpcloud_database" "events" {
   project_id = fpcloud_project.organizeparty.id
   name       = "events"
   version    = "18"
-  extensions = ["semver", "pg_statecharts"]
+  extensions = ["pg_statecharts"]
 
   cpu     = "500m"
   memory  = "1Gi"
