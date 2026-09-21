@@ -18,6 +18,15 @@ provider "fpcloud" {
 variable "org" {
   type        = string
   description = "The Fogpipe organization's opaque id — the frozen one, not the readable name. It says which org the project lives in AND is what the registry path is built from, because nothing derives from the readable name any more: an image path spelled with the name resolves to no project and the push is refused. Frozen, so changing it is not something that happens to you."
+
+  # tofu prompts for a variable with no default and accepts an empty answer, so
+  # a bare `tofu apply` here reaches the provider with org = "" and fails on a
+  # 404 naming a route rather than the missing value. Deploy through the
+  # Makefile, which resolves it from your login.
+  validation {
+    condition     = var.org != ""
+    error_message = "org is empty. Deploy with `make deploy`, which reads the organization from your login — or pass ORG=<org-id> when you belong to more than one."
+  }
 }
 
 variable "host_label" {
@@ -35,6 +44,13 @@ variable "host" {
 variable "image_tag" {
   type        = string
   description = "Tag of the webapi and worker images in the fpcloud registry."
+
+  # There is no tag to pick by hand: the images are built and pushed under the
+  # current commit, and the apps are deployed on that same tag in one pass.
+  validation {
+    condition     = var.image_tag != ""
+    error_message = "image_tag is empty. Deploy with `make deploy`, which builds, pushes and deploys the current commit — do not choose a tag from the registry."
+  }
 }
 
 variable "smtp" {
