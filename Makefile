@@ -33,7 +33,7 @@ deploy: project images apply
 
 .PHONY: project
 project: require-org
-	$(TF) init -input=false
+	$(TF) init -upgrade -input=false
 	$(TF) apply $(TFVAR) -target=fpcloud_project.organizeparty
 
 .PHONY: images
