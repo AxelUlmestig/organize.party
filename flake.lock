@@ -23,27 +23,27 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1787839734,
-        "narHash": "sha256-9W3QjzqbA7DWX+9BIiQX+fKKpnDBdywJ5X1n0TWVRa8=",
+        "lastModified": 1789982337,
+        "narHash": "sha256-3XKHfvA8wr9fkuSAqPpILo8BGmd7VhASDSTQqAXRXik=",
         "owner": "fogpipe",
         "repo": "cloud-cli",
-        "rev": "2f0eebc25d32595bc7c375f02f78dc15acea9dd2",
+        "rev": "1950ba946add3b742a34024f5af4e3eb23bf528e",
         "type": "github"
       },
       "original": {
         "owner": "fogpipe",
-        "ref": "v0.149.0",
+        "ref": "v0.194.2",
         "repo": "cloud-cli",
         "type": "github"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1788039129,
-        "narHash": "sha256-pa4Q0qErvCvzCaaUph7Sm37RhR4xvPrYI8Lgz6k85+A=",
+        "lastModified": 1784497964,
+        "narHash": "sha256-vlHUuqAcbcH2RKmHbPiuQzbv1pnzzavXnI62RD0bqCU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "d2f67949798825fe853f7c5d0492b8bf016d3f88",
+        "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
         "type": "github"
       },
       "original": {

@@ -6,7 +6,7 @@ terraform {
   required_providers {
     fpcloud = {
       source  = "fogpipe/fpcloud"
-      version = "~> 0.149"
+      version = "~> 0.194"
     }
   }
 }
@@ -192,7 +192,7 @@ resource "fpcloud_app" "webapi" {
 
     # where the bucket's objects are publicly readable, the rest of the S3
     # config is injected by the bucket bindings below
-    S3_PUBLIC_BASE = fpcloud_bucket.photos.website_url
+    S3_PUBLIC_BASE = fpcloud_bucket.photos.url
   }
 
   release_command = ["sqitch --chdir /db deploy \"db:pg://$${DATABASE_URL#postgres://}\" --mode change --verify"]
@@ -212,7 +212,7 @@ resource "fpcloud_app" "worker" {
     LOG_LEVEL      = "LevelInfo"
     SMTP_SERVER    = var.smtp.server
     SMTP_PORT      = var.smtp.port
-    S3_PUBLIC_BASE = fpcloud_bucket.photos.website_url
+    S3_PUBLIC_BASE = fpcloud_bucket.photos.url
   }
 
   secret = {
@@ -249,7 +249,7 @@ output "url" {
 }
 
 output "photos_url" {
-  value = fpcloud_bucket.photos.website_url
+  value = fpcloud_bucket.photos.url
 }
 
 output "domain_verification" {
