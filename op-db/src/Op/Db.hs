@@ -13,6 +13,7 @@ module Op.Db (
   module Hasql.Errors,
   Connection,
   acquire,
+  release,
   Hasql.Statement.Statement,
   Settings,
   connectionString
@@ -23,7 +24,7 @@ import           Control.Monad.IO.Class    (MonadIO (liftIO))
 import           Control.Monad.Reader      (MonadReader, ask)
 import           Data.Pool                 (Pool)
 import qualified Data.Pool                 as Pool
-import           Hasql.Connection          (Connection, acquire)
+import           Hasql.Connection          (Connection, acquire, release)
 import qualified Hasql.Connection          as Hasql
 import           Hasql.Connection.Settings (Settings, connectionString)
 import           Hasql.Errors

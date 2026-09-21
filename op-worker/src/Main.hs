@@ -52,19 +52,16 @@ main = do
     -- Tell the worker to stop accepting new jobs on sigINT
     void $ installHandler sigINT (Catch (JobLogistics.initiateShutdown sharedWorkerState)) Nothing
 
-    listenConnection <- do
-      -- We need a dedicated DB connection for listening for pg_notify. It can't go
-      -- through PG Bouncer or connection pools or the connection will drop while
-      -- we're listening and we won't get any notifications
-      listenDbSettings <- getListenDbConnectionSettings >>= either die pure
-      Db.acquire listenDbSettings >>= either (die . show) pure
-
-    Notifications.listen listenConnection (Notifications.toPgIdentifier "new_worker_job")
+    -- We need a dedicated DB connection for listening for pg_notify. It can't go
+    -- through PG Bouncer or connection pools or the connection will drop while
+    -- we're listening and we won't get any notifications
+    listenDbSettings <- getListenDbConnectionSettings >>= either die pure
 
     let workerEnv = WorkerEnv{..}
-    void $ forkIO $ Notifications.waitForNotifications (handler workerEnv) listenConnection
 
     runRIO workerEnv do
+      void $ forkIO $ keepListening listenDbSettings (handler workerEnv)
+
       logInfo "Ready to process jobs"
 
       -- poll the job queue every 10 seconds (with 0 time until the first check)
@@ -97,6 +94,41 @@ main = do
                       checkJobQueue
             _ -> do
               logWarn [i|Unexpected pg_notify channel: #{channel}, payload: #{payload}|]
+
+-- | Keep the LISTEN connection alive. A db restart kills it, and without this
+-- the worker silently falls back to the 10 second poll.
+keepListening :: Db.Settings -> (ByteString -> ByteString -> IO ()) -> RIO WorkerEnv ()
+keepListening listenDbSettings onNotification = go microsecondsBeforeFirstListenRetry
+  where
+    go retryDelay = do
+      established <- newIORef False
+      outcome <- tryAny do
+        bracket acquireListener (liftIO . Db.release) \listenConnection -> do
+          liftIO $ Notifications.listen listenConnection (Notifications.toPgIdentifier "new_worker_job")
+          writeIORef established True
+          logInfo "Listening for new job notifications"
+          -- returns only once the connection is gone, by exception or otherwise
+          liftIO $ Notifications.waitForNotifications onNotification listenConnection
+
+      -- a listener that was up gets the short wait again, whatever it took to
+      -- get it up in the first place
+      wasEstablished <- readIORef established
+      let delay = if wasEstablished then microsecondsBeforeFirstListenRetry else retryDelay
+      logWarn [i|Lost the job notification listener, reconnecting in #{delay `div` 1000000}s: #{either tshow (const "listener stopped") outcome}|]
+      threadDelay delay
+      go if wasEstablished
+           then microsecondsBeforeFirstListenRetry
+           else min maxMicrosecondsBetweenListenRetries (delay * 2)
+
+    acquireListener =
+      liftIO $ Db.acquire listenDbSettings >>= either (throwString . show) pure
+
+-- exponential backoff so a restarting db isn't hammered while it comes back
+microsecondsBeforeFirstListenRetry :: Int
+microsecondsBeforeFirstListenRetry = 1 * 1000 * 1000
+
+maxMicrosecondsBetweenListenRetries :: Int
+maxMicrosecondsBetweenListenRetries = 30 * 1000 * 1000
 
 withLogFunction :: MonadUnliftIO m => (LogFunc -> m a) -> m a
 withLogFunction action = do
@@ -317,7 +349,10 @@ getListenDbConnectionSettings = do
       host <- maybeToEither "Error: Missing env variable LISTEN_DB_HOST" mHost
       port :: Int <- maybeToEither "Error: Missing env variable LISTEN_DB_PORT" mPort >>= maybeToEither "Error: Couldn't parse port from LISTEN_DB_PORT" . readMaybe
 
-      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port}|]
+      -- keepalives because a connection that dies without a FIN -- a lost node,
+      -- an idle flow dropped by a NAT -- leaves the listener blocked on a socket
+      -- that will never be readable, and the kernel default is to wait 2 hours
+      let connectionString = [i|host=#{host} dbname=events user=postgres password=postgres port=#{port} keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=3|]
       pure $ Db.connectionString connectionString
 
 getDbConnectionSettings :: IO (Either String Db.Settings)
