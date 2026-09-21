@@ -38,7 +38,7 @@ project: require-org
 
 .PHONY: images
 images: require-org
-	fpcloud registry login
+	./scripts/fpcloud-docker-login.sh
 	docker build -f op-webapi/Dockerfile -t $(REPO)/webapi:$(TAG) .
 	docker build -f op-worker/Dockerfile -t $(REPO)/worker:$(TAG) .
 	docker push $(REPO)/webapi:$(TAG)
