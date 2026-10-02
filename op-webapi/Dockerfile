@@ -121,6 +121,10 @@ COPY --from=build-frontend /frontend/static/ /frontend/static/
 
 COPY db /db
 
+# credentials arrive as mounted files, the app reads env variables
+COPY scripts/with-secrets.sh /usr/local/bin/with-secrets
+
 USER nobody
 
+ENTRYPOINT ["/usr/local/bin/with-secrets"]
 CMD ["/webapi"]

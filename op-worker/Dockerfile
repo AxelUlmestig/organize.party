@@ -64,6 +64,10 @@ RUN apt-get update && apt-get install -y \
 # Copy the server binary
 COPY --from=build-server /op-worker/worker-exe /worker
 
+# credentials arrive as mounted files, the app reads env variables
+COPY scripts/with-secrets.sh /usr/local/bin/with-secrets
+
 USER nobody
 
+ENTRYPOINT ["/usr/local/bin/with-secrets"]
 CMD ["/worker"]
