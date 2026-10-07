@@ -8,10 +8,9 @@ import           Data.Aeson.QQ           (aesonQQ)
 import           Data.String.Interpolate (i)
 import qualified Data.Text               as Text
 import           Data.UUID
-import qualified Network.HTTP.Req        as Req
 import           RIO
-import           Text.URI                (mkURI)
 
+import qualified Op.Aws                  as Aws
 import qualified Op.Db                   as Db
 import qualified Op.Worker.Job           as Job
 
@@ -21,50 +20,36 @@ newtype PollS3FileUploadJob = PollS3FileUploadJob { photoUploadId :: UUID }
 instance Aeson.ToJSON PollS3FileUploadJob
 instance Aeson.FromJSON PollS3FileUploadJob
 
-instance (Db.HasDbConnection env) => Job.JobDefinition env PollS3FileUploadJob where
+instance (Db.HasDbConnection env, Aws.HasAwsEnv env) => Job.JobDefinition env PollS3FileUploadJob where
   processJob (PollS3FileUploadJob uploadId) = do
-    textUrl <- do
-      mUrl <- do
+    (uploadUrl, fileName) <- do
+      mUpload <- do
         Db.queryDbOr retryDbErr do
           Db.statement
             uploadId
               [Db.maybeStatement|
-                select upload_url::text
+                select
+                  upload_url::text,
+                  file_name::text
                 from aws.photo_uploads
                 where id = $1::uuid
               |]
 
-      case mUrl of
-        Nothing  -> Job.giveUpJob [i|Couldn't find `aws.photo_uploads where id = '#{uploadId}' when polling for upload status`|]
-        Just url -> do
-          -- the upload url has a bunch of query parameters to enable PUTing, we don't need that
-          case Text.splitOn "?" url of
-            (withoutQueryParams : _) -> pure withoutQueryParams
-            wat -> Job.giveUpJob [i|Couldn't strip away query parameters from URL: #{url}, got: #{wat}|]
+      case mUpload of
+        Nothing     -> Job.giveUpJob [i|Couldn't find `aws.photo_uploads where id = '#{uploadId}' when polling for upload status`|]
+        Just upload -> pure upload
 
-    response <- do
-      (s3Url, options) <- do
-        case Req.useHttpsURI =<< mkURI textUrl of
-          Just uri -> pure uri
-          Nothing  -> Job.giveUpJob [i|Couldn't parse AWS S3 url when polling for upload status: #{textUrl}|]
+    -- ask the S3 API if the object exists rather than HEADing the url
+    -- anonymously, a private bucket responds 403 whether it exists or not
+    uploaded <- Aws.objectExists (Aws.photoObjectKey uploadId fileName)
 
-      liftIO do
-        -- defaultHttpConfig throws an exception unless response status is 2XX. We don't want that
-        let httpConfig = Req.defaultHttpConfig{Req.httpConfigCheckResponse = \_ _ _ -> Nothing}
-        Req.runReq httpConfig do
-          Req.req
-            Req.HEAD
-            s3Url
-            Req.NoReqBody
-            Req.ignoreResponse
-            options
-
-    (fsmEvent, fsmEventBody) <- do
-      case Req.responseStatusCode response of
-        200 -> pure ("upload_verified", Just [aesonQQ|{"photoUrl": #{textUrl}}|])
-        403 -> pure ("poll_upload_status_again", Nothing)
-        404 -> pure ("poll_upload_status_again", Nothing)
-        _ -> Job.retryJob [i|Unexpected HTTP response code when calling AWS SNS subscribe url: #{Req.responseStatusCode response}, trying again...|]
+    (fsmEvent, fsmEventBody) <-
+      if uploaded
+        then do
+          awsEnv <- asks Aws.getAwsEnv
+          let photoUrl = publicPhotoUrl awsEnv uploadUrl
+          pure ("upload_verified", Just [aesonQQ|{"photoUrl": #{photoUrl}}|])
+        else pure ("poll_upload_status_again", Nothing)
 
     Db.queryDbOr retryDbErr do
       Db.statement
@@ -79,6 +64,28 @@ instance (Db.HasDbConnection env) => Job.JobDefinition env PollS3FileUploadJob w
           from aws.photo_uploads
           where id = $1::uuid
         |]
+
+-- the upload url has a bunch of query parameters to enable PUTing, we don't
+-- need that. If S3_PUBLIC_BASE is set then the photo is served from there
+-- instead of from the S3 API
+publicPhotoUrl :: Aws.AwsEnv -> Text -> Text
+publicPhotoUrl awsEnv uploadUrl =
+  case awsEnv.s3PublicBase of
+    Nothing   -> unsigned
+    Just base -> publicUrl base awsEnv.s3Bucket unsigned
+  where
+    unsigned = Text.takeWhile (/= '?') uploadUrl
+
+-- replace everything up to and including the bucket path segment with the
+-- public base url, keeping the object key
+publicUrl :: Text -> Text -> Text -> Text
+publicUrl base bucket url =
+  case Text.breakOn bucketSegment url of
+    (_, rest)
+      | Text.null rest -> url
+      | otherwise -> Text.dropWhileEnd (== '/') base <> "/" <> Text.drop (Text.length bucketSegment) rest
+  where
+    bucketSegment = "/" <> bucket <> "/"
 
 retryDbErr :: Db.SessionError -> Job.Job env a
 retryDbErr err = Job.retryJob [i|Error when accessing db for poll s3 file upload job: #{err}|]

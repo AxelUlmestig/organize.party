@@ -107,6 +107,9 @@ RUN apt-get update && apt-get install -y \
     libgmp10 \
     zlib1g \
     libzstd1 \
+    sqitch \
+    libdbd-pg-perl \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the server binary
@@ -116,4 +119,12 @@ COPY --from=build-server /op-webapi/webapi-real /webapi
 COPY --from=build-frontend /frontend/index.html /frontend/index.html
 COPY --from=build-frontend /frontend/static/ /frontend/static/
 
+COPY db /db
+
+# credentials arrive as mounted files, the app reads env variables
+COPY scripts/with-secrets.sh /usr/local/bin/with-secrets
+
+USER nobody
+
+ENTRYPOINT ["/usr/local/bin/with-secrets"]
 CMD ["/webapi"]

@@ -35,7 +35,7 @@ RUN if [ -f cabal.project.freeze ]; then \
     mv cabal.project.freeze.tmp cabal.project.freeze || true; \
     fi
 
-RUN cabal build op-worker op-db op-cache --only-dependencies
+RUN cabal build op-worker op-db op-cache op-aws --only-dependencies
 
 COPY op-webapi/src /op-webapi/src
 COPY op-cache/src /op-cache/src
@@ -64,4 +64,10 @@ RUN apt-get update && apt-get install -y \
 # Copy the server binary
 COPY --from=build-server /op-worker/worker-exe /worker
 
+# credentials arrive as mounted files, the app reads env variables
+COPY scripts/with-secrets.sh /usr/local/bin/with-secrets
+
+USER nobody
+
+ENTRYPOINT ["/usr/local/bin/with-secrets"]
 CMD ["/worker"]

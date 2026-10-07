@@ -18,7 +18,42 @@
         "type": "github"
       }
     },
+    "fpcloud": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1790767368,
+        "narHash": "sha256-94pnJa15ZfbXX59Cg2JhshobHXb2J8B/5scO3VKZbdc=",
+        "owner": "fogpipe",
+        "repo": "cloud-cli",
+        "rev": "a019d1fc318458f9c291d5d4a9b113cf2ff6911d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fogpipe",
+        "ref": "v0.205.0",
+        "repo": "cloud-cli",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
+      "locked": {
+        "lastModified": 1784497964,
+        "narHash": "sha256-vlHUuqAcbcH2RKmHbPiuQzbv1pnzzavXnI62RD0bqCU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1756349143,
         "narHash": "sha256-65oRt2D57ST5Gsa2Q4WCtpgCmKHEWt4+CQ1chWQ3Fos=",
@@ -37,7 +72,8 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "fpcloud": "fpcloud",
+        "nixpkgs": "nixpkgs_2"
       }
     },
     "systems": {
