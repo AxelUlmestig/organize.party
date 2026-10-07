@@ -14,4 +14,6 @@ frontend/node_modules/
 
 .env
 
+db_dumps/
 .direnv/
+certbot

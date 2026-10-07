@@ -56,6 +56,35 @@ plan: require-org
 logs: require-org
 	fpcloud app logs webapi --org $(ORG) --project organizeparty --since 1h --follow
 
+# --- Self-hosted deployment -----------------------------------------------
+#
+# The whole stack on one machine via docker-compose-prod.yml: its own postgres,
+# pgbouncer, nginx and certbot next to the webapi and worker images on docker
+# hub.
+
+.PHONY: deploy-production
+deploy-production:
+	docker compose -f docker-compose-prod.yml up -d db
+	./scripts/wait-for-db.sh docker-compose-prod.yml
+	docker compose -f docker-compose-prod.yml exec db sqitch --chdir db deploy --verify
+	docker compose -f docker-compose-prod.yml up --force-recreate -d webapi worker
+
+.PHONY: backup-db
+backup-db:
+	./scripts/backup-database.sh
+
+.PHONY: schedule-backup
+schedule-backup:
+	./scripts/schedule-backup.sh
+
+.PHONY: run-certbot
+run-certbot:
+	./scripts/run-certbot.sh
+
+.PHONY: push-docker-images
+push-docker-images:
+	./scripts/push-docker-images.sh
+
 # --- Local development ----------------------------------------------------
 
 .PHONY: deploy-database

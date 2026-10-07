@@ -71,3 +71,27 @@ being deployed, before that image serves anything. A migration that fails fails
 the deploy and the previous version keeps serving. Nothing connects to the
 database from your machine: it is cluster-internal, and `sqitch` ships inside
 the image instead.
+
+## Self-host
+`make deploy-production` runs the whole stack on your local machine from
+`docker-compose-prod.yml`, with the latest images pushed to docker hub
+(`make push-docker-images`).
+
+Set up daily database backups
+```
+make schedule-backup
+```
+
+A dump is restored with `./scripts/restore-backup.sh db_dumps/<date>.dump`.
+
+### Set up SSL with Let's Encrypt
+1. `make deploy-production`
+1. `docker compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d organize.party`
+1. Schedule monthly renewal of the certificate:
+    `crontab -e` and add (make sure to update the path to work with your setup):
+    ```
+    0 0 1 * * cd /home/admin/organize.party && docker compose run --rm certbot renew && docker compose restart nginx
+    ```
+
+It should now be possible to view https://organize.party with full
+SSL protection.
