@@ -23,16 +23,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1790767368,
-        "narHash": "sha256-94pnJa15ZfbXX59Cg2JhshobHXb2J8B/5scO3VKZbdc=",
+        "lastModified": 1795603282,
+        "narHash": "sha256-ynnq6GvrC8VeUuVSc/P4QKLcgBmMoZ7JcyV4yek407M=",
         "owner": "fogpipe",
         "repo": "cloud-cli",
-        "rev": "a019d1fc318458f9c291d5d4a9b113cf2ff6911d",
+        "rev": "c0368849b4b727a8df6483a605e2a804c8721b08",
         "type": "github"
       },
       "original": {
         "owner": "fogpipe",
-        "ref": "v0.205.0",
+        "ref": "v0.288.0",
         "repo": "cloud-cli",
         "type": "github"
       }

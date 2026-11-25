@@ -6,7 +6,7 @@ terraform {
   required_providers {
     fpcloud = {
       source  = "fogpipe/fpcloud"
-      version = "~> 0.205.0"
+      version = "= 0.288.0"
     }
   }
 }
@@ -128,7 +128,7 @@ resource "fpcloud_project" "organizeparty" {
 # pgcrypto are not listed, the sqitch migrations `create extension` those
 # themselves and would fail if they were pre-installed.
 resource "fpcloud_database" "events" {
-  project_id = fpcloud_project.organizeparty.id
+  project    = fpcloud_project.organizeparty.id
   name       = "events"
   version    = "18"
   extensions = ["pg_statecharts"]
@@ -195,18 +195,18 @@ resource "fpcloud_bucket_cors" "photos" {
 # the Elm frontend is baked into the image and served by the same binary, one
 # origin just like with nginx
 resource "fpcloud_app" "webapi" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "webapi"
-  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/webapi:${var.image_tag}"
-  port       = 8081
-  ingress    = "all"
-  url_slug   = var.host_label != "" ? var.host_label : null
+  project  = fpcloud_project.organizeparty.id
+  name     = "webapi"
+  image    = "registry.cloud.fogpipe.com/${var.org}/organizeparty/webapi:${var.image_tag}"
+  port     = 8081
+  ingress  = "all"
+  url_slug = var.host_label != "" ? var.host_label : null
 
   env = {
     HOST_URL  = "https://${local.host}"
     LOG_LEVEL = "LevelInfo"
 
-    # the bucket's key is mounted below, its region and endpoint are plain config
+    # the bucket's key is referenced below, its region and endpoint are plain config
     AWS_REGION  = fpcloud_bucket.photos.region
     S3_ENDPOINT = fpcloud_bucket.photos.endpoint
     S3_BUCKET   = fpcloud_bucket.photos.global_alias
@@ -214,17 +214,18 @@ resource "fpcloud_app" "webapi" {
     S3_PUBLIC_BASE = fpcloud_bucket.photos.url
   }
 
-  # a file under /secrets/env is read into the variable it is named after, by
-  # the image's with-secrets entrypoint
-  secret_mounts = {
-    "/secrets/env/DATABASE_URL"          = fpcloud_database.events.secret
-    "/secrets/env/AWS_ACCESS_KEY_ID"     = fpcloud_project_secret.webapi_photos_key_id.name
-    "/secrets/env/AWS_SECRET_ACCESS_KEY" = fpcloud_project_secret.webapi_photos_secret_key.name
+  # a referenced secret is the variable's own value. referencing the database's
+  # url is also what hands the app the database: the platform writes the grant to
+  # the app's identity as the reference is written
+  secret_env = {
+    DATABASE_URL          = { secret = fpcloud_database.events.secrets["url"] }
+    AWS_ACCESS_KEY_ID     = { secret = fpcloud_secret.webapi_photos_key_id.name }
+    AWS_SECRET_ACCESS_KEY = { secret = fpcloud_secret.webapi_photos_secret_key.name }
   }
 
-  # through with-secrets explicitly, DATABASE_URL is not in the environment
-  # until it has run
-  release_command = ["/usr/local/bin/with-secrets", "sh", "-c", "sqitch --chdir /db deploy \"db:pg://$${DATABASE_URL#postgres://}\" --mode change --verify"]
+  # secret_env is written as part of the create, so DATABASE_URL is in the
+  # environment the release command runs in
+  release_command = ["sh", "-c", "sqitch --chdir /db deploy \"db:pg://$${DATABASE_URL#postgres://}\" --mode change --verify"]
 
   depends_on = [fpcloud_database.events]
 }
@@ -232,10 +233,10 @@ resource "fpcloud_app" "webapi" {
 # `type = worker`: no port, no ingress, no URL, it only holds a Postgres
 # LISTEN connection open
 resource "fpcloud_app" "worker" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "worker"
-  image      = "registry.cloud.fogpipe.com/${var.org}/organizeparty/worker:${var.image_tag}"
-  type       = "worker"
+  project = fpcloud_project.organizeparty.id
+  name    = "worker"
+  image   = "registry.cloud.fogpipe.com/${var.org}/organizeparty/worker:${var.image_tag}"
+  type    = "worker"
 
   env = {
     LOG_LEVEL      = "LevelInfo"
@@ -247,33 +248,33 @@ resource "fpcloud_app" "worker" {
     S3_PUBLIC_BASE = fpcloud_bucket.photos.url
   }
 
-  secret_mounts = {
-    "/secrets/env/DATABASE_URL"          = fpcloud_database.events.secret
-    "/secrets/env/SMTP_LOGIN"            = fpcloud_project_secret.smtp_login.name
-    "/secrets/env/SMTP_PASSWORD"         = fpcloud_project_secret.smtp_password.name
-    "/secrets/env/AWS_ACCESS_KEY_ID"     = fpcloud_project_secret.worker_photos_key_id.name
-    "/secrets/env/AWS_SECRET_ACCESS_KEY" = fpcloud_project_secret.worker_photos_secret_key.name
+  secret_env = {
+    DATABASE_URL          = { secret = fpcloud_database.events.secrets["url"] }
+    SMTP_LOGIN            = { secret = fpcloud_secret.smtp_login.name }
+    SMTP_PASSWORD         = { secret = fpcloud_secret.smtp_password.name }
+    AWS_ACCESS_KEY_ID     = { secret = fpcloud_secret.worker_photos_key_id.name }
+    AWS_SECRET_ACCESS_KEY = { secret = fpcloud_secret.worker_photos_secret_key.name }
   }
 
   depends_on = [fpcloud_database.events]
 }
 
-# env is plain, a credential reaches an app only as a mounted project secret
-resource "fpcloud_project_secret" "smtp_login" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "smtp-login"
-  value      = var.smtp.login
+# env is plain, a credential reaches an app only by reference to a secret
+resource "fpcloud_secret" "smtp_login" {
+  project = fpcloud_project.organizeparty.id
+  name    = "smtp-login"
+  value   = var.smtp.login
 }
 
-resource "fpcloud_project_secret" "smtp_password" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "smtp-password"
-  value      = var.smtp.password
+resource "fpcloud_secret" "smtp_password" {
+  project = fpcloud_project.organizeparty.id
+  name    = "smtp-password"
+  value   = var.smtp.password
 }
 
 # A key per app, each half its own secret so the app gets it as two variables.
-# The bucket's own photos-key secret is one AWS config file, which would be
-# one variable.
+# Not fpcloud_bucket.photos.secrets: that is the bucket's owner credential, and
+# the worker is meant to hold a read-only one.
 resource "fpcloud_bucket_key" "webapi_photos" {
   bucket_id = fpcloud_bucket.photos.id
   name      = "webapi"
@@ -281,16 +282,16 @@ resource "fpcloud_bucket_key" "webapi_photos" {
   write     = true
 }
 
-resource "fpcloud_project_secret" "webapi_photos_key_id" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "photos-webapi-key-id"
-  value      = fpcloud_bucket_key.webapi_photos.access_key_id
+resource "fpcloud_secret" "webapi_photos_key_id" {
+  project = fpcloud_project.organizeparty.id
+  name    = "photos-webapi-key-id"
+  value   = fpcloud_bucket_key.webapi_photos.access_key_id
 }
 
-resource "fpcloud_project_secret" "webapi_photos_secret_key" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "photos-webapi-secret-key"
-  value      = fpcloud_bucket_key.webapi_photos.secret_access_key
+resource "fpcloud_secret" "webapi_photos_secret_key" {
+  project = fpcloud_project.organizeparty.id
+  name    = "photos-webapi-secret-key"
+  value   = fpcloud_bucket_key.webapi_photos.secret_access_key
 }
 
 # read only, the worker only checks whether uploads arrived
@@ -302,16 +303,16 @@ resource "fpcloud_bucket_key" "worker_photos" {
   write = false
 }
 
-resource "fpcloud_project_secret" "worker_photos_key_id" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "photos-worker-key-id"
-  value      = fpcloud_bucket_key.worker_photos.access_key_id
+resource "fpcloud_secret" "worker_photos_key_id" {
+  project = fpcloud_project.organizeparty.id
+  name    = "photos-worker-key-id"
+  value   = fpcloud_bucket_key.worker_photos.access_key_id
 }
 
-resource "fpcloud_project_secret" "worker_photos_secret_key" {
-  project_id = fpcloud_project.organizeparty.id
-  name       = "photos-worker-secret-key"
-  value      = fpcloud_bucket_key.worker_photos.secret_access_key
+resource "fpcloud_secret" "worker_photos_secret_key" {
+  project = fpcloud_project.organizeparty.id
+  name    = "photos-worker-secret-key"
+  value   = fpcloud_bucket_key.worker_photos.secret_access_key
 }
 
 resource "fpcloud_domain" "organizeparty" {

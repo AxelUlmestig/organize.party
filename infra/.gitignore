@@ -1,5 +1,8 @@
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate
+# tofu writes timestamped copies next to the state, and every one of them holds
+# the same plaintext credentials the state does
 terraform.tfstate.backup
+terraform.tfstate.*.backup
 *.tfvars
